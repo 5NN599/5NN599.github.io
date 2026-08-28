@@ -3,94 +3,117 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>미니게임 천국</title>
+    <title>미니지</title>
     <style>
         body { 
             text-align: center; 
-            background-color: #0d1117; 
-            color: #c9d1d9; 
+            background-color: #f8f9fa; 
+            color: #333333; 
             font-family: 'Malgun Gothic', sans-serif; 
-            padding: 50px 20px;
+            padding: 60px 20px;
             margin: 0;
         }
-        h1 { 
-            color: #58a6ff; 
-            font-size: 2.5rem;
-            text-shadow: 0 0 10px rgba(88, 166, 255, 0.3);
+        .decor-line {
+            color: #ff6b6b;
+            font-size: 1.2rem;
+            letter-spacing: 5px;
             margin-bottom: 10px;
         }
+        h1 { 
+            color: #222222; 
+            font-size: 2.8rem;
+            margin: 0 0 10px 0;
+            font-weight: 800;
+        }
         .subtitle {
-            color: #8b949e;
+            color: #666666;
             font-size: 1.1rem;
-            margin-bottom: 40px;
+            margin-bottom: 50px;
         }
         .container {
             display: flex;
             justify-content: center;
             flex-wrap: wrap;
-            max-width: 1000px;
+            max-width: 1100px;
             margin: 0 auto;
         }
         .game-card { 
             display: inline-block; 
-            width: 260px; 
+            width: 220px; 
             padding: 25px; 
             margin: 15px; 
-            background-color: #161b22; 
-            border-radius: 12px; 
+            background-color: #ffffff; 
+            border-radius: 16px; 
             cursor: pointer; 
-            transition: all 0.3s ease; 
-            border: 1px solid #30363d; 
+            transition: all 0.25s ease-in-out; 
+            border: 1px solid #e9ecef; 
             text-align: left;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         }
         .game-card:hover { 
-            background-color: #21262d; 
-            transform: translateY(-5px); 
-            border-color: #58a6ff; 
-            box-shadow: 0 8px 16px rgba(88, 166, 255, 0.15);
+            background-color: #ffffff; 
+            transform: translateY(-8px); 
+            border-color: #ff6b6b; 
+            box-shadow: 0 12px 24px rgba(255, 107, 107, 0.15);
+        }
+        .game-card .icon {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            display: block;
         }
         .game-card h3 { 
             margin: 0 0 10px 0; 
-            color: #f0f6fc;
-            font-size: 1.3rem;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            color: #111111;
+            font-size: 1.2rem;
         }
         .game-card p { 
             margin: 0; 
-            color: #8b949e; 
-            font-size: 0.95rem;
+            color: #777777; 
+            font-size: 0.9rem;
             line-height: 1.5;
         }
-        .coming-soon {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        .coming-soon:hover {
-            transform: none;
-            border-color: #30363d;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        footer {
+            margin-top: 80px;
+            color: #aaaaaa;
+            font-size: 0.85rem;
         }
     </style>
 </head>
 <body>
-    <h1>🎮 5NN599의 미니게임 오락실 🎮</h1>
-    <div class="subtitle">무료 도메인으로 즐기는 나만의 웹 게임 공간입니다.</div>
+    <div class="decor-line">✦ 🌟 ✦ 🎈 ✦ 🌟 ✦</div>
+    <h1>✨ 미니지 ✨</h1>
+    <div class="subtitle">간단하게 즐기는 미니지 오락실 공간입니다 🕹️</div>
     
     <div class="container">
-        <!-- 스네이크 게임 카드 -->
+        <!-- 1. 스네이크 게임 -->
         <div class="game-card" onclick="location.href='./snake/'">
-            <h3>🐍 스네이크 게임</h3>
-            <p>키보드 방향키를 사용하여 화면 속 사과를 먹고 몸집을 키워보세요! 벽에 부딪히면 끝납니다.</p>
+            <span class="icon">🐍</span>
+            <h3>스네이크 게임</h3>
+            <p>방향키로 뱀을 움직여 사과를 먹어보세요. 몸집이 커질수록 난이도가 상승합니다!</p>
         </div>
 
-        <!-- 다음 게임 예시 카드 (복사해서 늘릴 수 있습니다) -->
-        <div class="game-card coming-soon">
-            <h3>⏳ 준비 중인 게임</h3>
-            <p>테트리스, 똥피하기 등 재미있는 클래식 웹 미니게임이 이곳에 곧 추가될 예정입니다.</p>
+        <!-- 2. 똥피하기 게임 -->
+        <div class="game-card" onclick="location.href='./dodge/'">
+            <span class="icon">💩</span>
+            <h3>똥피하기</h3>
+            <p>하늘에서 떨어지는 장애물을 좌우 방향키로 요리조리 피하며 버텨보세요!</p>
+        </div>
+
+        <!-- 3. 벽돌깨기 게임 -->
+        <div class="game-card" onclick="location.href='./brick/'">
+            <span class="icon">🧱</span>
+            <h3>벽돌깨기</h3>
+            <p>패들을 마우스나 키보드로 움직여 공을 튕겨내고 모든 벽돌을 부숴버리세요!</p>
+        </div>
+
+        <!-- 4. 틱택토 게임 -->
+        <div class="game-card" onclick="location.href='./tictactoe/'">
+            <span class="icon">❌</span>
+            <h3>틱택토</h3>
+            <p>스마트한 컴퓨터 AI를 상대로 먼저 3줄을 나란히 완성하면 승리합니다.</p>
         </div>
     </div>
+
+    <footer>© 미니지 All Rights Reserved.</footer>
 </body>
 </html>
