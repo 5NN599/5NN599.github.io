@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>미니지 - 벽돌깨기</title>
+    <style>
+        body { text-align: center; background-color: #f8f9fa; color: #333; font-family: sans-serif; padding-top: 30px; }
+        canvas { background-color: #ffffff; display: block; margin: 20px auto; border: 4px solid #e9ecef; border-radius: 12px; }
+        button { background-color: #ffffff; color: #333; border: 1px solid #ced4da; padding: 10px 20px; font-size: 1rem; border-radius: 8px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>🧱 벽돌깨기</h1>
+    <canvas id="gameCanvas" width="480" height="320"></canvas>
+    <button onclick="location.href='../'">🏠 메인으로 가기</button>
+
+    <script>
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(f, d) {
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.frequency.setValueAtTime(f, audioCtx.currentTime); gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + d); osc.start(); osc.stop(audioCtx.currentTime + d);
+        }
+
+        const canvas = document.getElementById("gameCanvas"); const ctx = canvas.getContext("2d");
+        let ballRadius = 8; let x = canvas.width/2; let y = canvas.height-30; let dx = 3; let dy = -3;
+        let paddleHeight = 10; let paddleWidth = 75; let paddleX = (canvas.width-paddleWidth)/2;
+        let rightPressed = false; let leftPressed = false;
+        let brickRowCount = 3; let brickColumnCount = 5; let brickWidth = 75; let brickHeight = 20; let brickPadding = 10; let brickOffsetTop = 30; let brickOffsetLeft = 30;
+        let bricks = [];
+        for(let c=0; c<brickColumnCount; c++) { bricks[c] = []; for(let r=0; r<brickRowCount; r++) { bricks[c][r] = { x: 0, y: 0, status: 1 }; } }
+
+        document.addEventListener("keydown", e => { if(e.key === "Right" || e.key === "ArrowRight") rightPressed = true; else if(e.key === "Left" || e.key === "ArrowLeft") leftPressed = true; });
+        document.addEventListener("keyup", e => { if(e.key === "Right" || e.key === "ArrowRight") rightPressed = false; else if(e.key === "Left" || e.key === "ArrowLeft") leftPressed = false; });
+
+        function collisionDetection() {
+            for(let c=0; c<brickColumnCount; c++) {
+                for(let r=0; r<brickRowCount; r++) {
+                    let b = bricks[c][r];
+                    if(b.status === 1) {
+                        if(x > b.x && x < b.x+brickWidth && y > b.y && y < b.y+brickHeight) {
+                            dy = -dy; b.status = 0; playSound(440, 0.1);
+                        }
+                    }
+                }
+            }
+        }
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // 벽돌 그리기
+            for(let c=0; c<brickColumnCount; c++) {
+                for(let r=0; r<brickRowCount; r++) {
+                    if(bricks[c][r].status === 1) {
+                        let brickX = (c*(brickWidth+brickPadding))+brickOffsetLeft;
+                        let brickY = (r*(brickHeight+brickPadding))+brickOffsetTop;
+                        bricks[c][r].x = brickX; bricks[c][r].y = brickY;
+                        ctx.fillStyle = "#ff6b6b"; ctx.fillRect(brickX, brickY, brickWidth, brickHeight);
+                    }
+                }
+            }
+            // 공 그리기
+            ctx.beginPath(); ctx.arc(x, y, ballRadius, 0, Math.PI*2); ctx.fillStyle = "#4dadf7"; ctx.fill(); ctx.closePath();
+            // 패들 그리기
+            ctx.fillStyle = "#343a40"; ctx.fillRect(paddleX, canvas.height-paddleHeight, paddleWidth, paddleHeight);
+            
+            collisionDetection();
+            if(x + dx > canvas.width-ballRadius || x + dx < ballRadius) { dx = -dx; playSound(350, 0.05); }
+            if(y + dy < ballRadius) { dy = -dy; playSound(350, 0.05); }
+            else if(y + dy > canvas.height-ballRadius) {
+                if(x > paddleX && x < paddleX + paddleWidth) { dy = -dy; playSound(520, 0.08); }
+                else { playSound(150, 0.3); alert("GAME OVER"); document.location.reload(); }
+            }
+            if(rightPressed && paddleX < canvas.width-paddleWidth) paddleX += 5;
+            else if(leftPressed && paddleX > 0) paddleX -= 5;
+            x += dx; y += dy; requestAnimationFrame(draw);
+        }
+        draw();
+    </script>
+</body>
+</html>
