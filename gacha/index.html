@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>미니지 - 행운의 동전</title>
+    <style>
+        :root { --bg: #f8f9fa; --text: #333; --canvas-bg: #fff; --border: #e9ecef; --btn-bg: #fff; }
+        [data-theme="beige"] { --bg: #f5ebe0; --text: #4e3d30; --canvas-bg: #eddfd0; --border: #ddcbbb; --btn-bg: #eddfd0; }
+        [data-theme="dark"] { --bg: #0d1117; --text: #c9d1d9; --canvas-bg: #161b22; --border: #30363d; --btn-bg: #21262d; }
+        body { text-align: center; background-color: var(--bg); color: var(--text); font-family: sans-serif; padding-top: 50px; margin:0; transition: 0.3s; }
+        .coin-box { margin: 40px auto; width: 120px; height: 120px; background-color: #fcc419; border-radius: 50%; font-size: 3.5rem; line-height: 120px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); transition: transform 0.6s ease-in-out; }
+        .coin-box.flipping { transform: rotateY(1440deg); }
+        button { background-color: var(--btn-bg); color: var(--text); border: 1px solid var(--border); padding: 10px 20px; font-size: 1rem; border-radius: 8px; cursor: pointer; margin:5px; }
+        #result { font-size: 1.5rem; font-weight: bold; margin-top: 20px; min-height: 35px; }
+    </style>
+</head>
+<body>
+    <h1>🪙 행운의 동전 던지기</h1>
+    <p>오늘 나의 행운은? 동전을 던져 앞면 혹은 뒷면을 맞춰보세요!</p>
+    <div class="coin-box" id="coin">❓</div>
+    <button onclick="flip('앞면')">🪙 앞면 베팅</button>
+    <button onclick="flip('뒷면')">🪙 뒷면 베팅</button>
+    <div id="result"></div>
+    <br><br>
+    <button onclick="location.href='../'">🏠 메인으로 가기</button>
+    <script>
+        const savedTheme = localStorage.getItem('minig-theme'); if (savedTheme && savedTheme !== 'white') document.documentElement.setAttribute('data-theme', savedTheme);
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            try {
+                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.connect(gain); gain.connect(audioCtx.destination); const now = audioCtx.currentTime;
+                if(type === 'roll') { osc.type = 'sine'; osc.frequency.setValueAtTime(600, now); osc.frequency.linearRampToValueAtTime(900, now + 0.5); gain.gain.setValueAtTime(0.04, now); gain.gain.linearRampToValueAtTime(0, now + 0.5); osc.start(now); osc.stop(now + 0.5); }
+                else if(type === 'win') { osc.type = 'square'; osc.frequency.setValueAtTime(523, now); osc.frequency.setValueAtTime(659, now + 0.06); osc.frequency.setValueAtTime(783, now + 0.12); gain.gain.setValueAtTime(0.03, now); gain.gain.linearRampToValueAtTime(0, now + 0.2); osc.start(now); osc.stop(now + 0.2); }
+                else if(type === 'lose') { osc.type = 'triangle'; osc.frequency.setValueAtTime(220, now); osc.frequency.linearRampToValueAtTime(120, now + 0.15); gain.gain.setValueAtTime(0.06, now); gain.gain.linearRampToValueAtTime(0, now + 0.15); osc.start(now); osc.stop(now + 0.15); }
+            } catch(e){}
+        }
+        let active = false;
+        function flip(pick) {
+            if(active) return; active = true; playSound('roll');
+            const coin = document.getElementById("coin"); const res = document.getElementById("result");
+            coin.classList.add("flipping"); coin.innerText = "🌀"; res.innerText = "동전이 도는 중...";
+            setTimeout(() => {
+                coin.classList.remove("flipping"); const sides = ['앞면', '뒷면']; const final = sides[Math.floor(Math.random() * 2)];
+                coin.innerText = final === '앞면' ? '👑' : '🔢'; active = false;
+                if(pick === final) { res.innerText = `결과: [${final}]! 적중했습니다! 🎉`; res.style.color = "#51cf66"; playSound('win'); }
+                else { res.innerText = `결과: [${final}]! 빗나갔습니다! 😭`; res.style.color = "#ff6b6b"; playSound('lose'); }
+            }, 600);
+        }
+    </script>
+</body>
+</html>
