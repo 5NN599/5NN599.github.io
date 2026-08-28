@@ -48,7 +48,7 @@
             <p id="shopPoints" style="font-weight:bold; color:#fcc419;">보유 포인트: 0 P</p>
             <div class="shop-grid">
                 <div class="shop-item"><span id="strLv">⚔️ 공격력 Lv.1</span><button onclick="buyUpgrade('dmg')">5P</button></div>
-                <div class="shop-item"><span id="probLv">🍀 확률업 Lv.1</span><button onclick="buyUpgrade('prob')">5P</button></div>
+                <div class="shop-item"><span id="probLv">🍀 전설확률 Lv.1</span><button onclick="buyUpgrade('prob')">5P</button></div>
                 <div class="shop-item"><span id="hpLv">🛡️ 최대실드 Lv.10</span><button onclick="buyUpgrade('hp')">5P</button></div>
             </div>
             <button class="choice-btn yes" onclick="closeShop()">💾 연구 완료 (닫기)</button>
@@ -70,15 +70,15 @@
             } catch(e){}
         }
         const canvas = document.getElementById("gameCanvas"); const ctx = canvas.getContext("2d");
-        let player = { x: 180, y: 380, w: 32, h: 32, speed: 6, hp: 10, maxHp: 10, invuln: 0, currentWeapon: '기본 레이저', dmg: 1, dropProb: 0.4 };
+        let player = { x: 180, y: 380, w: 32, h: 32, speed: 6, hp: 10, maxHp: 10, invuln: 0, currentWeapon: '기본 레이저', dmg: 1, legendBonus: 0 };
         let bullets = [], enemyBullets = [], enemies = [], stars = [], items = [], explosions = [];
         let score = 0, keys = {}, isOver = false, gameId = null, boss = null, bossSpawned = false, shopPoints = 0, bossLevel = 1;
         let gameState = 'story'; let storyIndex = 0; let textProgress = 0, pendingWeapon = null, enemiesKilled = 0;
         let upgCost = { dmg: 5, prob: 5, hp: 5 }, upgLv = { dmg: 1, prob: 1, hp: 10 };
         const storyTexts = [
             "서기 2026년... 지구 방위대 최후의 함선 '미니지호'..",
-            "보스를 격추할 때마다 10강화 포인트를 획득한다.",
-            "획득한 포인트로 상점에서 주포 위력과 실드를 한계 돌파하라!",
+            "무기 등급 시스템 도입! 전설급 무기는 오직 2% 확률로만 드롭된다.",
+            "강화 상점의 '전설확률'을 연구하면 궁극기 무기를 뽑을 수 있다!",
             "격파할 때마다 진화하여 차원을 넘어 쳐들어오는 보스를 섬멸하라!",
             "👉 [Space] 또는 화면을 터치해 우주 전쟁을 시작하세요!"
         ];
@@ -86,15 +86,27 @@
         document.addEventListener("keyup", e => keys[e.key] = false);
         function openShop() { document.getElementById("shopModal").style.display = "flex"; updateShopUI(); }
         function closeShop() { document.getElementById("shopModal").style.display = "none"; keys[" "] = false; }
-        function updateShopUI() { document.getElementById("shopPoints").innerText = `보유 포인트: ${shopPoints} P`; document.getElementById("strLv").innerText = `⚔️ 공격력 Lv.${upgLv.dmg} (+${upgLv.dmg-1})`; document.getElementById("probLv").innerText = `🍀 확률업 Lv.${upgLv.prob} (${Math.floor(player.dropProb*100)}%)`; document.getElementById("hpLv").innerText = `🛡️ 최대실드 Lv.${upgLv.hp}`; }
+        function updateShopUI() { document.getElementById("shopPoints").innerText = `보유 포인트: ${shopPoints} P`; document.getElementById("strLv").innerText = `⚔️ 공격력 Lv.${upgLv.dmg} (+${upgLv.dmg-1})`; document.getElementById("probLv").innerText = `🍀 전설확률 Lv.${upgLv.prob} (${2 + upgLv.prob - 1}%)`; document.getElementById("hpLv").innerText = `🛡️ 최대실드 Lv.${upgLv.hp}`; }
         function buyUpgrade(type) {
             if(shopPoints >= upgCost[type]) {
                 shopPoints -= upgCost[type];
                 if(type === 'dmg') { upgLv.dmg++; player.dmg += 0.5; }
-                else if(type === 'prob') { upgLv.prob++; player.dropProb = Math.min(0.9, player.dropProb + 0.08); }
+                else if(type === 'prob') { upgLv.prob++; player.legendBonus += 0.01; } // 레벨당 전설 뽑기 확률 1% 가산 업그레이드
                 else if(type === 'hp') { upgLv.hp += 2; player.maxHp += 2; player.hp += 2; }
                 upgCost[type] = Math.floor(upgCost[type] * 1.5); updateShopUI(); updateBoard(); playSound('start');
             }
+        }
+        // 🚀 등급제 무기 랜덤 추출 가챠 알고리즘 연산 가동
+        function getRandomWeapon() {
+            let rnd = Math.random(); let legProb = 0.02 + player.legendBonus;
+            if (rnd < legProb) return { wp: '💥 핵융합 폭탄', grade: '🟡 [전설]' };
+            else if (rnd < legProb + 0.13) return Math.random() < 0.5 ? { wp: '🛡️ 유도 드론', grade: '🟣 [에픽]' } : { wp: 'CNG 블랙홀', grade: '🟣 [에픽]' };
+            else if (rnd < legProb + 0.13 + 0.35) {
+                let r = Math.random();
+                if (r < 0.33) return { wp: '🚀 범위 미사일', grade: '🔵 [레어]' };
+                else if (r < 0.66) return { wp: '⚡ 관통 레이저', grade: '🔵 [레어]' };
+                else return { wp: '💣 기뢰 설치', grade: '🔵 [레어]' };
+            } else return Math.random() < 0.5 ? { wp: '기본 레이저', grade: '🟢 [커먼]' } : { wp: '🔱 3갈래 확산탄', grade: '🟢 [커먼]' };
         }
         function fireWeapon() {
             if(player.currentWeapon === '기본 레이저') { bullets.push({ x: player.x + 14, y: player.y, w: 4, h: 10, speed: 9, type: 'normal' }); playSound('laser'); }
@@ -106,12 +118,10 @@
             else if(player.currentWeapon === 'CNG 블랙홀') { bullets.push({ x: player.x + 10, y: player.y, w: 12, h: 12, speed: 4, type: 'blackhole' }); playSound('hit'); }
             else if(player.currentWeapon === '💥 핵융합 폭탄') { explosions.push({ x: 200, y: 220, rad: 10, isNuke: true }); playSound('explode'); player.currentWeapon = '기본 레이저'; }
         }
-        function askEquip(wp) { pendingWeapon = wp; document.getElementById("weaponDesc").innerText = `드롭된 무기: [${wp}]`; document.getElementById("weaponModal").style.display = "flex"; }
-        // 🚀 보정: 무기 모달을 선택하고 닫을 때, 연구 상점 주점이 화면에 자동으로 오버랩 활성화됩니다!
+        function askEquip(g, wp) { pendingWeapon = wp; document.getElementById("weaponDesc").innerText = `${g} ${wp}`; document.getElementById("weaponModal").style.display = "flex"; }
         function equipWeapon(yes) { if(yes && pendingWeapon) { player.currentWeapon = pendingWeapon; playSound('start'); } document.getElementById("weaponModal").style.display = "none"; pendingWeapon = null; keys[" "] = false; openShop(); }
         function initStars() { for(let i=0; i<25; i++) stars.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, size: 1+Math.random()*1.5, speed: 1+Math.random()*2 }); }
-        function restart() { document.getElementById("overModal").style.display="none"; document.getElementById("weaponModal").style.display="none"; document.getElementById("shopModal").style.display="none"; player.x = 180; player.y = 380; player.hp = 10; player.maxHp = 10; player.currentWeapon = '기본 레이저'; player.dmg = 1; player.dropProb = 0.4; upgCost={dmg:5,prob:5,hp:5}; upgLv={dmg:1,prob:1,hp:10}; bullets = []; enemyBullets = []; enemies = []; items = []; explosions = []; boss = null; bossSpawned = false; score = 0; enemiesKilled = 0; bossLevel = 1; shopPoints = 0; isOver = false; gameState = 'story'; storyIndex = 0; textProgress = 0; updateBoard(); loop(); }
-        // 🚀 보정: 보스의 총 HP 분모를 보스 레벨에 기인하여 정밀 변동 싱크로 출력하도록 표기 공식을 바꿨습니다.
+        function restart() { document.getElementById("overModal").style.display="none"; document.getElementById("weaponModal").style.display="none"; document.getElementById("shopModal").style.display="none"; player.x = 180; player.y = 380; player.hp = 10; player.maxHp = 10; player.currentWeapon = '기본 레이저'; player.dmg = 1; player.legendBonus = 0; upgCost={dmg:5,prob:5,hp:5}; upgLv={dmg:1,prob:1,hp:10}; bullets = []; enemyBullets = []; enemies = []; items = []; explosions = []; boss = null; bossSpawned = false; score = 0; enemiesKilled = 0; bossLevel = 1; shopPoints = 0; isOver = false; gameState = 'story'; storyIndex = 0; textProgress = 0; updateBoard(); loop(); }
         function updateBoard() { const b = document.getElementById("board"); if(gameState==='story') b.innerText = "🌌 우주 상황실"; else if(bossSpawned && boss && boss.hp > 0) b.innerText = `🛡️ 실드: ${player.hp}/${player.maxHp} | 🏆 점수: ${score} | 👾 BOSS Lv.${bossLevel}: ${Math.ceil(boss.hp)} / ${bossLevel * 30}`; else b.innerText = `🛡️ 실드: ${player.hp}/${player.maxHp} | 🏆 점수: ${score} | 다음 습격까지 잡몹: ${Math.max(0, 15 - enemiesKilled)}마리`; }
         let frameCount = 0;
         function loop() {
@@ -138,7 +148,7 @@
                 if(bullets[i].type === 'normal') { ctx.fillStyle = "#00ffcc"; ctx.fillRect(bullets[i].x, bullets[i].y, bullets[i].w, bullets[i].h); }
                 else if(bullets[i].type === 'missile') { ctx.fillStyle = "#ff922b"; ctx.fillRect(bullets[i].x, bullets[i].y, bullets[i].w, bullets[i].h); ctx.font="11px sans-serif"; ctx.fillText("🚀", bullets[i].x-2, bullets[i].y+12); }
                 else if(bullets[i].type === 'mine') { ctx.fillStyle = "#fcc419"; ctx.font="12px sans-serif"; ctx.fillText("💥", bullets[i].x-2, bullets[i].y); }
-                else if(bullets[i].type === 'pierce') { ctx.fillStyle = "#ff00ff"; ctx.fillRect(bullets[i].x, bullets[i].y, bullets[i].w, bullets[i].h); }
+                else if(bullets[i].type === 'piece') { ctx.fillStyle = "#ff00ff"; ctx.fillRect(bullets[i].x, bullets[i].y, bullets[i].w, bullets[i].h); }
                 else if(bullets[i].type === 'drone') { ctx.fillStyle = "#51cf66"; ctx.fillRect(bullets[i].x, bullets[i].y, bullets[i].w, bullets[i].h); if(enemies.length > 0) bullets[i].x += (enemies.x - bullets[i].x) * 0.05; else if(bossSpawned && boss) bullets[i].x += (boss.x + 32 - bullets[i].x) * 0.05; }
                 else if(bullets[i].type === 'blackhole') { ctx.fillStyle = "#748ffc"; ctx.font="14px sans-serif"; ctx.fillText("🌀", bullets[i].x-2, bullets[i].y); enemies.forEach(en => { if(Math.abs(en.x - bullets[i].x) < 100) { en.x += (bullets[i].x - en.x) * 0.04; en.y += (bullets[i].y - en.y) * 0.02; } }); }
                 if(bullets[i].y < -30 || bullets[i].y > canvas.height + 30) { bullets.splice(i, 1); continue; }
@@ -154,12 +164,11 @@
             for(let i=items.length-1; i>=0; i--) {
                 items[i].y += 1.5; ctx.save(); ctx.font="24px sans-serif"; ctx.fillText("🎁", items[i].x, items[i].y+20); ctx.restore();
                 if(items[i].x < player.x+player.w && items[i].x+24 > player.x && items[i].y < player.y+player.h && items[i].y+20 > player.y) {
-                    items.splice(i, 1); playSound('item'); 
-                    // 🚀 보정: 드롭 박스를 먹는 찰나, 함선의 피격 실드가 즉시 최대 스펙 상한선까지 풀 게이지로 선충전 복구됩니다!
-                    player.hp = player.maxHp; updateBoard();
-                    const wpList = ['🚀 범위 미사일', '💣 기뢰 설치', '⚡ 관통 레이저', '🔱 3갈래 확산탄', '🛡️ 유도 드론', 'CNG 블랙홀', '💥 핵융합 폭탄']; askEquip(wpList[Math.floor(Math.random() * wpList.length)]); continue;
+                    items.splice(i, 1); playSound('item'); player.hp = player.maxHp; updateBoard();
+                    // 🚀 가중치 테이블에 기인하여 무작위 등급 무기를 정밀 추첨합니다.
+                    let res = getRandomWeapon(); askEquip(res.grade, res.wp); continue;
                 }
-                if(items[i].y > canvas.height) { items.splice(i, 1); if(bossSpawned && boss && boss.hp <= 0) { openShop(); } }
+                if(items[i].y > canvas.height) { items.splice(i, 1); if(bossSpawned && boss && boss.hp <= 0) openShop(); }
             }
             if(enemiesKilled >= 15 && !bossSpawned) { bossSpawned = true; boss = { x: 160, y: -60, w: 64, h: 44, hp: 30 * bossLevel, maxHp: 30 * bossLevel, targetY: 50, speed: 1.8 + bossLevel*0.2, dx: 2, shotTimer: 0 }; updateBoard(); }
             if(bossSpawned && boss) {
@@ -167,7 +176,6 @@
                     if(boss.y < boss.targetY) boss.y += 1; 
                     else { boss.x += boss.dx; if(boss.x < 10 || boss.x > canvas.width - boss.w - 10) boss.dx = -boss.dx; boss.shotTimer++; if(boss.shotTimer % Math.max(15, 35 - bossLevel*2) === 0) { enemyBullets.push({ x: boss.x + boss.w/2 - 2, y: boss.y + boss.h, w: 6, h: 12, speed: 4.5 + bossLevel*0.2 }); } if(boss.shotTimer % 70 === 0) { enemyBullets.push({ x: boss.x + 10, y: boss.y + boss.h, w: 6, h: 6, speed: 3.5, dx: -1.2 }); enemyBullets.push({ x: boss.x + boss.w/2, y: boss.y + boss.h, w: 6, h: 6, speed: 4.2, dx: 0 }); enemyBullets.push({ x: boss.x + boss.w - 10, y: boss.y + boss.h, w: 6, h: 6, speed: 3.5, dx: 1.2 }); } }
                     ctx.save(); ctx.font = "54px sans-serif"; ctx.fillText("🛸", boss.x, boss.y + 44); ctx.restore();
-                    // 보스 침몰 직후 모든 잡몹/탄막 청소 연산
                     explosions.forEach(exp => { if(boss && boss.hp > 0 && exp.x > boss.x && exp.x < boss.x+boss.w && exp.y > boss.y && exp.y < boss.y+boss.h) { if(!exp.isNuke && frameCount % 10 == 0) boss.hp -= player.dmg; else if(exp.isNuke && frameCount % 2 == 0) boss.hp -= (player.dmg * 2); updateBoard(); playSound('hit'); if(boss.hp <= 0) { score += (150 * bossLevel); shopPoints += 10; enemiesKilled = 0; bossSpawned = false; bossLevel++; playSound('win'); items.push({ x: boss.x + boss.w/2 - 12, y: boss.y }); enemies = []; enemyBullets = []; updateBoard(); } } });
                     if(boss && boss.hp > 0 && player.invuln == 0 && player.x < boss.x + boss.w && player.x + player.w > boss.x && player.y < boss.y + boss.h && player.y + player.h > boss.y) { player.hp = 0; triggerGameOver(); return; }
                 }
