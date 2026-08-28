@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>미니지 - 슈팅게임</title>
+    <style>
+        :root { --bg: #f8f9fa; --text: #333; --canvas-bg: #05070a; --border: #e9ecef; --btn-bg: #fff; }
+        [data-theme="beige"] { --bg: #f5ebe0; --text: #4e3d30; --canvas-bg: #14100c; --border: #ddcbbb; --btn-bg: #eddfd0; }
+        [data-theme="dark"] { --bg: #0d1117; --text: #c9d1d9; --canvas-bg: #020305; --border: #30363d; --title-color: #58a6ff; --sub-color: #8b949e; --accent-color: #58a6ff; }
+        body { text-align: center; background-color: var(--bg); color: var(--text); font-family: sans-serif; padding-top: 20px; margin:0; transition: 0.3s; }
+        canvas { background-color: var(--canvas-bg); display: block; margin: 15px auto; border: 4px solid var(--border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+        button { background-color: var(--btn-bg); color: var(--text); border: 1px solid var(--border); padding: 10px 20px; font-size: 1rem; border-radius: 8px; cursor: pointer; margin:5px; }
+        #board { font-size: 1.3rem; font-weight: bold; color: #fcc419; margin-bottom: 5px; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index:10; }
+        .modal-content { background: var(--bg); padding: 30px; border-radius: 16px; border: 2px solid var(--border); text-align: center; color: var(--text); }
+    </style>
+</head>
+<body>
+    <h1>🚀 스페이스 슈팅</h1>
+    <div id="board">🏆 점수: 0 | 보스 출현까지: 150</div>
+    <canvas id="gameCanvas" width="400" height="480"></canvas>
+    <button onclick="location.href='../'">🏠 메인으로 가기</button>
+    <div class="modal" id="overModal">
+        <div class="modal-content">
+            <h2 id="modalTitle" style="margin-top:0;">💥 GAME OVER</h2>
+            <p id="finalScore" style="font-size:1.1rem; font-weight:bold;"></p>
+            <button onclick="restart()">🔄 다시 시작</button>
+            <button onclick="location.href='../'">🏠 메인 메뉴</button>
+        </div>
+    </div>
+    <script>
+        const savedTheme = localStorage.getItem('minig-theme'); if (savedTheme && savedTheme !== 'white') document.documentElement.setAttribute('data-theme', savedTheme);
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            try {
+                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.connect(gain); gain.connect(audioCtx.destination); const now = audioCtx.currentTime;
+                if (type === 'laser') { osc.type = 'square'; osc.frequency.setValueAtTime(900, now); osc.frequency.exponentialRampToValueAtTime(300, now + 0.05); gain.gain.setValueAtTime(0.03, now); gain.gain.linearRampToValueAtTime(0, now + 0.05); osc.start(now); osc.stop(now + 0.05); }
+                else if (type === 'hit') { osc.type = 'triangle'; osc.frequency.setValueAtTime(250, now); gain.gain.setValueAtTime(0.06, now); gain.gain.linearRampToValueAtTime(0, now + 0.04); osc.start(now); osc.stop(now + 0.04); }
+                else if (type === 'explode') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(350, now); osc.frequency.linearRampToValueAtTime(50, now + 0.1); gain.gain.setValueAtTime(0.06, now); gain.gain.linearRampToValueAtTime(0, now + 0.1); osc.start(now); osc.stop(now + 0.1); }
+                else if (type === 'win') { osc.type = 'square'; osc.frequency.setValueAtTime(523, now); osc.frequency.setValueAtTime(659, now+0.06); osc.frequency.setValueAtTime(783, now+0.12); osc.frequency.setValueAtTime(1046, now+0.18); gain.gain.setValueAtTime(0.04, now); gain.gain.linearRampToValueAtTime(0, now+0.3); osc.start(now); osc.stop(now+0.3); }
+                else if (type === 'over') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(180, now); osc.frequency.linearRampToValueAtTime(30, now + 0.5); gain.gain.setValueAtTime(0.15, now); gain.gain.linearRampToValueAtTime(0, now + 0.5); osc.start(now); osc.stop(now + 0.5); }
+                else if (type === 'talk') { osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); gain.gain.setValueAtTime(0.02, now); gain.gain.linearRampToValueAtTime(0, now + 0.03); osc.start(now); osc.stop(now + 0.03); }
+                else if (type === 'start') { osc.type = 'square'; osc.frequency.setValueAtTime(587, now); osc.frequency.setValueAtTime(880, now + 0.08); gain.gain.setValueAtTime(0.05, now); gain.gain.linearRampToValueAtTime(0, now + 0.15); osc.start(now); osc.stop(now + 0.15); }
+            } catch(e){}
+        }
+        const canvas = document.getElementById("gameCanvas"); const ctx = canvas.getContext("2d");
+        let player = { x: 180, y: 400, w: 32, h: 32, speed: 6 };
+        let bullets = [], enemies = [], stars = [], score = 0, keys = {}, isOver = false, gameId = null;
+        let boss = null; let bossSpawned = false; let gameState = 'story'; let storyIndex = 0; let textProgress = 0;
+        const storyTexts = [
+            "서기 2026년... 지구 방위대 최후의 함선 '미니지호'..",
+            "정체불명의 외계 UFO 대부대가 은하계를 침공했다.",
+            "지구의 평화가 당신의 조종실 손끝에 달렸다.",
+            "적들을 격추하며 전진해 외계 군주 대장선 UFO를 파괴하라!",
+            "👉 [Space] 또는 화면을 터치해 우주 전쟁을 시작하세요!"
+        ];
+        document.addEventListener("keydown", e => {
+            keys[e.key] = true;
+            if(gameState === 'story' && e.key === " ") {
+                if(textProgress < storyTexts[storyIndex].length) { textProgress = storyTexts[storyIndex].length; }
+                else { storyIndex++; textProgress = 0; if(storyIndex >= storyTexts.length) { gameState = 'play'; playSound('start'); } }
+            } else if(gameState === 'play' && e.key === " " && !isOver) { bullets.push({ x: player.x + 14, y: player.y, w: 4, h: 10, speed: 9 }); playSound('laser'); }
+        });
+        document.addEventListener("keyup", e => keys[e.key] = false);
+        canvas.addEventListener("click", () => {
+            if(gameState === 'story') {
+                if(textProgress < storyTexts[storyIndex].length) { textProgress = storyTexts[storyIndex].length; }
+                else { storyIndex++; textProgress = 0; if(storyIndex >= storyTexts.length) { gameState = 'play'; playSound('start'); } }
+            }
+        });
+        function initStars() { for(let i=0; i<30; i++) stars.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, size: 1+Math.random()*2, speed: 1+Math.random()*3 }); }
+        function restart() { document.getElementById("overModal").style.display = "none"; player.x = 180; player.y = 400; bullets = []; enemies = []; boss = null; bossSpawned = false; score = 0; isOver = false; gameState = 'story'; storyIndex = 0; textProgress = 0; updateBoard(); loop(); }
+        function updateBoard() {
+            const board = document.getElementById("board");
+            if(gameState === 'story') board.innerText = "🌌 미니지 우주 방위대 상황실";
+            else if(bossSpawned) board.innerText = `🏆 점수: ${score} | 👾 BOSS HP: ${boss ? boss.hp : 0} / 5`;
+            else board.innerText = `🏆 점수: ${score} | 보스 출현까지: ${Math.max(0, 150 - score)}`;
+        }
+        let frameCount = 0;
+        function loop() {
+            if(isOver) return; gameId = requestAnimationFrame(loop); ctx.clearRect(0,0,canvas.width,canvas.height);
+            ctx.fillStyle = "rgba(255,255,255,0.6)";
+            stars.forEach(s => { s.y += s.speed; if(s.y > canvas.height) { s.y = 0; s.x = Math.random()*canvas.width; } ctx.fillRect(s.x, s.y, s.size, s.size); });
+            if(gameState === 'story') {
+                updateBoard(); ctx.fillStyle = "rgba(0, 0, 0, 0.7)"; ctx.fillRect(20, 260, 360, 180); ctx.strokeStyle = "#00ffcc"; ctx.lineWidth = 2; ctx.strokeRect(20, 260, 360, 180);
+                ctx.fillStyle = "#fff"; ctx.font = "16px sans-serif"; ctx.textAlign = "left";
+                let currentFullText = storyTexts[storyIndex];
+                if(frameCount % 3 === 0 && textProgress < currentFullText.length) { textProgress++; playSound('talk'); } frameCount++;
+                let lines = []; let charsPerLine = 18;
+                for (let i = 0; i < textProgress; i += charsPerLine) { lines.push(currentFullText.slice(i, i + charsPerLine)); }
+                lines.forEach((line, idx) => { ctx.fillText(line, 40, 300 + (idx * 28)); });
+                ctx.save(); ctx.font = "70px sans-serif"; ctx.textAlign = "center"; ctx.fillText("🚀", 200, 150); ctx.restore(); return;
+            }
+            if((keys["ArrowLeft"] || keys["a"]) && player.x > 0) player.x -= player.speed;
+            if((keys["ArrowRight"] || keys["d"]) && player.x < canvas.width - player.w) player.x += player.speed;
+            if((keys["ArrowUp"] || keys["w"]) && player.y > 0) player.y -= player.speed;
+            if((keys["ArrowDown"] || keys["s"]) && player.y < canvas.height - player.h) player.y += player.speed;
+            ctx.save(); ctx.font = "32px sans-serif"; ctx.fillText("🚀", player.x, player.y + 26); ctx.restore();
+            for(let i=bullets.length-1; i>=0; i--) {
+                bullets[i].y -= bullets[i].speed; ctx.fillStyle = "#00ffcc"; ctx.fillRect(bullets[i].x, bullets[i].y, bullets[i].w, bullets[i].h);
+                if(bullets[i].y < 0) { bullets.splice(i, 1); continue; }
+            }
+            if(score >= 150 && !bossSpawned) { bossSpawned = true; boss = { x: 160, y: -60, w: 64, h: 44, hp: 5, targetY: 60, speed: 2, dx: 2 }; updateBoard(); }
+            if(bossSpawned && boss) {
+                if(boss.y < boss.targetY) boss.y += 1; else { boss.x += boss.dx; if(boss.x < 10 || boss.x > canvas.width - boss.w - 10) boss.dx = -boss.dx; }
+                ctx.save(); ctx.font = "54px sans-serif"; ctx.fillText("🛸", boss.x, boss.y + 44); ctx.restore();
+                if(player.x < boss.x + boss.w && player.x + player.w > boss.x && player.y < boss.y + boss.h && player.y + player.h > boss.y) { triggerGameOver(); return; }
+                for(let j=bullets.length-1; j>=0; j--) {
+                    if(bullets[j].x < boss.x+boss.w && bullets[j].x+bullets[j].w > boss.x && bullets[j].y < boss.y+boss.h && bullets[j].y+bullets[j].h > boss.y) {
+                        bullets.splice(j,1); boss.hp--; updateBoard(); playSound('hit');
+                        if(boss.hp <= 0) { isOver = true; cancelAnimationFrame(gameId); playSound('win'); document.getElementById("modalTitle").innerText = "🎉 BOSS DEFEATED!"; document.getElementById("modalTitle").style.color = "#4dadf7"; document.getElementById("finalScore").innerText = `우주 평화를 지켜냈습니다! 최종 점수: ${score + 200}점`; document.getElementById("overModal").style.display = "flex"; return; }
+                        break;
+                    }
+                }
+            }
+            if(!bossSpawned && Math.random() < 0.02) { enemies.push({ x: Math.random()*(canvas.width-24), y: -20, w: 24, h: 20, speed: 2.5 + Math.random()*2 }); }
+            for(let i=enemies.length-1; i>=0; i--) {
+                enemies[i].y += enemies[i].speed; ctx.save(); ctx.font = "24px sans-serif"; ctx.fillText("🛸", enemies[i].x, enemies[i].y + 20); ctx.restore();
+                if(enemies[i].y > canvas.height) { enemies.splice(i,1); continue; }
+                if(enemies[i].x < player.x+player.w && enemies[i].x+enemies[i].w > player.x && enemies[i].y < player.y+player.h && enemies[i].y+enemies[i].h > player.y) { triggerGameOver(); return; }
+                for(let j=bullets.length-1; j>=0; j--) {
+                    if(bullets[j].x < enemies[i].x+enemies[i].w && bullets[j].x+bullets[j].w > enemies[i].x && bullets[j].y < enemies[i].y+enemies[i].h && bullets[j].y+bullets[j].h > enemies[i].y) {
+                        enemies.splice(i,1); bullets.splice(j,1); score += 10; updateBoard(); playSound('explode'); break;
+                    }
+                }
+            }
+        }
+        function triggerGameOver() { isOver = true; cancelAnimationFrame(gameId); playSound('over'); document.getElementById("modalTitle").innerText = "💥 GAME OVER"; document.getElementById("modalTitle").style.color = "#ff6b6b"; document.getElementById("finalScore").innerText = `최종 점수: ${score}점`; document.getElementById("overModal").style.display = "flex"; }
+        initStars(); restart();
+    </script>
+</body>
+</html>
