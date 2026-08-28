@@ -59,7 +59,10 @@
         const boardElement = document.getElementById("board");
         let board = ["", "", "", "", "", "", "", "", ""];
         let isGameActive = true;
-        const winPatterns = [[0,1,2], [3,4,5], [6,7,8], [0,3,6], [1,4,7], [2,5,8], [0,4,8], [2,4,6]];
+        
+        // 틱택토 가로, 세로, 대각선 승리 인덱스 패턴 조합
+        const winPatterns = [, [3, 4, 5], [6, 7, 8], // 가로, [1, 4, 7], [2, 5, 8], // 세로, [2, 4, 6]             // 대각선
+        ];
         
         function checkWin(b, p) { return winPatterns.some(pattern => pattern.every(index => b[index] === p)); }
         function checkDraw(b) { return b.every(cell => cell !== ""); }
@@ -79,7 +82,7 @@
             board[i] = "O"; playClick(523); createBoard();
             
             if (checkWin(board, "O")) { showEndModal("🎉 당신의 승리!", "#4dadf7"); return; }
-            if (checkDraw(board)) { showEndModal("🤝 무승부입니다!", var(--text)); return; }
+            if (checkDraw(board)) { showEndModal("🤝 무승부입니다!", "#777"); return; }
             
             isGameActive = false;
             document.getElementById("status").innerText = "컴퓨터가 생각 중...";
@@ -97,7 +100,7 @@
             } else if (diff === "hard") {
                 move = Math.random() < 0.75 ? getBestMove() : getRandomMove();
             } else {
-                move = getBestMove(); // 절대 안짐
+                move = getBestMove(); // 인공지능 완벽 최적화 모드
             }
 
             if (move !== undefined) {
