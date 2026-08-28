@@ -1,11 +1,96 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>5NN599의 홈페이지</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>미니게임 천국</title>
+    <style>
+        body { 
+            text-align: center; 
+            background-color: #0d1117; 
+            color: #c9d1d9; 
+            font-family: 'Malgun Gothic', sans-serif; 
+            padding: 50px 20px;
+            margin: 0;
+        }
+        h1 { 
+            color: #58a6ff; 
+            font-size: 2.5rem;
+            text-shadow: 0 0 10px rgba(88, 166, 255, 0.3);
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #8b949e;
+            font-size: 1.1rem;
+            margin-bottom: 40px;
+        }
+        .container {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .game-card { 
+            display: inline-block; 
+            width: 260px; 
+            padding: 25px; 
+            margin: 15px; 
+            background-color: #161b22; 
+            border-radius: 12px; 
+            cursor: pointer; 
+            transition: all 0.3s ease; 
+            border: 1px solid #30363d; 
+            text-align: left;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .game-card:hover { 
+            background-color: #21262d; 
+            transform: translateY(-5px); 
+            border-color: #58a6ff; 
+            box-shadow: 0 8px 16px rgba(88, 166, 255, 0.15);
+        }
+        .game-card h3 { 
+            margin: 0 0 10px 0; 
+            color: #f0f6fc;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .game-card p { 
+            margin: 0; 
+            color: #8b949e; 
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+        .coming-soon {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .coming-soon:hover {
+            transform: none;
+            border-color: #30363d;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+    </style>
 </head>
 <body>
-    <h1>안녕하세요! 다시 만든 저의 깃허브 페이지입니다.</h1>
-    <p>무료 도메인을 연결할 준비가 되었습니다.</p>
+    <h1>🎮 5NN599의 미니게임 오락실 🎮</h1>
+    <div class="subtitle">무료 도메인으로 즐기는 나만의 웹 게임 공간입니다.</div>
+    
+    <div class="container">
+        <!-- 스네이크 게임 카드 -->
+        <div class="game-card" onclick="location.href='./snake/'">
+            <h3>🐍 스네이크 게임</h3>
+            <p>키보드 방향키를 사용하여 화면 속 사과를 먹고 몸집을 키워보세요! 벽에 부딪히면 끝납니다.</p>
+        </div>
+
+        <!-- 다음 게임 예시 카드 (복사해서 늘릴 수 있습니다) -->
+        <div class="game-card coming-soon">
+            <h3>⏳ 준비 중인 게임</h3>
+            <p>테트리스, 똥피하기 등 재미있는 클래식 웹 미니게임이 이곳에 곧 추가될 예정입니다.</p>
+        </div>
+    </div>
 </body>
 </html>
