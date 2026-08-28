@@ -8,11 +8,13 @@
         [data-theme="beige"] { --bg: #f5ebe0; --text: #4e3d30; --canvas-bg: #14100c; --border: #ddcbbb; --btn-bg: #eddfd0; }
         [data-theme="dark"] { --bg: #0d1117; --text: #c9d1d9; --canvas-bg: #020305; --border: #30363d; --title-color: #58a6ff; --sub-color: #8b949e; --accent-color: #58a6ff; }
         body { text-align: center; background-color: var(--bg); color: var(--text); font-family: sans-serif; padding-top: 20px; margin:0; transition: 0.3s; }
-        canvas { background-color: var(--canvas-bg); display: block; margin: 15px auto; border: 4px solid var(--border); border-radius: 12px; box-shadow: 0 8px 24 rgba(0,0,0,0.3); }
+        canvas { background-color: var(--canvas-bg); display: block; margin: 15px auto; border: 4px solid var(--border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
         button { background-color: var(--btn-bg); color: var(--text); border: 1px solid var(--border); padding: 10px 20px; font-size: 1rem; border-radius: 8px; cursor: pointer; margin:5px; }
         #board { font-size: 1.3rem; font-weight: bold; color: #fcc419; margin-bottom: 5px; }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index:10; }
         .modal-content { background: var(--bg); padding: 30px; border-radius: 16px; border: 2px solid var(--border); text-align: center; color: var(--text); }
+        .choice-btn { background-color: #ff6b6b; color: white; border: none; padding: 10px 25px; font-weight: bold; }
+        .choice-btn.yes { background-color: #4dadf7; }
     </style>
 </head>
 <body>
@@ -28,6 +30,15 @@
             <button onclick="location.href='../'">🏠 메인 메뉴</button>
         </div>
     </div>
+    <div class="modal" id="weaponModal">
+        <div class="modal-content">
+            <h2 id="weaponTitle" style="color:#fcc419; margin-top:0;">🎁 무기 파밍 획득!</h2>
+            <p id="weaponDesc" style="font-size:1.1rem; font-weight:bold;"></p>
+            <p>현재 무기를 교체하고 장착하시겠습니까?</p>
+            <button class="choice-btn yes" onclick="equipWeapon(true)">예 (확정)</button>
+            <button class="choice-btn" onclick="equipWeapon(false)">아니오 (유지)</button>
+        </div>
+    </div>
     <script>
         const savedTheme = localStorage.getItem('minig-theme'); if (savedTheme && savedTheme !== 'white') document.documentElement.setAttribute('data-theme', savedTheme);
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -41,17 +52,19 @@
                 else if (type === 'over') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(180, now); osc.frequency.linearRampToValueAtTime(30, now + 0.5); gain.gain.setValueAtTime(0.15, now); gain.gain.linearRampToValueAtTime(0, now + 0.5); osc.start(now); osc.stop(now + 0.5); }
                 else if (type === 'talk') { osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); gain.gain.setValueAtTime(0.02, now); gain.gain.linearRampToValueAtTime(0, now + 0.03); osc.start(now); osc.stop(now + 0.03); }
                 else if (type === 'start') { osc.type = 'square'; osc.frequency.setValueAtTime(587, now); osc.frequency.setValueAtTime(880, now + 0.08); gain.gain.setValueAtTime(0.05, now); gain.gain.linearRampToValueAtTime(0, now + 0.15); osc.start(now); osc.stop(now + 0.15); }
+                else if (type === 'item') { osc.type = 'square'; osc.frequency.setValueAtTime(660, now); osc.frequency.setValueAtTime(880, now+0.06); osc.frequency.setValueAtTime(1320, now+0.12); gain.gain.setValueAtTime(0.04, now); gain.gain.linearRampToValueAtTime(0, now+0.2); osc.start(now); osc.stop(now + 0.2); }
             } catch(e){}
         }
         const canvas = document.getElementById("gameCanvas"); const ctx = canvas.getContext("2d");
-        let player = { x: 180, y: 400, w: 32, h: 32, speed: 6, hp: 3, maxHp: 3, invuln: 0 };
-        let bullets = [], enemyBullets = [], enemies = [], stars = [], score = 0, keys = {}, isOver = false, gameId = null;
-        let boss = null; let bossSpawned = false; let gameState = 'story'; let storyIndex = 0; let textProgress = 0;
+        let player = { x: 180, y: 400, w: 32, h: 32, speed: 6, hp: 3, maxHp: 3, invuln: 0, currentWeapon: '기본 레이저' };
+        let bullets = [], enemyBullets = [], enemies = [], stars = [], items = [], explosions = [];
+        let score = 0, keys = {}, isOver = false, gameId = null, boss = null, bossSpawned = false;
+        let gameState = 'story'; let storyIndex = 0; let textProgress = 0, pendingWeapon = null;
         const storyTexts = [
             "서기 2026년... 지구 방위대 최후의 함선 '미니지호'..",
             "외계 UFO 대부대가 공격형 플라즈마 탄환을 탑재했다!",
             "선체의 실드 장치가 가동되지만 오직 3번의 충격만 버틸 수 있다.",
-            "적들을 격추하며 전진해 외계 군주 대장선을 침몰시켜라!",
+            "보스를 부수면 특수 무기를 무작위 획득해 수동 장착이 가능하다.",
             "👉 [Space] 또는 화면을 터치해 우주 전쟁을 시작하세요!"
         ];
         document.addEventListener("keydown", e => {
@@ -59,7 +72,9 @@
             if(gameState === 'story' && e.key === " ") {
                 if(textProgress < storyTexts[storyIndex].length) { textProgress = storyTexts[storyIndex].length; }
                 else { storyIndex++; textProgress = 0; if(storyIndex >= storyTexts.length) { gameState = 'play'; playSound('start'); } }
-            } else if(gameState === 'play' && e.key === " " && !isOver) { bullets.push({ x: player.x + 14, y: player.y, w: 4, h: 10, speed: 9 }); playSound('laser'); }
+            } else if(gameState === 'play' && e.key === " " && !isOver && document.getElementById("weaponModal").style.display !== "flex") {
+                fireWeapon();
+            }
         });
         document.addEventListener("keyup", e => keys[e.key] = false);
         canvas.addEventListener("click", () => {
@@ -68,8 +83,27 @@
                 else { storyIndex++; textProgress = 0; if(storyIndex >= storyTexts.length) { gameState = 'play'; playSound('start'); } }
             }
         });
+        function fireWeapon() {
+            if(player.currentWeapon === '기본 레이저') {
+                bullets.push({ x: player.x + 14, y: player.y, w: 4, h: 10, speed: 9, type: 'normal' }); playSound('laser');
+            } else if(player.currentWeapon === '🚀 범위 미사일') {
+                bullets.push({ x: player.x + 10, y: player.y, w: 12, h: 16, speed: 7, type: 'missile' }); playSound('laser');
+            } else if(player.currentWeapon === '💣 기뢰 설치') {
+                bullets.push({ x: player.x + 14, y: player.y + player.h, w: 10, h: 10, speed: -1, type: 'mine' }); playSound('hit');
+            }
+        }
+        function askEquip(weaponType) {
+            pendingWeapon = weaponType;
+            document.getElementById("weaponDesc").innerText = `드롭된 무기: [${weaponType}]`;
+            document.getElementById("weaponModal").style.display = "flex";
+        }
+        function equipWeapon(yes) {
+            if(yes && pendingWeapon) { player.currentWeapon = pendingWeapon; playSound('item'); }
+            document.getElementById("weaponModal").style.display = "none";
+            pendingWeapon = null; keys[" "] = false;
+        }
         function initStars() { for(let i=0; i<30; i++) stars.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, size: 1+Math.random()*2, speed: 1+Math.random()*3 }); }
-        function restart() { document.getElementById("overModal").style.display = "none"; player.x = 180; player.y = 400; player.hp = 3; player.invuln = 0; bullets = []; enemyBullets = []; enemies = []; boss = null; bossSpawned = false; score = 0; isOver = false; gameState = 'story'; storyIndex = 0; textProgress = 0; updateBoard(); loop(); }
+        function restart() { document.getElementById("overModal").style.display = "none"; document.getElementById("weaponModal").style.display = "none"; player.x = 180; player.y = 400; player.hp = 3; player.invuln = 0; player.currentWeapon = '기본 레이저'; bullets = []; enemyBullets = []; enemies = []; items = []; explosions = []; boss = null; bossSpawned = false; score = 0; isOver = false; gameState = 'story'; storyIndex = 0; textProgress = 0; updateBoard(); loop(); }
         function updateBoard() {
             const board = document.getElementById("board");
             if(gameState === 'story') board.innerText = "🌌 미니지 우주 방위대 상황실";
@@ -91,6 +125,7 @@
                 lines.forEach((line, idx) => { ctx.fillText(line, 40, 300 + (idx * 28)); });
                 ctx.save(); ctx.font = "70px sans-serif"; ctx.textAlign = "center"; ctx.fillText("🚀", 200, 150); ctx.restore(); return;
             }
+            if(document.getElementById("weaponModal").style.display === "flex") { keys = {}; return; }
             if(player.invuln > 0) player.invuln--;
             if((keys["ArrowLeft"] || keys["a"]) && player.x > 0) player.x -= player.speed;
             if((keys["ArrowRight"] || keys["d"]) && player.x < canvas.width - player.w) player.x += player.speed;
@@ -100,9 +135,23 @@
             if(player.invuln == 0 || Math.floor(player.invuln/4) % 2 == 0) {
                 ctx.save(); ctx.font = "32px sans-serif"; ctx.fillText("🚀", player.x, player.y + 26); ctx.restore();
             }
+            // 우측 상단 현재 장착 무기 UI 렌더링
+            ctx.save(); ctx.fillStyle = "rgba(255, 255, 255, 0.2)"; ctx.fillRect(260, 10, 130, 32); ctx.strokeStyle = "#fcc419"; ctx.strokeRect(260, 10, 130, 32);
+            ctx.fillStyle = "#fff"; ctx.font = "12px sans-serif"; ctx.textAlign = "center"; ctx.fillText(player.currentWeapon, 325, 30); ctx.restore();
+
+            // 범위 폭발 연산 처리 그리기
+            for(let e=explosions.length-1; e>=0; e--) {
+                explosions[e].rad += 4; ctx.save(); ctx.beginPath();
+                ctx.arc(explosions[e].x, explosions[e].y, explosions[e].rad, 0, Math.PI*2);
+                ctx.fillStyle = `rgba(0, 255, 200, ${1 - explosions[e].rad/80})`; ctx.fill(); ctx.closePath(); ctx.restore();
+                if(explosions[e].rad >= 80) { explosions.splice(e, 1); }
+            }
             for(let i=bullets.length-1; i>=0; i--) {
-                bullets[i].y -= bullets[i].speed; ctx.fillStyle = "#00ffcc"; ctx.fillRect(bullets[i].x, bullets[i].y, bullets[i].w, bullets[i].h);
-                if(bullets[i].y < 0) { bullets.splice(i, 1); continue; }
+                bullets[i].y -= bullets[i].speed; 
+                if(bullets[i].type === 'normal') { ctx.fillStyle = "#00ffcc"; ctx.fillRect(bullets[i].x, bullets[i].y, bullets[i].w, bullets[i].h); }
+                else if(bullets[i].type === 'missile') { ctx.fillStyle = "#ff922b"; ctx.fillRect(bullets[i].x, bullets[i].y, bullets[i].w, bullets[i].h); ctx.font="12px sans-serif"; ctx.fillText("🚀", bullets[i].x-2, bullets[i].y+12); }
+                else if(bullets[i].type === 'mine') { ctx.fillStyle = "#fcc419"; ctx.font="14px sans-serif"; ctx.fillText("💥", bullets[i].x-2, bullets[i].y); if(bullets[i].y > canvas.height) { bullets.splice(i,1); continue; } }
+                if(bullets[i].type !== 'mine' && bullets[i].y < 0) { bullets.splice(i, 1); continue; }
             }
             for(let i=enemyBullets.length-1; i>=0; i--) {
                 enemyBullets[i].y += enemyBullets[i].speed; ctx.fillStyle = "#ff4d4d"; ctx.fillRect(enemyBullets[i].x, enemyBullets[i].y, enemyBullets[i].w, enemyBullets[i].h);
@@ -112,37 +161,41 @@
                     if(player.hp <= 0) { triggerGameOver(); return; } continue;
                 }
             }
+            for(let i=items.length-1; i>=0; i--) {
+                items[i].y += 1.5; ctx.save(); ctx.font="24px sans-serif"; ctx.fillText("🎁", items[i].x, items[i].y+20); ctx.restore();
+                if(items[i].x < player.x+player.w && items[i].x+24 > player.x && items[i].y < player.y+player.h && items[i].y+20 > player.y) {
+                    items.splice(i, 1); playSound('item'); askEquip(Math.random() < 0.5 ? '🚀 범위 미사일' : '💣 기뢰 설치'); continue;
+                }
+                if(items[i].y > canvas.height) items.splice(i, 1);
+            }
             if(score >= 150 && !bossSpawned) { bossSpawned = true; boss = { x: 160, y: -60, w: 64, h: 44, hp: 5, targetY: 60, speed: 2, dx: 2, shotTimer: 0 }; updateBoard(); }
             if(bossSpawned && boss) {
                 if(boss.y < boss.targetY) boss.y += 1;
-                else {
-                    boss.x += boss.dx; if(boss.x < 10 || boss.x > canvas.width - boss.w - 10) boss.dx = -boss.dx;
-                    boss.shotTimer++; if(boss.shotTimer >= 30) { enemyBullets.push({ x: boss.x + boss.w/2 - 2, y: boss.y + boss.h, w: 6, h: 12, speed: 4.5 }); boss.shotTimer = 0; }
-                }
+                else { boss.x += boss.dx; if(boss.x < 10 || boss.x > canvas.width - boss.w - 10) boss.dx = -boss.dx; boss.shotTimer++; if(boss.shotTimer >= 30) { enemyBullets.push({ x: boss.x + boss.w/2 - 2, y: boss.y + boss.h, w: 6, h: 12, speed: 4.5 }); boss.shotTimer = 0; } }
                 ctx.save(); ctx.font = "54px sans-serif"; ctx.fillText("🛸", boss.x, boss.y + 44); ctx.restore();
+                // 폭발 스플래시 대미지 상시 계산
+                explosions.forEach(exp => { if(exp.x > boss.x && exp.x < boss.x+boss.w && exp.y > boss.y && exp.y < boss.y+boss.h && frameCount % 10 == 0) { boss.hp--; updateBoard(); playSound('hit'); } });
                 if(player.invuln == 0 && player.x < boss.x + boss.w && player.x + player.w > boss.x && player.y < boss.y + boss.h && player.y + player.h > boss.y) { player.hp = 0; triggerGameOver(); return; }
                 for(let j=bullets.length-1; j>=0; j--) {
                     if(bullets[j].x < boss.x+boss.w && bullets[j].x+bullets[j].w > boss.x && bullets[j].y < boss.y+boss.h && bullets[j].y+bullets[j].h > boss.y) {
+                        if(bullets[j].type === 'missile') { explosions.push({ x: bullets[j].x, y: bullets[j].y, rad: 10 }); }
                         bullets.splice(j,1); boss.hp--; updateBoard(); playSound('hit');
-                        if(boss.hp <= 0) { isOver = true; cancelAnimationFrame(gameId); playSound('win'); document.getElementById("modalTitle").innerText = "🎉 BOSS DEFEATED!"; document.getElementById("modalTitle").style.color = "#4dadf7"; document.getElementById("finalScore").innerText = `우주 평화를 지켜냈습니다! 최종 점수: ${score + 200}점`; document.getElementById("overModal").style.display = "flex"; return; }
+                        if(boss.hp <= 0) { isOver = true; cancelAnimationFrame(gameId); playSound('win'); document.getElementById("modalTitle").innerText = "🎉 BOSS DEFEATED!"; document.getElementById("modalTitle").style.color = "#4dadf7"; document.getElementById("finalScore").innerText = `우주 평화를 지켜냈습니다! 최종 점수: ${score + 200}점`; document.getElementById("overModal").style.display = "flex"; if(Math.random() < 0.5) items.push({ x: boss.x + boss.w/2, y: boss.y }); return; }
                         break;
                     }
                 }
             }
-            // 🚀 잡몹이 캔버스 좌우 벽에 너무 딱 붙어 짤려 소환되지 않도록 마진 영역을 보정했습니다.
             if(!bossSpawned && Math.random() < 0.025) { enemies.push({ x: Math.random()*(canvas.width-38), y: -40, w: 36, h: 32, speed: 2.5 + Math.random()*2, shotTimer: Math.floor(Math.random()*20) }); }
             for(let i=enemies.length-1; i>=0; i--) {
-                enemies[i].y += enemies[i].speed;
-                enemies[i].shotTimer++; if(!bossSpawned && enemies[i].shotTimer >= 30 && enemies[i].y < player.y - 40) { enemyBullets.push({ x: enemies[i].x + 16, y: enemies[i].y + 32, w: 4, h: 8, speed: 5.5 }); enemies[i].shotTimer = 0; }
-                // 🚀 일반 잡몹 UFO의 폰트 출력을 36px로 벌려 큼직하게 렌더링합니다!
+                enemies[i].y += enemies[i].speed; enemies[i].shotTimer++; if(!bossSpawned && enemies[i].shotTimer >= 30 && enemies[i].y < player.y - 40) { enemyBullets.push({ x: enemies[i].x + 16, y: enemies[i].y + 32, w: 4, h: 8, speed: 5.5 }); enemies[i].shotTimer = 0; }
                 ctx.save(); ctx.font = "36px sans-serif"; ctx.fillText("🛸", enemies[i].x, enemies[i].y + 30); ctx.restore();
                 if(enemies[i].y > canvas.height) { enemies.splice(i,1); continue; }
-                if(player.invuln == 0 && enemies[i].x < player.x+player.w && enemies[i].x+enemies[i].w > player.x && enemies[i].y < player.y+player.h && enemies[i].y+enemies[i].h > player.y) {
-                    enemies.splice(i, 1); player.hp--; player.invuln = 60; updateBoard(); playSound('hit');
-                    if(player.hp <= 0) { triggerGameOver(); return; } continue;
-                }
+                explosions.forEach(exp => { if(enemies[i] && exp.x > enemies[i].x && exp.x < enemies[i].x+enemies[i].w && exp.y > enemies[i].y && exp.y < enemies[i].y+enemies[i].h) { enemies.splice(i,1); score += 10; updateBoard(); playSound('explode'); } });
+                if(!enemies[i]) continue;
+                if(player.invuln == 0 && enemies[i].x < player.x+player.w && enemies[i].x+enemies[i].w > player.x && enemies[i].y < player.y+player.h && enemies[i].y+enemies[i].h > player.y) { enemies.splice(i, 1); player.hp--; player.invuln = 60; updateBoard(); playSound('hit'); if(player.hp <= 0) { triggerGameOver(); return; } continue; }
                 for(let j=bullets.length-1; j>=0; j--) {
                     if(bullets[j].x < enemies[i].x+enemies[i].w && bullets[j].x+bullets[j].w > enemies[i].x && bullets[j].y < enemies[i].y+enemies[i].h && bullets[j].y+bullets[j].h > enemies[i].y) {
+                        if(bullets[j].type === 'missile') { explosions.push({ x: bullets[j].x, y: bullets[j].y, rad: 10 }); }
                         enemies.splice(i,1); bullets.splice(j,1); score += 10; updateBoard(); playSound('explode'); break;
                     }
                 }
