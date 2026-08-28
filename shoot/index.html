@@ -58,13 +58,13 @@
         const canvas = document.getElementById("gameCanvas"); const ctx = canvas.getContext("2d");
         let player = { x: 180, y: 400, w: 32, h: 32, speed: 6, hp: 3, maxHp: 3, invuln: 0, currentWeapon: '기본 레이저' };
         let bullets = [], enemyBullets = [], enemies = [], stars = [], items = [], explosions = [];
-        let score = 0, keys = {}, isOver = false, gameId = null, boss = null, bossSpawned = false;
+        let score = 0, keys = {}, isOver = false, gameId = null, boss = null, bossSpawned = false, nextBossScore = 150;
         let gameState = 'story'; let storyIndex = 0; let textProgress = 0, pendingWeapon = null;
         const storyTexts = [
             "서기 2026년... 지구 방위대 최후의 함선 '미니지호'..",
             "외계 UFO 대부대가 공격형 플라즈마 탄환을 탑재했다!",
             "선체의 실드 장치가 가동되지만 오직 3번의 충격만 버틸 수 있다.",
-            "보스를 격추해 전리품 상자를 획득하면 특수 무기 선택이 가능하다.",
+            "보스를 격추해 전리품 상자를 획득하고 무한 전투를 이어가라!",
             "👉 [Space] 또는 화면을 터치해 우주 전쟁을 시작하세요!"
         ];
         document.addEventListener("keydown", e => {
@@ -101,16 +101,14 @@
             if(yes && pendingWeapon) { player.currentWeapon = pendingWeapon; playSound('item'); }
             document.getElementById("weaponModal").style.display = "none";
             pendingWeapon = null; keys[" "] = false;
-            // 🚀 보스 격추 후 무기 교체를 묻는 팝업을 닫을 때, 최종 게임 승리창을 안전하게 팝업시킵니다!
-            triggerWinScreen();
         }
         function initStars() { for(let i=0; i<30; i++) stars.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, size: 1+Math.random()*2, speed: 1+Math.random()*3 }); }
-        function restart() { document.getElementById("overModal").style.display = "none"; document.getElementById("weaponModal").style.display = "none"; player.x = 180; player.y = 400; player.hp = 3; player.invuln = 0; player.currentWeapon = '기본 레이저'; bullets = []; enemyBullets = []; enemies = []; items = []; explosions = []; boss = null; bossSpawned = false; score = 0; isOver = false; gameState = 'story'; storyIndex = 0; textProgress = 0; updateBoard(); loop(); }
+        function restart() { document.getElementById("overModal").style.display = "none"; document.getElementById("weaponModal").style.display = "none"; player.x = 180; player.y = 400; player.hp = 3; player.invuln = 0; player.currentWeapon = '기본 레이저'; bullets = []; enemyBullets = []; enemies = []; items = []; explosions = []; boss = null; bossSpawned = false; score = 0; nextBossScore = 150; isOver = false; gameState = 'story'; storyIndex = 0; textProgress = 0; updateBoard(); loop(); }
         function updateBoard() {
             const board = document.getElementById("board");
             if(gameState === 'story') board.innerText = "🌌 미니지 우주 방위대 상황실";
-            else if(bossSpawned) board.innerText = `❤️ HP: ${player.hp} / 3 | 🏆 스코어: ${score} | 👾 BOSS: ${boss ? boss.hp : 0} / 5`;
-            else board.innerText = `❤️ HP: ${player.hp} / 3 | 🏆 스코어: ${score} | 보스 출현까지: ${Math.max(0, 150 - score)}`;
+            else if(bossSpawned && boss && boss.hp > 0) board.innerText = `❤️ HP: ${player.hp} / 3 | 🏆 스코어: ${score} | 👾 BOSS: ${boss.hp} / 5`;
+            else board.innerText = `❤️ HP: ${player.hp} / 3 | 🏆 스코어: ${score} | 다음 보스까지: ${Math.max(0, nextBossScore - score)}`;
         }
         let frameCount = 0;
         function loop() {
@@ -162,28 +160,29 @@
             for(let i=items.length-1; i>=0; i--) {
                 items[i].y += 1.5; ctx.save(); ctx.font="24px sans-serif"; ctx.fillText("🎁", items[i].x, items[i].y+20); ctx.restore();
                 if(items[i].x < player.x+player.w && items[i].x+24 > player.x && items[i].y < player.y+player.h && items[i].y+20 > player.y) {
-                    // 🚀 중요: 보스가 드롭한 상자를 먹었을 때만 무기 교체 질문 팝업을 열도록 보정 완료했습니다!
                     items.splice(i, 1); playSound('item'); askEquip(Math.random() < 0.5 ? '🚀 범위 미사일' : '💣 기뢰 설치'); continue;
                 }
-                if(items[i].y > canvas.height) { items.splice(i, 1); if(bossSpawned && boss && boss.hp <= 0) { triggerWinScreen(); } }
+                if(items[i].y > canvas.height) { items.splice(i, 1); }
             }
-            if(score >= 150 && !bossSpawned) { bossSpawned = true; boss = { x: 160, y: -60, w: 64, h: 44, hp: 5, targetY: 60, speed: 2, dx: 2, shotTimer: 0 }; updateBoard(); }
+            // 🚀 무한 루프 핵심: 보스 강제 클리어 창을 없애고 점수 목표치를 동적으로 상향 스폰시킵니다!
+            if(score >= nextBossScore && !bossSpawned) { bossSpawned = true; boss = { x: 160, y: -60, w: 64, h: 44, hp: 5, targetY: 60, speed: 2, dx: 2, shotTimer: 0 }; updateBoard(); }
             if(bossSpawned && boss) {
                 if(boss.hp > 0) {
                     if(boss.y < boss.targetY) boss.y += 1; else { boss.x += boss.dx; if(boss.x < 10 || boss.x > canvas.width - boss.w - 10) boss.dx = -boss.dx; boss.shotTimer++; if(boss.shotTimer >= 30) { enemyBullets.push({ x: boss.x + boss.w/2 - 2, y: boss.y + boss.h, w: 6, h: 12, speed: 4.5 }); boss.shotTimer = 0; } }
                     ctx.save(); ctx.font = "54px sans-serif"; ctx.fillText("🛸", boss.x, boss.y + 44); ctx.restore();
-                    explosions.forEach(exp => { if(exp.x > boss.x && exp.x < boss.x+boss.w && exp.y > boss.y && exp.y < boss.y+boss.h && frameCount % 10 == 0) { boss.hp--; updateBoard(); playSound('hit'); if(boss.hp <= 0) { playSound('win'); items.push({ x: boss.x + boss.w/2 - 12, y: boss.y }); } } });
-                    if(player.invuln == 0 && player.x < boss.x + boss.w && player.x + player.w > boss.x && player.y < boss.y + boss.h && player.y + player.h > boss.y) { player.hp = 0; triggerGameOver(); return; }
+                    explosions.forEach(exp => { if(boss && boss.hp > 0 && exp.x > boss.x && exp.x < boss.x+boss.w && exp.y > boss.y && exp.y < boss.y+boss.h && frameCount % 10 == 0) { boss.hp--; updateBoard(); playSound('hit'); if(boss.hp <= 0) { score += 200; nextBossScore += 150; bossSpawned = false; playSound('win'); items.push({ x: boss.x + boss.w/2 - 12, y: boss.y }); enemies = []; enemyBullets = []; updateBoard(); } } });
+                    if(boss && boss.hp > 0 && player.invuln == 0 && player.x < boss.x + boss.w && player.x + player.w > boss.x && player.y < boss.y + boss.h && player.y + player.h > boss.y) { player.hp = 0; triggerGameOver(); return; }
                 }
                 for(let j=bullets.length-1; j>=0; j--) {
-                    if(boss.hp > 0 && bullets[j].x < boss.x+boss.w && bullets[j].x+bullets[j].w > boss.x && bullets[j].y < boss.y+boss.h && bullets[j].y+bullets[j].h > boss.y) {
+                    if(boss && boss.hp > 0 && bullets[j].x < boss.x+boss.w && bullets[j].x+bullets[j].w > boss.x && bullets[j].y < boss.y+boss.h && bullets[j].y+bullets[j].h > boss.y) {
                         if(bullets[j].type === 'missile') { explosions.push({ x: bullets[j].x, y: bullets[j].y, rad: 10 }); }
                         bullets.splice(j,1); boss.hp--; updateBoard(); playSound('hit');
-                        if(boss.hp <= 0) { playSound('win'); items.push({ x: boss.x + boss.w/2 - 12, y: boss.y }); }
+                        if(boss.hp <= 0) { score += 200; nextBossScore += 150; bossSpawned = false; playSound('win'); items.push({ x: boss.x + boss.w/2 - 12, y: boss.y }); enemies = []; enemyBullets = []; updateBoard(); }
                         break;
                     }
                 }
             }
+            // 보스가 떠 있을 때는 잡몹이 나오지 않아 안전 파밍이 유지되며, 보스가 죽으면 다시 잡몹이 스폰됩니다.
             if(!bossSpawned && Math.random() < 0.025) { enemies.push({ x: Math.random()*(canvas.width-38), y: -40, w: 36, h: 32, speed: 2.5 + Math.random()*2, shotTimer: Math.floor(Math.random()*20) }); }
             for(let i=enemies.length-1; i>=0; i--) {
                 enemies[i].y += enemies[i].speed; enemies[i].shotTimer++; if(!bossSpawned && enemies[i].shotTimer >= 30 && enemies[i].y < player.y - 40) { enemyBullets.push({ x: enemies[i].x + 16, y: enemies[i].y + 32, w: 4, h: 8, speed: 5.5 }); enemies[i].shotTimer = 0; }
@@ -200,7 +199,6 @@
                 }
             }
         }
-        function triggerWinScreen() { isOver = true; cancelAnimationFrame(gameId); document.getElementById("modalTitle").innerText = "🎉 BOSS DEFEATED!"; document.getElementById("modalTitle").style.color = "#4dadf7"; document.getElementById("finalScore").innerText = `우주 평화를 지켜냈습니다! 최종 점수: ${score + 200}점`; document.getElementById("overModal").style.display = "flex"; }
         function triggerGameOver() { isOver = true; cancelAnimationFrame(gameId); playSound('over'); document.getElementById("modalTitle").innerText = "💥 GAME OVER"; document.getElementById("modalTitle").style.color = "#ff6b6b"; document.getElementById("finalScore").innerText = `최종 점수: ${score}점`; document.getElementById("overModal").style.display = "flex"; }
         initStars(); restart();
     </script>
