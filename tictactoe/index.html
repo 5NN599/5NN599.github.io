@@ -7,7 +7,6 @@
         :root { --bg: #f8f9fa; --text: #333; --canvas-bg: #fff; --border: #e9ecef; --btn-bg: #fff; }
         [data-theme="beige"] { --bg: #f5ebe0; --text: #4e3d30; --canvas-bg: #eddfd0; --border: #ddcbbb; --btn-bg: #eddfd0; }
         [data-theme="dark"] { --bg: #0d1117; --text: #c9d1d9; --canvas-bg: #161b22; --border: #30363d; --btn-bg: #21262d; }
-        
         body { text-align: center; background-color: var(--bg); color: var(--text); font-family: sans-serif; padding-top: 30px; margin:0; transition: 0.3s; }
         .controls { margin-bottom: 15px; }
         select { padding: 6px 12px; font-size: 1rem; border-radius: 6px; border: 1px solid var(--border); background: var(--canvas-bg); color: var(--text); }
@@ -33,7 +32,6 @@
     <div id="status" style="font-size:1.2rem; margin-bottom:10px;">당신의 차례입니다 (O)</div>
     <div class="board" id="board"></div>
     <button onclick="location.href='../'">🏠 메인으로 가기</button>
-
     <div class="modal" id="overModal">
         <div class="modal-content">
             <h2 id="modalTitle" style="margin-top:0;">결과</h2>
@@ -41,125 +39,85 @@
             <button onclick="location.href='../'">🏠 메인 메뉴</button>
         </div>
     </div>
-
     <script>
         const savedTheme = localStorage.getItem('minig-theme');
         if (savedTheme && savedTheme !== 'white') document.documentElement.setAttribute('data-theme', savedTheme);
-
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        function playClick(f) {
+        function playSound(type) {
             try {
                 const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-                osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.frequency.setValueAtTime(f, audioCtx.currentTime); gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
-                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.05); osc.start(); osc.stop(audioCtx.currentTime + 0.05);
+                osc.connect(gain); gain.connect(audioCtx.destination); const now = audioCtx.currentTime;
+                if (type === 'hit_o') {
+                    osc.type = 'square'; osc.frequency.setValueAtTime(600, now); osc.frequency.linearRampToValueAtTime(300, now + 0.05);
+                    gain.gain.setValueAtTime(0.04, now); gain.gain.linearRampToValueAtTime(0, now + 0.05); osc.start(now); osc.stop(now + 0.05);
+                } else if (type === 'hit_x') {
+                    osc.type = 'square'; osc.frequency.setValueAtTime(450, now); osc.frequency.linearRampToValueAtTime(200, now + 0.05);
+                    gain.gain.setValueAtTime(0.04, now); gain.gain.linearRampToValueAtTime(0, now + 0.05); osc.start(now); osc.stop(now + 0.05);
+                } else if (type === 'win') {
+                    osc.type = 'square'; osc.frequency.setValueAtTime(523.25, now); osc.frequency.setValueAtTime(659.25, now + 0.06); osc.frequency.setValueAtTime(783.99, now + 0.12); osc.frequency.setValueAtTime(1046.5, now + 0.18);
+                    gain.gain.setValueAtTime(0.03, now); gain.gain.linearRampToValueAtTime(0, now + 0.3); osc.start(now); osc.stop(now + 0.3);
+                } else if (type === 'lose') {
+                    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(250, now); osc.frequency.linearRampToValueAtTime(60, now + 0.3);
+                    gain.gain.setValueAtTime(0.08, now); gain.gain.linearRampToValueAtTime(0, now + 0.3); osc.start(now); osc.stop(now + 0.3);
+                } else if (type === 'draw') {
+                    osc.type = 'triangle'; osc.frequency.setValueAtTime(350, now); osc.frequency.setValueAtTime(350, now + 0.08);
+                    gain.gain.setValueAtTime(0.05, now); gain.gain.linearRampToValueAtTime(0, now + 0.16); osc.start(now); osc.stop(now + 0.16);
+                }
             } catch(e){}
         }
-
-        const boardElement = document.getElementById("board");
-        let board = ["", "", "", "", "", "", "", "", ""];
-        let isGameActive = true;
-        
-        // 틱택토 가로, 세로, 대각선 승리 인덱스 패턴 조합
-        const winPatterns = [, [3, 4, 5], [6, 7, 8], // 가로, [1, 4, 7], [2, 5, 8], // 세로, [2, 4, 6]             // 대각선
-        ];
-        
+        const boardElement = document.getElementById("board"); let board = ["", "", "", "", "", "", "", "", ""]; let isGameActive = true;
+        const winPatterns = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
         function checkWin(b, p) { return winPatterns.some(pattern => pattern.every(index => b[index] === p)); }
         function checkDraw(b) { return b.every(cell => cell !== ""); }
-
         function createBoard() {
             boardElement.innerHTML = "";
             board.forEach((val, i) => {
                 const cell = document.createElement("div"); cell.classList.add("cell"); cell.innerText = val;
-                if(val === "O") cell.style.color = "#4dadf7";
-                if(val === "X") cell.style.color = "#ff6b6b";
+                if(val === "O") cell.style.color = "#4dadf7"; if(val === "X") cell.style.color = "#ff6b6b";
                 cell.addEventListener("click", () => makeMove(i)); boardElement.appendChild(cell);
             });
         }
-
         function makeMove(i) {
-            if (!isGameActive || board[i] !== "") return;
-            board[i] = "O"; playClick(523); createBoard();
-            
-            if (checkWin(board, "O")) { showEndModal("🎉 당신의 승리!", "#4dadf7"); return; }
-            if (checkDraw(board)) { showEndModal("🤝 무승부입니다!", "#777"); return; }
-            
-            isGameActive = false;
-            document.getElementById("status").innerText = "컴퓨터가 생각 중...";
-            setTimeout(computerMove, 400);
+            if (!isGameActive || board[i] !== "") return; board[i] = "O"; playSound('hit_o'); createBoard();
+            if (checkWin(board, "O")) { playSound('win'); showEndModal("🎉 당신의 승리!", "#4dadf7"); return; }
+            if (checkDraw(board)) { playSound('draw'); showEndModal("🤝 무승부입니다!", "#777"); return; }
+            isGameActive = false; document.getElementById("status").innerText = "컴퓨터가 생각 중..."; setTimeout(computerMove, 400);
         }
-
         function computerMove() {
-            const diff = document.getElementById("difficulty").value;
-            let move;
-            
-            if (diff === "easy") {
-                move = getRandomMove();
-            } else if (diff === "normal") {
-                move = Math.random() < 0.4 ? getBestMove() : getRandomMove();
-            } else if (diff === "hard") {
-                move = Math.random() < 0.75 ? getBestMove() : getRandomMove();
-            } else {
-                move = getBestMove(); // 인공지능 완벽 최적화 모드
-            }
-
+            const diff = document.getElementById("difficulty").value; let move;
+            if (diff === "easy") move = getRandomMove();
+            else if (diff === "normal") move = Math.random() < 0.4 ? getBestMove() : getRandomMove();
+            else if (diff === "hard") move = Math.random() < 0.75 ? getBestMove() : getRandomMove();
+            else move = getBestMove();
             if (move !== undefined) {
-                board[move] = "X"; playClick(392); createBoard();
-                if (checkWin(board, "X")) { showEndModal("💻 컴퓨터 승리!", "#ff6b6b"); return; }
-                if (checkDraw(board)) { showEndModal("🤝 무승부입니다!", "#777"); return; }
+                board[move] = "X"; playSound('hit_x'); createBoard();
+                if (checkWin(board, "X")) { playSound('lose'); showEndModal("💻 컴퓨터 승리!", "#ff6b6b"); return; }
+                if (checkDraw(board)) { playSound('draw'); showEndModal("🤝 무승부입니다!", "#777"); return; }
             }
-            isGameActive = true;
-            document.getElementById("status").innerText = "당신의 차례입니다 (O)";
+            isGameActive = true; document.getElementById("status").innerText = "당신의 차례입니다 (O)";
         }
-
-        function getRandomMove() {
-            let empties = board.map((v, i) => v === "" ? i : null).filter(v => v !== null);
-            return empties[Math.floor(Math.random() * empties.length)];
-        }
-
+        function getRandomMove() { let empties = board.map((v, i) => v === "" ? i : null).filter(v => v !== null); return empties[Math.floor(Math.random() * empties.length)]; }
         function getBestMove() {
             let bestScore = -Infinity; let move;
             for (let i = 0; i < 9; i++) {
-                if (board[i] === "") {
-                    board[i] = "X"; let score = minimax(board, 0, false); board[i] = "";
-                    if (score > bestScore) { bestScore = score; move = i; }
-                }
+                if (board[i] === "") { board[i] = "X"; let score = minimax(board, 0, false); board[i] = ""; if (score > bestScore) { bestScore = score; move = i; } }
             }
             return move;
         }
-
         function minimax(b, depth, isMaximizing) {
-            if (checkWin(b, "X")) return 10 - depth;
-            if (checkWin(b, "O")) return depth - 10;
-            if (b.every(c => c !== "")) return 0;
-
+            if (checkWin(b, "X")) return 10 - depth; if (checkWin(b, "O")) return depth - 10; if (b.every(c => c !== "")) return 0;
             if (isMaximizing) {
                 let bestScore = -Infinity;
-                for (let i = 0; i < 9; i++) {
-                    if (b[i] === "") { b[i] = "X"; let score = minimax(b, depth + 1, false); b[i] = ""; bestScore = Math.max(score, bestScore); }
-                }
+                for (let i = 0; i < 9; i++) { if (b[i] === "") { b[i] = "X"; let score = minimax(b, depth + 1, false); b[i] = ""; bestScore = Math.max(score, bestScore); } }
                 return bestScore;
             } else {
                 let bestScore = Infinity;
-                for (let i = 0; i < 9; i++) {
-                    if (b[i] === "") { b[i] = "O"; let score = minimax(b, depth + 1, true); b[i] = ""; bestScore = Math.min(score, bestScore); }
-                }
+                for (let i = 0; i < 9; i++) { if (b[i] === "") { b[i] = "O"; let score = minimax(b, depth + 1, true); b[i] = ""; bestScore = Math.min(score, bestScore); } }
                 return bestScore;
             }
         }
-
-        function showEndModal(text, color) {
-            const title = document.getElementById("modalTitle");
-            title.innerText = text; title.style.color = color;
-            document.getElementById("overModal").style.display = "flex";
-        }
-
-        function resetGame() {
-            document.getElementById("overModal").style.display = "none";
-            board = ["", "", "", "", "", "", "", "", ""]; isGameActive = true;
-            document.getElementById("status").innerText = "당신의 차례입니다 (O)";
-            createBoard();
-        }
+        function showEndModal(text, color) { const title = document.getElementById("modalTitle"); title.innerText = text; title.style.color = color; document.getElementById("overModal").style.display = "flex"; }
+        function resetGame() { document.getElementById("overModal").style.display = "none"; board = ["", "", "", "", "", "", "", "", ""]; isGameActive = true; document.getElementById("status").innerText = "당신의 차례입니다 (O)"; createBoard(); }
         createBoard();
     </script>
 </body>
