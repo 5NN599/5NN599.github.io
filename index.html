@@ -1,134 +1,27 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://w3.org viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🕹️</text></svg>">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>미니지</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://w3.org viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🕹️</text></svg>">
     <style>
-        /* 기본 하양 테마 */
-        :root {
-            --bg-color: #f8f9fa;
-            --text-color: #333333;
-            --card-bg: #ffffff;
-            --card-border: #e9ecef;
-            --title-color: #222222;
-            --sub-color: #666666;
-            --accent-color: #ff6b6b;
-        }
-        /* 베이지 테마 */
-        [data-theme="beige"] {
-            --bg-color: #f5ebe0;
-            --text-color: #4e3d30;
-            --card-bg: #eddfd0;
-            --card-border: #ddcbbb;
-            --title-color: #3d2f23;
-            --sub-color: #7a6552;
-            --accent-color: #d4a373;
-        }
-        /* 다크 테마 */
-        [data-theme="dark"] {
-            --bg-color: #0d1117;
-            --text-color: #c9d1d9;
-            --card-bg: #161b22;
-            --card-border: #30363d;
-            --title-color: #58a6ff;
-            --sub-color: #8b949e;
-            --accent-color: #58a6ff;
-        }
-
-        body { 
-            text-align: center; 
-            background-color: var(--bg-color); 
-            color: var(--text-color); 
-            font-family: 'Malgun Gothic', sans-serif; 
-            padding: 60px 20px;
-            margin: 0;
-            transition: all 0.3s ease;
-        }
-        .theme-selector {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-        }
-        .theme-btn {
-            padding: 6px 12px;
-            margin-left: 5px;
-            border: 1px solid var(--card-border);
-            background-color: var(--card-bg);
-            color: var(--text-color);
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 0.85rem;
-            transition: 0.2s;
-        }
-        .theme-btn:hover {
-            border-color: var(--accent-color);
-        }
-        .decor-line {
-            color: var(--accent-color);
-            font-size: 1.2rem;
-            letter-spacing: 5px;
-            margin-bottom: 10px;
-        }
-        h1 { 
-            color: var(--title-color); 
-            font-size: 2.8rem;
-            margin: 0 0 10px 0;
-            font-weight: 800;
-        }
-        .subtitle {
-            color: var(--sub-color);
-            font-size: 1.1rem;
-            margin-bottom: 50px;
-        }
-        .container {
-            display: flex;
-            justify-content: center;
-            flex-wrap: wrap;
-            max-width: 1100px;
-            margin: 0 auto;
-        }
-        .game-card { 
-            display: inline-block; 
-            width: 220px; 
-            padding: 25px; 
-            margin: 15px; 
-            background-color: var(--card-bg); 
-            border-radius: 16px; 
-            cursor: pointer; 
-            transition: all 0.25s ease-in-out; 
-            border: 1px solid var(--card-border); 
-            text-align: left;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-        }
-        .game-card:hover { 
-            transform: translateY(-8px); 
-            border-color: var(--accent-color); 
-            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
-        }
-        .game-card .icon {
-            font-size: 2.5rem;
-            margin-bottom: 15px;
-            display: block;
-        }
-        .game-card h3 { 
-            margin: 0 0 10px 0; 
-            color: var(--title-color);
-            font-size: 1.2rem;
-        }
-        .game-card p { 
-            margin: 0; 
-            color: var(--sub-color); 
-            font-size: 0.9rem;
-            line-height: 1.5;
-        }
-        footer {
-            margin-top: 80px;
-            color: var(--sub-color);
-            font-size: 0.85rem;
-            opacity: 0.6;
-        }
+        :root { --bg-color: #f8f9fa; --text-color: #333; --card-bg: #fff; --card-border: #e9ecef; --title-color: #222; --sub-color: #666; --accent-color: #ff6b6b; }
+        [data-theme="beige"] { --bg-color: #f5ebe0; --text-color: #4e3d30; --card-bg: #eddfd0; --card-border: #ddcbbb; --title-color: #3d2f23; --sub-color: #7a6552; --accent-color: #d4a373; }
+        [data-theme="dark"] { --bg-color: #0d1117; --text-color: #c9d1d9; --card-bg: #161b22; --card-border: #30363d; --title-color: #58a6ff; --sub-color: #8b949e; --accent-color: #58a6ff; }
+        body { text-align: center; background-color: var(--bg-color); color: var(--text-color); font-family: 'Malgun Gothic', sans-serif; padding: 60px 20px; margin: 0; transition: all 0.3s ease; }
+        .theme-selector { position: absolute; top: 20px; right: 20px; }
+        .theme-btn { padding: 6px 12px; margin-left: 5px; border: 1px solid var(--card-border); background-color: var(--card-bg); color: var(--text-color); border-radius: 20px; cursor: pointer; font-size: 0.85rem; }
+        .decor-line { color: var(--accent-color); font-size: 1.2rem; letter-spacing: 5px; margin-bottom: 10px; }
+        h1 { color: var(--title-color); font-size: 2.8rem; margin: 0 0 10px 0; font-weight: 800; }
+        .subtitle { color: var(--sub-color); font-size: 1.1rem; margin-bottom: 50px; }
+        .container { display: flex; justify-content: center; flex-wrap: wrap; max-width: 1100px; margin: 0 auto; }
+        .game-card { display: inline-block; width: 220px; padding: 25px; margin: 15px; background-color: var(--card-bg); border-radius: 16px; cursor: pointer; transition: all 0.25s; border: 1px solid var(--card-border); text-align: left; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+        .game-card:hover { transform: translateY(-8px); border-color: var(--accent-color); box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08); }
+        .game-card .icon { font-size: 2.5rem; margin-bottom: 15px; display: block; }
+        .game-card h3 { margin: 0 0 10px 0; color: var(--title-color); font-size: 1.2rem; }
+        .game-card p { margin: 0; color: var(--sub-color); font-size: 0.9rem; line-height: 1.5; }
+        footer { margin-top: 80px; color: var(--sub-color); font-size: 0.85rem; opacity: 0.6; }
     </style>
 </head>
 <body>
@@ -137,51 +30,23 @@
         <button class="theme-btn" onclick="setTheme('beige')">🟤 베이지</button>
         <button class="theme-btn" onclick="setTheme('dark')">⚫ 다크</button>
     </div>
-
     <div class="decor-line">✦ 🌟 ✦ 🎈 ✦ 🌟 ✦</div>
     <h1>✨ 미니지 ✨</h1>
     <div class="subtitle">간단하게 즐기는 미니지 오락실 공간입니다 🕹️</div>
-    
     <div class="container">
-        <div class="game-card" onclick="goToGame('snake')">
-            <span class="icon">🐍</span>
-            <h3>스네이크 게임</h3>
-            <p>방향키로 뱀을 움직여 사과를 먹어보세요. 몸집이 커질수록 난이도가 상승합니다!</p>
-        </div>
-
-        <div class="game-card" onclick="goToGame('dodge')">
-            <span class="icon">💩</span>
-            <h3>똥피하기</h3>
-            <p>하늘에서 떨어지는 장애물을 좌우 방향키로 요리조리 피하며 버텨보세요!</p>
-        </div>
-
-        <div class="game-card" onclick="goToGame('brick')">
-            <span class="icon">🧱</span>
-            <h3>벽돌깨기</h3>
-            <p>패들을 마우스나 키보드로 움직여 공을 튕겨내고 모든 벽돌을 부숴버리세요!</p>
-        </div>
-
-        <div class="game-card" onclick="goToGame('tictactoe')">
-            <span class="icon">❌</span>
-            <h3>틱택토</h3>
-            <p>스마트한 컴퓨터 AI를 상대로 먼저 3줄을 나란히 완성하면 승리합니다.</p>
-        </div>
+        <div class="game-card" onclick="goToGame('snake')"><span class="icon">🐍</span><h3>스네이크 게임</h3><p>방향키로 뱀을 움직여 사과를 먹어보세요. 몸집이 커질수록 난이도가 상승합니다!</p></div>
+        <div class="game-card" onclick="goToGame('dodge')"><span class="icon">💩</span><h3>똥피하기</h3><p>하늘에서 떨어지는 장애물을 좌우 방향키로 요리조리 피하며 버텨보세요!</p></div>
+        <div class="game-card" onclick="goToGame('brick')"><span class="icon">🧱</span><h3>벽돌깨기</h3><p>패들을 움직여 공을 튕겨내고 아이템을 획득하며 모든 벽돌을 부숴버리세요!</p></div>
+        <div class="game-card" onclick="goToGame('tictactoe')"><span class="icon">❌</span><h3>틱택토</h3><p>스마트한 컴퓨터 AI를 상대로 먼저 3줄을 나란히 완성하면 승리합니다.</p></div>
+        <div class="game-card" onclick="goToGame('card')"><span class="icon">🃏</span><h3>카드 뒤집기</h3><p>똑같은 그림의 카드 한 쌍을 찾아 뒤집는 기억력 테스트 두뇌 게임입니다.</p></div>
+        <div class="game-card" onclick="goToGame('dino')"><span class="icon">🦖</span><h3>공룡 달리기</h3><p>스페이스바를 눌러 점프하며 다가오는 선인장 장애물을 뛰어넘어 질주하세요!</p></div>
+        <div class="game-card" onclick="goToGame('gacha')"><span class="icon">🪙</span><h3>행운의 동전</h3><p>앞면일까 뒷면일까? 나의 오늘 하루 행운을 시험해보는 간단한 동전 던지기입니다.</p></div>
     </div>
-
     <footer>© 미니지 All Rights Reserved.</footer>
-
     <script>
-        function setTheme(theme) {
-            if (theme === 'white') document.documentElement.removeAttribute('data-theme');
-            else document.documentElement.setAttribute('data-theme', theme);
-            localStorage.setItem('minig-theme', theme);
-        }
-        function goToGame(game) {
-            location.href = `./${game}/`;
-        }
-        // 이전에 선택한 테마 기억 불러오기
-        const savedTheme = localStorage.getItem('minig-theme');
-        if (savedTheme) setTheme(savedTheme);
+        function setTheme(theme) { if (theme === 'white') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', theme); localStorage.setItem('minig-theme', theme); }
+        function goToGame(game) { location.href = `./${game}/`; }
+        const savedTheme = localStorage.getItem('minig-theme'); if (savedTheme) setTheme(savedTheme);
     </script>
 </body>
 </html>
