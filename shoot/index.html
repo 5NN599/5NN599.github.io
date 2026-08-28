@@ -8,7 +8,7 @@
         [data-theme="beige"] { --bg: #f5ebe0; --text: #4e3d30; --canvas-bg: #14100c; --border: #ddcbbb; --btn-bg: #eddfd0; }
         [data-theme="dark"] { --bg: #0d1117; --text: #c9d1d9; --canvas-bg: #020305; --border: #30363d; --title-color: #58a6ff; --sub-color: #8b949e; --accent-color: #58a6ff; }
         body { text-align: center; background-color: var(--bg); color: var(--text); font-family: sans-serif; padding-top: 20px; margin:0; transition: 0.3s; }
-        canvas { background-color: var(--canvas-bg); display: block; margin: 15px auto; border: 4px solid var(--border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+        canvas { background-color: var(--canvas-bg); display: block; margin: 15px auto; border: 4px solid var(--border); border-radius: 12px; box-shadow: 0 8px 24 rgba(0,0,0,0.3); }
         button { background-color: var(--btn-bg); color: var(--text); border: 1px solid var(--border); padding: 10px 20px; font-size: 1rem; border-radius: 8px; cursor: pointer; margin:5px; }
         #board { font-size: 1.3rem; font-weight: bold; color: #fcc419; margin-bottom: 5px; }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index:10; }
@@ -51,7 +51,7 @@
             "서기 2026년... 지구 방위대 최후의 함선 '미니지호'..",
             "외계 UFO 대부대가 공격형 플라즈마 탄환을 탑재했다!",
             "선체의 실드 장치가 가동되지만 오직 3번의 충격만 버틸 수 있다.",
-            "적들의 탄막을 회피하며 외계 군주 대장선을 침몰시켜라!",
+            "적들을 격추하며 전진해 외계 군주 대장선을 침몰시켜라!",
             "👉 [Space] 또는 화면을 터치해 우주 전쟁을 시작하세요!"
         ];
         document.addEventListener("keydown", e => {
@@ -129,12 +129,13 @@
                     }
                 }
             }
-            if(!bossSpawned && Math.random() < 0.025) { enemies.push({ x: Math.random()*(canvas.width-24), y: -20, w: 24, h: 20, speed: 2.5 + Math.random()*2, shotTimer: Math.floor(Math.random()*20) }); }
+            // 🚀 잡몹이 캔버스 좌우 벽에 너무 딱 붙어 짤려 소환되지 않도록 마진 영역을 보정했습니다.
+            if(!bossSpawned && Math.random() < 0.025) { enemies.push({ x: Math.random()*(canvas.width-38), y: -40, w: 36, h: 32, speed: 2.5 + Math.random()*2, shotTimer: Math.floor(Math.random()*20) }); }
             for(let i=enemies.length-1; i>=0; i--) {
                 enemies[i].y += enemies[i].speed;
-                // 🚀 잡몹 발사 딜레이를 60프레임에서 30프레임으로 하락시켜 총알을 2배 더 빠르게 난사합니다!
-                enemies[i].shotTimer++; if(!bossSpawned && enemies[i].shotTimer >= 30 && enemies[i].y < player.y - 40) { enemyBullets.push({ x: enemies[i].x + 10, y: enemies[i].y + 20, w: 4, h: 8, speed: 5.5 }); enemies[i].shotTimer = 0; }
-                ctx.save(); ctx.font = "24px sans-serif"; ctx.fillText("🛸", enemies[i].x, enemies[i].y + 20); ctx.restore();
+                enemies[i].shotTimer++; if(!bossSpawned && enemies[i].shotTimer >= 30 && enemies[i].y < player.y - 40) { enemyBullets.push({ x: enemies[i].x + 16, y: enemies[i].y + 32, w: 4, h: 8, speed: 5.5 }); enemies[i].shotTimer = 0; }
+                // 🚀 일반 잡몹 UFO의 폰트 출력을 36px로 벌려 큼직하게 렌더링합니다!
+                ctx.save(); ctx.font = "36px sans-serif"; ctx.fillText("🛸", enemies[i].x, enemies[i].y + 30); ctx.restore();
                 if(enemies[i].y > canvas.height) { enemies.splice(i,1); continue; }
                 if(player.invuln == 0 && enemies[i].x < player.x+player.w && enemies[i].x+enemies[i].w > player.x && enemies[i].y < player.y+player.h && enemies[i].y+enemies[i].h > player.y) {
                     enemies.splice(i, 1); player.hp--; player.invuln = 60; updateBoard(); playSound('hit');
