@@ -2,170 +2,91 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>미니게임 - 스네이크</title>
+    <title>미니지 - 스네이크</title>
     <style>
-        body { 
-            text-align: center; 
-            background-color: #0d1117; 
-            color: #f0f6fc; 
-            font-family: 'Malgun Gothic', sans-serif; 
-            margin: 0;
-            padding: 30px 10px;
-        }
-        h1 { color: #34d399; margin-bottom: 5px; }
-        .info { color: #8b949e; margin-bottom: 15px; font-size: 0.95rem; }
-        #score { color: #fbbf24; font-size: 1.5rem; margin: 10px 0; }
-        canvas { 
-            background-color: #161b22; 
-            display: block; 
-            margin: 10px auto 25px auto; 
-            border: 4px solid #30363d; 
-            border-radius: 8px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
-        }
-        button {
-            background-color: #21262d;
-            color: #c9d1d9;
-            border: 1px solid #30363d;
-            padding: 10px 20px;
-            font-size: 1rem;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-        button:hover {
-            background-color: #30363d;
-            color: #f0f6fc;
-            border-color: #8b949e;
-        }
+        body { text-align: center; background-color: #f8f9fa; color: #333; font-family: sans-serif; padding-top: 30px; }
+        canvas { background-color: #ffffff; display: block; margin: 20px auto; border: 4px solid #e9ecef; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.05); }
+        button { background-color: #ffffff; color: #333; border: 1px solid #ced4da; padding: 10px 20px; font-size: 1rem; border-radius: 8px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        button:hover { background-color: #f1f3f5; border-color: #adb5bd; }
+        #score { color: #ff6b6b; font-size: 1.5rem; font-weight: bold; }
     </style>
 </head>
 <body>
-    <h1>🐍 클래식 스네이크</h1>
-    <div class="info">키보드 방향키(↑, ↓, ←, →)로 뱀을 조종하세요.</div>
+    <h1>🐍 스네이크</h1>
     <div id="score">SCORE: 0</div>
-    
     <canvas id="gameCanvas" width="400" height="400"></canvas>
-    
-    <div>
-        <button onclick="location.href='../'">🏠 메인 화면으로 나가기</button>
-    </div>
+    <button onclick="location.href='../'">🏠 메인으로 가기</button>
 
     <script>
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            if(type === 'eat') {
+                osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+                osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.1); // A5
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.15);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+            } else if(type === 'over') {
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                osc.frequency.linearRampToValueAtTime(40, audioCtx.currentTime + 0.4);
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.4);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+            }
+        }
+
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
-        const grid = 20;
-        let count = 0;
-        let score = 0;
-        
-        let snake = {
-            x: 160,
-            y: 160,
-            dx: grid,
-            dy: 0,
-            cells: [{x: 160, y: 160}],
-            maxCells: 4
-        };
-        
+        const grid = 20; let count = 0; let score = 0;
+        let snake = { x: 160, y: 160, dx: grid, dy: 0, cells: [{x: 160, y: 160}], maxCells: 4 };
         let apple = { x: 320, y: 320 };
 
-        function getRandomInt(min, max) {
-            return Math.floor(Math.random() * (max - min)) + min;
-        }
+        function getRandomInt(min, max) { return Math.floor(Math.random() * (max - min)) + min; }
 
         function loop() {
             requestAnimationFrame(loop);
-
-            // 6프레임마다 한 번씩 구동 (뱀 속도 제어 - 숫자가 낮을수록 빨라짐)
-            if (++count < 7) {
-                return;
-            }
+            if (++count < 8) return;
             count = 0;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // 뱀 이동 속도 적용
-            snake.x += snake.dx;
-            snake.y += snake.dy;
-
-            // 벽 부딪힘 체크 (게임오버 조건)
-            if (snake.x < 0 || snake.x >= canvas.width || snake.y < 0 || snake.y >= canvas.height) {
-                resetGame();
-            }
-
-            // 가장 앞에 머리 추가
+            snake.x += snake.dx; snake.y += snake.dy;
+            if (snake.x < 0 || snake.x >= canvas.width || snake.y < 0 || snake.y >= canvas.height) resetGame();
             snake.cells.unshift({x: snake.x, y: snake.y});
+            if (snake.cells.length > snake.maxCells) snake.cells.pop();
 
-            // 길이 유지
-            if (snake.cells.length > snake.maxCells) {
-                snake.cells.pop();
-            }
+            ctx.fillStyle = '#ff6b6b'; ctx.beginPath(); ctx.arc(apple.x+10, apple.y+10, 8, 0, 2*Math.PI); ctx.fill();
 
-            // 사과 그리기
-            ctx.fillStyle = '#ef4444';
-            ctx.beginPath();
-            ctx.arc(apple.x + grid/2, apple.y + grid/2, grid/2 - 1, 0, 2 * Math.PI);
-            ctx.fill();
-
-            // 뱀 그리기
-            ctx.fillStyle = '#10b981';
+            ctx.fillStyle = '#4dadf7';
             snake.cells.forEach(function(cell, index) {
-                // 머리는 조금 더 밝은 색으로 처리
-                if (index === 0) ctx.fillStyle = '#34d399';
-                else ctx.fillStyle = '#10b981';
-                
-                ctx.fillRect(cell.x, cell.y, grid - 1, grid - 1);  
-
-                // 사과 먹었는지 체크
-                if (cell.x === apple.x && cell.y === apple.apple || (cell.x === apple.x && cell.y === apple.y)) {
-                    snake.maxCells++;
-                    score += 10;
+                ctx.fillRect(cell.x, cell.y, grid-1, grid-1);  
+                if (cell.x === apple.x && cell.y === apple.y) {
+                    playSound('eat');
+                    snake.maxCells++; score += 10;
                     document.getElementById("score").innerText = "SCORE: " + score;
-                    apple.x = getRandomInt(0, 20) * grid;
-                    apple.y = getRandomInt(0, 20) * grid;
+                    apple.x = getRandomInt(0, 20) * grid; apple.y = getRandomInt(0, 20) * grid;
                 }
-
-                // 자신의 몸과 부딪혔는지 체크 (게임오버 조건)
                 for (let i = index + 1; i < snake.cells.length; i++) {
-                    if (cell.x === snake.cells[i].x && cell.y === snake.cells[i].y) {
-                        resetGame();
-                    }
+                    if (cell.x === snake.cells[i].x && cell.y === snake.cells[i].y) resetGame();
                 }
             });
         }
 
         function resetGame() {
+            playSound('over');
             alert("GAME OVER!\n최종 점수: " + score + "점");
-            score = 0;
-            document.getElementById("score").innerText = "SCORE: " + score;
-            snake.x = 160;
-            snake.y = 160;
-            snake.cells = [{x: 160, y: 160}];
-            snake.maxCells = 4;
-            snake.dx = grid;
-            snake.dy = 0;
-            apple.x = getRandomInt(0, 20) * grid;
-            apple.y = getRandomInt(0, 20) * grid;
+            score = 0; document.getElementById("score").innerText = "SCORE: " + score;
+            snake.x = 160; snake.y = 160; snake.cells = [{x: 160, y: 160}]; snake.maxCells = 4; snake.dx = grid; snake.dy = 0;
+            apple.x = getRandomInt(0, 20) * grid; apple.y = getRandomInt(0, 20) * grid;
         }
 
-        // 키보드 조작 이벤트 핸들러 (역방향 입력 차단 포함)
         document.addEventListener('keydown', function(e) {
-            if (e.key === 'ArrowLeft' && snake.dx === 0) {
-                snake.dx = -grid;
-                snake.dy = 0;
-            } else if (e.key === 'ArrowUp' && snake.dy === 0) {
-                snake.dy = -grid;
-                snake.dx = 0;
-            } else if (e.key === 'ArrowRight' && snake.dx === 0) {
-                snake.dx = grid;
-                snake.dy = 0;
-            } else if (e.key === 'ArrowDown' && snake.dy === 0) {
-                snake.dy = grid;
-                snake.dx = 0;
-            }
+            if (e.key === 'ArrowLeft' && snake.dx === 0) { snake.dx = -grid; snake.dy = 0; }
+            else if (e.key === 'ArrowUp' && snake.dy === 0) { snake.dy = -grid; snake.dx = 0; }
+            else if (e.key === 'ArrowRight' && snake.dx === 0) { snake.dx = grid; snake.dy = 0; }
+            else if (e.key === 'ArrowDown' && snake.dy === 0) { snake.dy = grid; snake.dx = 0; }
         });
-
-        // 게임 시작
         requestAnimationFrame(loop);
     </script>
 </body>
