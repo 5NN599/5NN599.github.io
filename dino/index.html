@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>미니지 - 공룡 달리기</title>
+    <style>
+        :root { --bg: #f8f9fa; --text: #333; --canvas-bg: #fff; --border: #e9ecef; --btn-bg: #fff; }
+        [data-theme="beige"] { --bg: #f5ebe0; --text: #4e3d30; --canvas-bg: #eddfd0; --border: #ddcbbb; --btn-bg: #eddfd0; }
+        [data-theme="dark"] { --bg: #0d1117; --text: #c9d1d9; --canvas-bg: #161b22; --border: #30363d; --btn-bg: #21262d; }
+        body { text-align: center; background-color: var(--bg); color: var(--text); font-family: sans-serif; padding-top: 30px; margin:0; transition: 0.3s; }
+        canvas { background-color: var(--canvas-bg); display: block; margin: 20px auto; border: 4px solid var(--border); border-radius: 12px; }
+        button { background-color: var(--btn-bg); color: var(--text); border: 1px solid var(--border); padding: 10px 20px; font-size: 1rem; border-radius: 8px; cursor: pointer; margin:5px; }
+        #score { font-size: 1.5rem; font-weight: bold; color: #ff6b6b; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
+        .modal-content { background: var(--canvas-bg); padding: 30px; border-radius: 16px; border: 2px solid var(--border); text-align: center; }
+    </style>
+</head>
+<body>
+    <h1>🦖 공룡 달리기</h1>
+    <p>스페이스바(Space) 또는 화면 클릭으로 점프하여 선인장을 피하세요!</p>
+    <div id="score">SCORE: 0</div>
+    <canvas id="gameCanvas" width="600" height="200"></canvas>
+    <button onclick="location.href='../'">🏠 메인으로 가기</button>
+    <div class="modal" id="overModal">
+        <div class="modal-content">
+            <h2 style="color:#ff6b6b; margin-top:0;">💥 GAME OVER</h2>
+            <p id="finalScore" style="font-size:1.1rem; font-weight:bold;"></p>
+            <button onclick="restart()">🔄 다시 시작</button>
+            <button onclick="location.href='../'">🏠 메인 메뉴</button>
+        </div>
+    </div>
+    <script>
+        const savedTheme = localStorage.getItem('minig-theme'); if (savedTheme && savedTheme !== 'white') document.documentElement.setAttribute('data-theme', savedTheme);
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            try {
+                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.connect(gain); gain.connect(audioCtx.destination); const now = audioCtx.currentTime;
+                if (type === 'jump') { osc.type = 'square'; osc.frequency.setValueAtTime(300, now); osc.frequency.exponentialRampToValueAtTime(900, now + 0.08); gain.gain.setValueAtTime(0.03, now); gain.gain.linearRampToValueAtTime(0, now + 0.08); osc.start(now); osc.stop(now + 0.08); }
+                else if (type === 'over') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(250, now); osc.frequency.linearRampToValueAtTime(60, now + 0.3); gain.gain.setValueAtTime(0.15, now); gain.gain.linearRampToValueAtTime(0, now + 0.3); osc.start(now); osc.stop(now + 0.3); }
+            } catch(e){}
+        }
+        const canvas = document.getElementById("gameCanvas"); const ctx = canvas.getContext("2d");
+        let dino = { x: 50, y: 140, w: 25, h: 40, vy: 0, gravity: 0.6, jumpForce: -10, isGrounded: true };
+        let obstacles = []; let score = 0; let isOver = false; let gameId = null;
+        document.addEventListener("keydown", e => { if (e.code === "Space" && dino.isGrounded && !isOver) { dino.vy = dino.jumpForce; dino.isGrounded = false; playSound('jump'); } });
+        canvas.addEventListener("click", () => { if (dino.isGrounded && !isOver) { dino.vy = dino.jumpForce; dino.isGrounded = false; playSound('jump'); } });
+        function restart() { document.getElementById("overModal").style.display = "none"; dino.y = 140; dino.vy = 0; dino.isGrounded = true; obstacles = []; score = 0; isOver = false; loop(); }
+        function loop() {
+            if (isOver) return; gameId = requestAnimationFrame(loop); ctx.clearRect(0,0,canvas.width,canvas.height);
+            dino.vy += dino.gravity; dino.y += dino.vy; if(dino.y >= 140) { dino.y = 140; dino.vy = 0; dino.isGrounded = true; }
+            ctx.fillStyle = "#51cf66"; ctx.fillRect(dino.x, dino.y, dino.w, dino.h);
+            if (Math.random() < 0.015 && (obstacles.length === 0 || obstacles[obstacles.length-1].x < canvas.width - 150)) { obstacles.push({ x: canvas.width, y: 150, w: 15, h: 30, speed: 5 }); }
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                obstacles[i].x -= obstacles[i].speed; ctx.fillStyle = "#ff6b6b"; ctx.fillRect(obstacles[i].x, obstacles[i].y, obstacles[i].w, obstacles[i].h);
+                if (obstacles[i].x + obstacles[i].w < 0) { obstacles.splice(i, 1); score += 10; document.getElementById("score").innerText = "SCORE: " + score; continue; }
+                if (obstacles[i].x < dino.x + dino.w && obstacles[i].x + obstacles[i].w > dino.x && obstacles[i].y < dino.y + dino.h) {
+                    isOver = true; cancelAnimationFrame(gameId); playSound('over'); document.getElementById("finalScore").innerText = "최종 점수: " + score + "점"; document.getElementById("overModal").style.display = "flex";
+                }
+            }
+            ctx.strokeStyle = '#e9ecef'; ctx.beginPath(); ctx.moveTo(0,180); ctx.lineTo(canvas.width,180); ctx.stroke();
+        }
+        restart();
+    </script>
+</body>
+</html>
