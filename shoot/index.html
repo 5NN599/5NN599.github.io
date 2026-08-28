@@ -17,7 +17,7 @@
 </head>
 <body>
     <h1>🚀 스페이스 슈팅</h1>
-    <div id="board">🏆 점수: 0 | 보스 출현까지: 150</div>
+    <div id="board">❤️ HP: 3 / 3 | 🏆 점수: 0</div>
     <canvas id="gameCanvas" width="400" height="480"></canvas>
     <button onclick="location.href='../'">🏠 메인으로 가기</button>
     <div class="modal" id="overModal">
@@ -35,7 +35,7 @@
             try {
                 const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.connect(gain); gain.connect(audioCtx.destination); const now = audioCtx.currentTime;
                 if (type === 'laser') { osc.type = 'square'; osc.frequency.setValueAtTime(900, now); osc.frequency.exponentialRampToValueAtTime(300, now + 0.05); gain.gain.setValueAtTime(0.03, now); gain.gain.linearRampToValueAtTime(0, now + 0.05); osc.start(now); osc.stop(now + 0.05); }
-                else if (type === 'hit') { osc.type = 'triangle'; osc.frequency.setValueAtTime(250, now); gain.gain.setValueAtTime(0.06, now); gain.gain.linearRampToValueAtTime(0, now + 0.04); osc.start(now); osc.stop(now + 0.04); }
+                else if (type === 'hit') { osc.type = 'triangle'; osc.frequency.setValueAtTime(220, now); gain.gain.setValueAtTime(0.08, now); gain.gain.linearRampToValueAtTime(0, now + 0.05); osc.start(now); osc.stop(now + 0.05); }
                 else if (type === 'explode') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(350, now); osc.frequency.linearRampToValueAtTime(50, now + 0.1); gain.gain.setValueAtTime(0.06, now); gain.gain.linearRampToValueAtTime(0, now + 0.1); osc.start(now); osc.stop(now + 0.1); }
                 else if (type === 'win') { osc.type = 'square'; osc.frequency.setValueAtTime(523, now); osc.frequency.setValueAtTime(659, now+0.06); osc.frequency.setValueAtTime(783, now+0.12); osc.frequency.setValueAtTime(1046, now+0.18); gain.gain.setValueAtTime(0.04, now); gain.gain.linearRampToValueAtTime(0, now+0.3); osc.start(now); osc.stop(now+0.3); }
                 else if (type === 'over') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(180, now); osc.frequency.linearRampToValueAtTime(30, now + 0.5); gain.gain.setValueAtTime(0.15, now); gain.gain.linearRampToValueAtTime(0, now + 0.5); osc.start(now); osc.stop(now + 0.5); }
@@ -44,14 +44,14 @@
             } catch(e){}
         }
         const canvas = document.getElementById("gameCanvas"); const ctx = canvas.getContext("2d");
-        let player = { x: 180, y: 400, w: 32, h: 32, speed: 6 };
-        let bullets = [], enemies = [], stars = [], score = 0, keys = {}, isOver = false, gameId = null;
+        let player = { x: 180, y: 400, w: 32, h: 32, speed: 6, hp: 3, maxHp: 3, invuln: 0 };
+        let bullets = [], enemyBullets = [], enemies = [], stars = [], score = 0, keys = {}, isOver = false, gameId = null;
         let boss = null; let bossSpawned = false; let gameState = 'story'; let storyIndex = 0; let textProgress = 0;
         const storyTexts = [
             "서기 2026년... 지구 방위대 최후의 함선 '미니지호'..",
-            "정체불명의 외계 UFO 대부대가 은하계를 침공했다.",
-            "지구의 평화가 당신의 조종실 손끝에 달렸다.",
-            "적들을 격추하며 전진해 외계 군주 대장선 UFO를 파괴하라!",
+            "외계 UFO 대부대가 공격형 플라즈마 탄환을 탑재했다!",
+            "선체의 실드 장치가 가동되지만 오직 3번의 충격만 버틸 수 있다.",
+            "적들의 탄막을 회피하며 외계 군주 대장선을 침몰시켜라!",
             "👉 [Space] 또는 화면을 터치해 우주 전쟁을 시작하세요!"
         ];
         document.addEventListener("keydown", e => {
@@ -69,12 +69,12 @@
             }
         });
         function initStars() { for(let i=0; i<30; i++) stars.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, size: 1+Math.random()*2, speed: 1+Math.random()*3 }); }
-        function restart() { document.getElementById("overModal").style.display = "none"; player.x = 180; player.y = 400; bullets = []; enemies = []; boss = null; bossSpawned = false; score = 0; isOver = false; gameState = 'story'; storyIndex = 0; textProgress = 0; updateBoard(); loop(); }
+        function restart() { document.getElementById("overModal").style.display = "none"; player.x = 180; player.y = 400; player.hp = 3; player.invuln = 0; bullets = []; enemyBullets = []; enemies = []; boss = null; bossSpawned = false; score = 0; isOver = false; gameState = 'story'; storyIndex = 0; textProgress = 0; updateBoard(); loop(); }
         function updateBoard() {
             const board = document.getElementById("board");
             if(gameState === 'story') board.innerText = "🌌 미니지 우주 방위대 상황실";
-            else if(bossSpawned) board.innerText = `🏆 점수: ${score} | 👾 BOSS HP: ${boss ? boss.hp : 0} / 5`;
-            else board.innerText = `🏆 점수: ${score} | 보스 출현까지: ${Math.max(0, 150 - score)}`;
+            else if(bossSpawned) board.innerText = `❤️ HP: ${player.hp} / 3 | 🏆 스코어: ${score} | 👾 BOSS: ${boss ? boss.hp : 0} / 5`;
+            else board.innerText = `❤️ HP: ${player.hp} / 3 | 🏆 스코어: ${score} | 보스 출현까지: ${Math.max(0, 150 - score)}`;
         }
         let frameCount = 0;
         function loop() {
@@ -91,20 +91,36 @@
                 lines.forEach((line, idx) => { ctx.fillText(line, 40, 300 + (idx * 28)); });
                 ctx.save(); ctx.font = "70px sans-serif"; ctx.textAlign = "center"; ctx.fillText("🚀", 200, 150); ctx.restore(); return;
             }
+            if(player.invuln > 0) player.invuln--;
             if((keys["ArrowLeft"] || keys["a"]) && player.x > 0) player.x -= player.speed;
             if((keys["ArrowRight"] || keys["d"]) && player.x < canvas.width - player.w) player.x += player.speed;
             if((keys["ArrowUp"] || keys["w"]) && player.y > 0) player.y -= player.speed;
             if((keys["ArrowDown"] || keys["s"]) && player.y < canvas.height - player.h) player.y += player.speed;
-            ctx.save(); ctx.font = "32px sans-serif"; ctx.fillText("🚀", player.x, player.y + 26); ctx.restore();
+            
+            if(player.invuln == 0 || Math.floor(player.invuln/4) % 2 == 0) {
+                ctx.save(); ctx.font = "32px sans-serif"; ctx.fillText("🚀", player.x, player.y + 26); ctx.restore();
+            }
             for(let i=bullets.length-1; i>=0; i--) {
                 bullets[i].y -= bullets[i].speed; ctx.fillStyle = "#00ffcc"; ctx.fillRect(bullets[i].x, bullets[i].y, bullets[i].w, bullets[i].h);
                 if(bullets[i].y < 0) { bullets.splice(i, 1); continue; }
             }
-            if(score >= 150 && !bossSpawned) { bossSpawned = true; boss = { x: 160, y: -60, w: 64, h: 44, hp: 5, targetY: 60, speed: 2, dx: 2 }; updateBoard(); }
+            for(let i=enemyBullets.length-1; i>=0; i--) {
+                enemyBullets[i].y += enemyBullets[i].speed; ctx.fillStyle = "#ff4d4d"; ctx.fillRect(enemyBullets[i].x, enemyBullets[i].y, enemyBullets[i].w, enemyBullets[i].h);
+                if(enemyBullets[i].y > canvas.height) { enemyBullets.splice(i, 1); continue; }
+                if(player.invuln == 0 && enemyBullets[i].x < player.x+player.w && enemyBullets[i].x+enemyBullets[i].w > player.x && enemyBullets[i].y < player.y+player.h && enemyBullets[i].y+enemyBullets[i].h > player.y) {
+                    enemyBullets.splice(i, 1); player.hp--; player.invuln = 60; updateBoard(); playSound('hit');
+                    if(player.hp <= 0) { triggerGameOver(); return; } continue;
+                }
+            }
+            if(score >= 150 && !bossSpawned) { bossSpawned = true; boss = { x: 160, y: -60, w: 64, h: 44, hp: 5, targetY: 60, speed: 2, dx: 2, shotTimer: 0 }; updateBoard(); }
             if(bossSpawned && boss) {
-                if(boss.y < boss.targetY) boss.y += 1; else { boss.x += boss.dx; if(boss.x < 10 || boss.x > canvas.width - boss.w - 10) boss.dx = -boss.dx; }
+                if(boss.y < boss.targetY) boss.y += 1;
+                else {
+                    boss.x += boss.dx; if(boss.x < 10 || boss.x > canvas.width - boss.w - 10) boss.dx = -boss.dx;
+                    boss.shotTimer++; if(boss.shotTimer >= 30) { enemyBullets.push({ x: boss.x + boss.w/2 - 2, y: boss.y + boss.h, w: 6, h: 12, speed: 4.5 }); boss.shotTimer = 0; }
+                }
                 ctx.save(); ctx.font = "54px sans-serif"; ctx.fillText("🛸", boss.x, boss.y + 44); ctx.restore();
-                if(player.x < boss.x + boss.w && player.x + player.w > boss.x && player.y < boss.y + boss.h && player.y + player.h > boss.y) { triggerGameOver(); return; }
+                if(player.invuln == 0 && player.x < boss.x + boss.w && player.x + player.w > boss.x && player.y < boss.y + boss.h && player.y + player.h > boss.y) { player.hp = 0; triggerGameOver(); return; }
                 for(let j=bullets.length-1; j>=0; j--) {
                     if(bullets[j].x < boss.x+boss.w && bullets[j].x+bullets[j].w > boss.x && bullets[j].y < boss.y+boss.h && bullets[j].y+bullets[j].h > boss.y) {
                         bullets.splice(j,1); boss.hp--; updateBoard(); playSound('hit');
@@ -113,11 +129,17 @@
                     }
                 }
             }
-            if(!bossSpawned && Math.random() < 0.02) { enemies.push({ x: Math.random()*(canvas.width-24), y: -20, w: 24, h: 20, speed: 2.5 + Math.random()*2 }); }
+            if(!bossSpawned && Math.random() < 0.025) { enemies.push({ x: Math.random()*(canvas.width-24), y: -20, w: 24, h: 20, speed: 2.5 + Math.random()*2, shotTimer: Math.floor(Math.random()*20) }); }
             for(let i=enemies.length-1; i>=0; i--) {
-                enemies[i].y += enemies[i].speed; ctx.save(); ctx.font = "24px sans-serif"; ctx.fillText("🛸", enemies[i].x, enemies[i].y + 20); ctx.restore();
+                enemies[i].y += enemies[i].speed;
+                // 🚀 잡몹 발사 딜레이를 60프레임에서 30프레임으로 하락시켜 총알을 2배 더 빠르게 난사합니다!
+                enemies[i].shotTimer++; if(!bossSpawned && enemies[i].shotTimer >= 30 && enemies[i].y < player.y - 40) { enemyBullets.push({ x: enemies[i].x + 10, y: enemies[i].y + 20, w: 4, h: 8, speed: 5.5 }); enemies[i].shotTimer = 0; }
+                ctx.save(); ctx.font = "24px sans-serif"; ctx.fillText("🛸", enemies[i].x, enemies[i].y + 20); ctx.restore();
                 if(enemies[i].y > canvas.height) { enemies.splice(i,1); continue; }
-                if(enemies[i].x < player.x+player.w && enemies[i].x+enemies[i].w > player.x && enemies[i].y < player.y+player.h && enemies[i].y+enemies[i].h > player.y) { triggerGameOver(); return; }
+                if(player.invuln == 0 && enemies[i].x < player.x+player.w && enemies[i].x+enemies[i].w > player.x && enemies[i].y < player.y+player.h && enemies[i].y+enemies[i].h > player.y) {
+                    enemies.splice(i, 1); player.hp--; player.invuln = 60; updateBoard(); playSound('hit');
+                    if(player.hp <= 0) { triggerGameOver(); return; } continue;
+                }
                 for(let j=bullets.length-1; j>=0; j--) {
                     if(bullets[j].x < enemies[i].x+enemies[i].w && bullets[j].x+bullets[j].w > enemies[i].x && bullets[j].y < enemies[i].y+enemies[i].h && bullets[j].y+bullets[j].h > enemies[i].y) {
                         enemies.splice(i,1); bullets.splice(j,1); score += 10; updateBoard(); playSound('explode'); break;
