@@ -7,14 +7,10 @@
         :root { --bg: #f8f9fa; --text: #333; --canvas-bg: #fff; --border: #e9ecef; --btn-bg: #fff; }
         [data-theme="beige"] { --bg: #f5ebe0; --text: #4e3d30; --canvas-bg: #eddfd0; --border: #ddcbbb; --btn-bg: #eddfd0; }
         [data-theme="dark"] { --bg: #0d1117; --text: #c9d1d9; --canvas-bg: #161b22; --border: #30363d; --btn-bg: #21262d; }
-        
         body { text-align: center; background-color: var(--bg); color: var(--text); font-family: sans-serif; padding-top: 30px; margin:0; transition: 0.3s; }
-        canvas { background-color: var(--canvas-bg); display: block; margin: 20px auto; border: 4px solid var(--border); border-radius: 12px; }
+        canvas { background-color: var(--canvas-bg); display: block; margin: 20px auto; border: 4px solid var(--border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.05); }
         button { background-color: var(--btn-bg); color: var(--text); border: 1px solid var(--border); padding: 10px 20px; font-size: 1rem; border-radius: 8px; cursor: pointer; margin: 5px; }
-        button:hover { opacity: 0.8; }
         #score { color: #ff6b6b; font-size: 1.5rem; font-weight: bold; }
-        
-        /* 커스텀 모달 창 */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
         .modal-content { background: var(--canvas-bg); padding: 30px; border-radius: 16px; border: 2px solid var(--border); text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
     </style>
@@ -24,7 +20,6 @@
     <div id="score">SCORE: 0</div>
     <canvas id="gameCanvas" width="400" height="400"></canvas>
     <button onclick="location.href='../'">🏠 메인으로 가기</button>
-
     <div class="modal" id="overModal">
         <div class="modal-content">
             <h2 style="color:#ff6b6b; margin-top:0;">💥 GAME OVER!</h2>
@@ -33,46 +28,34 @@
             <button onclick="location.href='../'">🏠 메인 메뉴</button>
         </div>
     </div>
-
     <script>
         const savedTheme = localStorage.getItem('minig-theme');
         if (savedTheme && savedTheme !== 'white') document.documentElement.setAttribute('data-theme', savedTheme);
-
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         function playSound(type) {
             try {
                 const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.connect(gain); gain.connect(audioCtx.destination); const now = audioCtx.currentTime;
                 if(type === 'eat') {
-                    osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.1);
-                    gain.gain.setValueAtTime(0.1, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.15);
-                    osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+                    osc.type = 'square'; osc.frequency.setValueAtTime(523.25, now); osc.frequency.exponentialRampToValueAtTime(1046.5, now + 0.08);
+                    gain.gain.setValueAtTime(0.04, now); gain.gain.linearRampToValueAtTime(0, now + 0.08); osc.start(now); osc.stop(now + 0.08);
                 } else if(type === 'over') {
-                    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, audioCtx.currentTime); osc.frequency.linearRampToValueAtTime(40, audioCtx.currentTime + 0.4);
-                    gain.gain.setValueAtTime(0.2, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.4);
-                    osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+                    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(180, now); osc.frequency.linearRampToValueAtTime(40, now + 0.4);
+                    gain.gain.setValueAtTime(0.15, now); gain.gain.linearRampToValueAtTime(0, now + 0.4); osc.start(now); osc.stop(now + 0.4);
                 }
             } catch(e){}
         }
-
         const canvas = document.getElementById("gameCanvas"); const ctx = canvas.getContext("2d");
         const grid = 20; let count = 0; let score = 0; let isOver = false; let gameId = null;
         let snake = { x: 160, y: 160, dx: grid, dy: 0, cells: [{x: 160, y: 160}], maxCells: 4 };
         let apple = { x: 320, y: 320 };
-
         function getRandomInt(min, max) { return Math.floor(Math.random() * (max - min)) + min; }
-
         function loop() {
-            if (isOver) return;
-            gameId = requestAnimationFrame(loop);
-            if (++count < 8) return;
-            count = 0;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (isOver) return; gameId = requestAnimationFrame(loop);
+            if (++count < 8) return; count = 0; ctx.clearRect(0, 0, canvas.width, canvas.height);
             snake.x += snake.dx; snake.y += snake.dy;
             if (snake.x < 0 || snake.x >= canvas.width || snake.y < 0 || snake.y >= canvas.height) triggerGameOver();
-            snake.cells.unshift({x: snake.x, y: snake.y});
-            if (snake.cells.length > snake.maxCells) snake.cells.pop();
-
+            snake.cells.unshift({x: snake.x, y: snake.y}); if (snake.cells.length > snake.maxCells) snake.cells.pop();
             ctx.fillStyle = '#ff6b6b'; ctx.beginPath(); ctx.arc(apple.x+10, apple.y+10, 8, 0, 2*Math.PI); ctx.fill();
             ctx.fillStyle = '#4dadf7';
             snake.cells.forEach(function(cell, index) {
@@ -87,21 +70,17 @@
                 }
             });
         }
-
         function triggerGameOver() {
             isOver = true; cancelAnimationFrame(gameId); playSound('over');
             document.getElementById("finalScore").innerText = "최종 점수: " + score + "점";
             document.getElementById("overModal").style.display = "flex";
         }
-
         function restart() {
             document.getElementById("overModal").style.display = "none";
             score = 0; document.getElementById("score").innerText = "SCORE: 0";
             snake.x = 160; snake.y = 160; snake.cells = [{x: 160, y: 160}]; snake.maxCells = 4; snake.dx = grid; snake.dy = 0;
-            apple.x = getRandomInt(0, 20) * grid; apple.y = getRandomInt(0, 20) * grid;
-            isOver = false; loop();
+            apple.x = getRandomInt(0, 20) * grid; apple.y = getRandomInt(0, 20) * grid; isOver = false; loop();
         }
-
         document.addEventListener('keydown', function(e) {
             if (e.key === 'ArrowLeft' && snake.dx === 0) { snake.dx = -grid; snake.dy = 0; }
             else if (e.key === 'ArrowUp' && snake.dy === 0) { snake.dy = -grid; snake.dx = 0; }
