@@ -59,9 +59,13 @@ function collisionDetection() {
             let b = bricks[c][r];
             if(b.status === 1) {
                 allCleared = false;
-                if(isBallLaunched && x > b.x && x < b.x + brickWidth && y > b.y && y < b.y + brickHeight) {
-                    dy = -dy; b.status = 0; score += 10; updateStatus(); playSound('hit_brick');
+                if(isBallLaunched && x + ballRadius > b.x && x - ballRadius < b.x + brickWidth && y + ballRadius > b.y && y - ballRadius < b.y + brickHeight) {
+                    b.status = 0; score += 10; updateStatus(); playSound('hit_brick');
                     if(b.item > 0) items.push({ x: b.x + brickWidth / 2, y: b.y + brickHeight, type: b.item });
+                    let overlapX = Math.min(x + ballRadius - b.x, b.x + brickWidth - (x - ballRadius));
+                    let overlapY = Math.min(y + ballRadius - b.y, b.y + brickHeight - (y - ballRadius));
+                    if (overlapX < overlapY) { dx = -dx; x += dx > 0 ? overlapX : -overlapX; } else { dy = -dy; y += dy > 0 ? overlapY : -overlapY; }
+                    return;
                 }
             }
         }
