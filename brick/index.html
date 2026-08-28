@@ -2,119 +2,36 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>미니지 - 벽돌깨기</title>
     <style>
         :root { --bg: #f8f9fa; --text: #333; --canvas-bg: #fff; --border: #e9ecef; --btn-bg: #fff; }
         [data-theme="beige"] { --bg: #f5ebe0; --text: #4e3d30; --canvas-bg: #eddfd0; --border: #ddcbbb; --btn-bg: #eddfd0; }
         [data-theme="dark"] { --bg: #0d1117; --text: #c9d1d9; --canvas-bg: #161b22; --border: #30363d; --btn-bg: #21262d; }
-        
-        body { text-align: center; background-color: var(--bg); color: var(--text); font-family: sans-serif; padding-top: 30px; margin:0; transition: 0.3s; }
-        canvas { background-color: var(--canvas-bg); display: block; margin: 20px auto; border: 4px solid var(--border); border-radius: 12px; }
+        body { text-align: center; background-color: var(--bg); color: var(--text); font-family: 'Malgun Gothic', sans-serif; padding-top: 20px; margin:0; transition: 0.3s; }
+        canvas { background-color: var(--canvas-bg); display: block; margin: 15px auto; border: 4px solid var(--border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.05); }
         button { background-color: var(--btn-bg); color: var(--text); border: 1px solid var(--border); padding: 10px 20px; font-size: 1rem; border-radius: 8px; cursor: pointer; margin:5px; }
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
+        #status-board { font-size: 1.2rem; font-weight: bold; margin-bottom: 5px; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 10; }
         .modal-content { background: var(--canvas-bg); padding: 30px; border-radius: 16px; border: 2px solid var(--border); text-align: center; }
     </style>
 </head>
 <body>
-    <h1>🧱 벽돌깨기</h1>
-    <canvas id="gameCanvas" width="480" height="320"></canvas>
+    <h1>🧱 벽돌깨기 (아이템 모드)</h1>
+    <div id="status-board">❤️ 목숨: 3 | 🏆 점수: 0</div>
+    <canvas id="gameCanvas" width="480" height="340"></canvas>
     <button onclick="location.href='../'">🏠 메인으로 가기</button>
 
     <div class="modal" id="overModal">
         <div class="modal-content">
-            <h2 id="modalTitle" style="color:#ff6b6b; margin-top:0;">💥 GAME OVER</h2>
+            <h2 id="modalTitle" style="margin-top:0;">💥 GAME OVER</h2>
+            <p id="finalScore" style="font-size:1.1rem; font-weight:bold;"></p>
             <button onclick="restart()">🔄 다시 시작</button>
             <button onclick="location.href='../'">🏠 메인 메뉴</button>
         </div>
     </div>
 
-    <script>
-        const savedTheme = localStorage.getItem('minig-theme');
-        if (savedTheme && savedTheme !== 'white') document.documentElement.setAttribute('data-theme', savedTheme);
-
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        function playSound(f, d) {
-            try {
-                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-                osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.frequency.setValueAtTime(f, audioCtx.currentTime); gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + d); osc.start(); osc.stop(audioCtx.currentTime + d);
-            } catch(e){}
-        }
-
-        const canvas = document.getElementById("gameCanvas"); const ctx = canvas.getContext("2d");
-        let ballRadius = 8; let x, y, dx, dy;
-        let paddleHeight = 10; let paddleWidth = 75; let paddleX;
-        let rightPressed = false; let leftPressed = false;
-        let brickRowCount = 3; let brickColumnCount = 5; let brickWidth = 75; let brickHeight = 20; let brickPadding = 10; let brickOffsetTop = 30; let brickOffsetLeft = 30;
-        let bricks = []; let isOver = false; let gameId = null;
-
-        document.addEventListener("keydown", e => { if(e.key === "Right" || e.key === "ArrowRight") rightPressed = true; else if(e.key === "Left" || e.key === "ArrowLeft") leftPressed = true; });
-        document.addEventListener("keyup", e => { if(e.key === "Right" || e.key === "ArrowRight") rightPressed = false; else if(e.key === "Left" || e.key === "ArrowLeft") leftPressed = false; });
-
-        function initGame() {
-            x = canvas.width/2; y = canvas.height-30; dx = 3; dy = -3;
-            paddleX = (canvas.width-paddleWidth)/2;
-            for(let c=0; c<brickColumnCount; c++) { bricks[c] = []; for(let r=0; r<brickRowCount; r++) { bricks[c][r] = { x: 0, y: 0, status: 1 }; } }
-            isOver = false;
-        }
-
-        function collisionDetection() {
-            let allCleared = true;
-            for(let c=0; c<brickColumnCount; c++) {
-                for(let r=0; r<brickRowCount; r++) {
-                    let b = bricks[c][r];
-                    if(b.status === 1) {
-                        allCleared = false;
-                        if(x > b.x && x < b.x+brickWidth && y > b.y && y < b.y+brickHeight) {
-                            dy = -dy; b.status = 0; playSound(440, 0.1);
-                        }
-                    }
-                }
-            }
-            if(allCleared && !isOver) {
-                isOver = true; cancelAnimationFrame(gameId);
-                document.getElementById("modalTitle").innerText = "🎉 STAGE CLEAR!";
-                document.getElementById("modalTitle").style.color = "#4dadf7";
-                document.getElementById("overModal").style.display = "flex";
-            }
-        }
-
-        function draw() {
-            if (isOver) return;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            for(let c=0; c<brickColumnCount; c++) {
-                for(let r=0; r<brickRowCount; r++) {
-                    if(bricks[c][r].status === 1) {
-                        let brickX = (c*(brickWidth+brickPadding))+brickOffsetLeft;
-                        let brickY = (r*(brickHeight+brickPadding))+brickOffsetTop;
-                        bricks[c][r].x = brickX; bricks[c][r].y = brickY;
-                        ctx.fillStyle = "#ff6b6b"; ctx.fillRect(brickX, brickY, brickWidth, brickHeight);
-                    }
-                }
-            }
-            ctx.beginPath(); ctx.arc(x, y, ballRadius, 0, Math.PI*2); ctx.fillStyle = "#4dadf7"; ctx.fill(); ctx.closePath();
-            ctx.fillStyle = "#343a40"; ctx.fillRect(paddleX, canvas.height-paddleHeight, paddleWidth, paddleHeight);
-            
-            collisionDetection();
-            if(x + dx > canvas.width-ballRadius || x + dx < ballRadius) { dx = -dx; playSound(350, 0.05); }
-            if(y + dy < ballRadius) { dy = -dy; playSound(350, 0.05); }
-            else if(y + dy > canvas.height-ballRadius) {
-                if(x > paddleX && x < paddleX + paddleWidth) { dy = -dy; playSound(520, 0.08); }
-                else {
-                    isOver = true; cancelAnimationFrame(gameId); playSound(150, 0.3);
-                    document.getElementById("modalTitle").innerText = "💥 GAME OVER";
-                    document.getElementById("modalTitle").style.color = "#ff6b6b";
-                    document.getElementById("overModal").style.display = "flex";
-                    return;
-                }
-            }
-            if(rightPressed && paddleX < canvas.width-paddleWidth) paddleX += 5;
-            else if(leftPressed && paddleX > 0) paddleX -= 5;
-            x += dx; y += dy; gameId = requestAnimationFrame(draw);
-        }
-        function restart() { document.getElementById("overModal").style.display = "none"; initGame(); draw(); }
-        initGame(); draw();
-    </script>
+    <!-- 분리한 핵심 기능 스크립트를 불러옵니다 -->
+    <script src="./game.js"></script>
 </body>
 </html>
