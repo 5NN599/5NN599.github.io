@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>미니지 - 틱택토</title>
+    <style>
+        body { text-align: center; background-color: #f8f9fa; color: #333; font-family: sans-serif; padding-top: 30px; }
+        .board { display: grid; grid-template-columns: repeat(3, 100px); grid-gap: 5px; justify-content: center; margin: 20px auto; }
+        .cell { width: 100px; height: 100px; background-color: #fff; border: 2px solid #e9ecef; border-radius: 12px; font-size: 2.5rem; font-weight: bold; line-height: 100px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
+        .cell:hover { background-color: #f1f3f5; }
+        button { background-color: #ffffff; color: #333; border: 1px solid #ced4da; padding: 10px 20px; font-size: 1rem; border-radius: 8px; cursor: pointer; margin-top: 15px; }
+    </style>
+</head>
+<body>
+    <h1>❌ 틱택토 (vs AI)</h1>
+    <div id="status" style="font-size:1.2rem; margin-bottom:10px;">당신의 차례입니다 (O)</div>
+    <div class="board" id="board"></div>
+    <button onclick="location.href='../'">🏠 메인으로 가기</button>
+
+    <script>
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playClick(f) {
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.frequency.setValueAtTime(f, audioCtx.currentTime); gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.05); osc.start(); osc.stop(audioCtx.currentTime + 0.05);
+        }
+
+        const boardElement = document.getElementById("board");
+        let board = ["", "", "", "", "", "", "", "", ""];
+        
+        function checkWin(b, p) {
+            const winPatterns = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+            return winPatterns.some(pattern => pattern.every(index => b[index] === p));
+        }
+
+        function createBoard() {
+            boardElement.innerHTML = "";
+            board.forEach((val, i) => {
+                const cell = document.createElement("div"); cell.classList.add("cell"); cell.innerText = val;
+                cell.addEventListener("click", () => makeMove(i)); boardElement.appendChild(cell);
+            });
+        }
+
+        function makeMove(i) {
+            if (board[i] !== "" || checkWin(board, "O") || checkWin(board, "X")) return;
+            board[i] = "O"; playClick(523); createBoard();
+            if (checkWin(board, "O")) { document.getElementById("status").innerText = "당신의 승리!"; return; }
+            if (board.every(cell => cell !== "")) { document.getElementById("status").innerText = "무승부입니다!"; return; }
+            
+            document.getElementById("status").innerText = "컴퓨터가 생각 중...";
+            setTimeout(computerMove, 500);
+        }
+
+        function computerMove() {
+            let emptyIndices = board.map((val, i) => val === "" ? i : null).filter(val => val !== null);
+            if (emptyIndices.length === 0) return;
+            let randomIdx = emptyIndices[Math.floor(Math.random() * emptyIndices.length)];
+            board[randomIdx] = "X"; playClick(392); createBoard();
+            if (checkWin(board, "X")) { document.getElementById("status").innerText = "컴퓨터 승리!"; return; }
+            document.getElementById("status").innerText = "당신의 차례입니다 (O)";
+        }
+        createBoard();
+    </script>
+</body>
+</html>
