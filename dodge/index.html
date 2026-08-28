@@ -4,10 +4,16 @@
     <meta charset="UTF-8">
     <title>미니지 - 똥피하기</title>
     <style>
-        body { text-align: center; background-color: #f8f9fa; color: #333; font-family: sans-serif; padding-top: 30px; }
-        canvas { background-color: #ffffff; display: block; margin: 20px auto; border: 4px solid #e9ecef; border-radius: 12px; }
-        button { background-color: #ffffff; color: #333; border: 1px solid #ced4da; padding: 10px 20px; font-size: 1rem; border-radius: 8px; cursor: pointer; }
+        :root { --bg: #f8f9fa; --text: #333; --canvas-bg: #fff; --border: #e9ecef; --btn-bg: #fff; }
+        [data-theme="beige"] { --bg: #f5ebe0; --text: #4e3d30; --canvas-bg: #eddfd0; --border: #ddcbbb; --btn-bg: #eddfd0; }
+        [data-theme="dark"] { --bg: #0d1117; --text: #c9d1d9; --canvas-bg: #161b22; --border: #30363d; --btn-bg: #21262d; }
+        
+        body { text-align: center; background-color: var(--bg); color: var(--text); font-family: sans-serif; padding-top: 30px; margin:0; transition: 0.3s; }
+        canvas { background-color: var(--canvas-bg); display: block; margin: 20px auto; border: 4px solid var(--border); border-radius: 12px; }
+        button { background-color: var(--btn-bg); color: var(--text); border: 1px solid var(--border); padding: 10px 20px; font-size: 1rem; border-radius: 8px; cursor: pointer; margin:5px; }
         #score { color: #ff922b; font-size: 1.5rem; font-weight: bold; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
+        .modal-content { background: var(--canvas-bg); padding: 30px; border-radius: 16px; border: 2px solid var(--border); text-align: center; }
     </style>
 </head>
 <body>
@@ -16,28 +22,43 @@
     <canvas id="gameCanvas" width="400" height="400"></canvas>
     <button onclick="location.href='../'">🏠 메인으로 가기</button>
 
+    <div class="modal" id="overModal">
+        <div class="modal-content">
+            <h2 style="color:#ff922b; margin-top:0;">💥 GAME OVER!</h2>
+            <p id="finalScore" style="font-size:1.2rem; font-weight:bold;">최종 점수: 0점</p>
+            <button onclick="restart()">🔄 다시 시작</button>
+            <button onclick="location.href='../'">🏠 메인 메뉴</button>
+        </div>
+    </div>
+
     <script>
+        const savedTheme = localStorage.getItem('minig-theme');
+        if (savedTheme && savedTheme !== 'white') document.documentElement.setAttribute('data-theme', savedTheme);
+
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         function playSound(type) {
-            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            if(type==='score') {
-                osc.frequency.setValueAtTime(600, audioCtx.currentTime); gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.05); osc.start(); osc.stop(audioCtx.currentTime + 0.05);
-            } else if(type==='over') {
-                osc.type='sawtooth'; osc.frequency.setValueAtTime(200, audioCtx.currentTime); gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.3); osc.start(); osc.stop(audioCtx.currentTime + 0.3);
-            }
+            try {
+                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                if(type==='score') {
+                    osc.frequency.setValueAtTime(600, audioCtx.currentTime); gain.gain.setValueAtTime(0.03, audioCtx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.05); osc.start(); osc.stop(audioCtx.currentTime + 0.05);
+                } else if(type==='over') {
+                    osc.type='sawtooth'; osc.frequency.setValueAtTime(200, audioCtx.currentTime); gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.3); osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+                }
+            } catch(e){}
         }
 
         const canvas = document.getElementById("gameCanvas"); const ctx = canvas.getContext("2d");
         let player = { x: 185, y: 360, width: 30, height: 30, speed: 7 };
-        let poops = []; let score = 0; let keys = {};
+        let poops = []; let score = 0; let keys = {}; let isOver = false; let gameId = null;
 
         document.addEventListener("keydown", e => keys[e.key] = true);
         document.addEventListener("keyup", e => keys[e.key] = false);
 
         function update() {
+            if (isOver) return;
             if (keys["ArrowLeft"] && player.x > 0) player.x -= player.speed;
             if (keys["ArrowRight"] && player.x < canvas.width - player.width) player.x += player.speed;
 
@@ -53,10 +74,21 @@
                     continue;
                 }
                 if (poops[i].x < player.x + player.width && poops[i].x + poops[i].size > player.x && poops[i].y < player.y + player.height && poops[i].y + poops[i].size > player.y) {
-                    playSound('over'); alert("GAME OVER!\n최종 점수: " + score + "점");
-                    score = 0; poops = []; player.x = 185; document.getElementById("score").innerText = "SCORE: 0";
+                    triggerGameOver();
                 }
             }
+        }
+
+        function triggerGameOver() {
+            isOver = true; cancelAnimationFrame(gameId); playSound('over');
+            document.getElementById("finalScore").innerText = "최종 점수: " + score + "점";
+            document.getElementById("overModal").style.display = "flex";
+        }
+
+        function restart() {
+            document.getElementById("overModal").style.display = "none";
+            score = 0; poops = []; player.x = 185; document.getElementById("score").innerText = "SCORE: 0";
+            isOver = false; loop();
         }
 
         function draw() {
@@ -65,7 +97,7 @@
             ctx.fillStyle = "#875837"; poops.forEach(p => ctx.fillRect(p.x, p.y, p.size, p.size));
         }
 
-        function loop() { update(); draw(); requestAnimationFrame(loop); }
+        function loop() { update(); draw(); gameId = requestAnimationFrame(loop); }
         loop();
     </script>
 </body>
