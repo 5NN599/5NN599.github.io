@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>미니지 - 2048</title>
+    <style>
+        :root {
+            --bg: #f8f9fa; --text: #333;
+            --canvas-bg: #05070a; --border: #e9ecef;
+            --btn-bg: #fff;
+        }
+        [data-theme="dark"] {
+            --bg: #0d1117; --text: #c9d1d9;
+            --canvas-bg: #020305; --border: #30363d;
+            --btn-bg: #21262d;
+        }
+        [data-theme="beige"] {
+            --bg: #f5ebe0; --text: #4e3d30;
+            --canvas-bg: #14100c; --border: #ddcbbb;
+            --btn-bg: #eddfd0;
+        }
+        body {
+            background-color: var(--bg) !important;
+            color: var(--text) !important;
+            text-align: center; font-family: sans-serif;
+            padding-top: 15px; margin: 0; transition: 0.3s;
+        }
+        canvas {
+            background-color: var(--canvas-bg);
+            display: block; margin: 10px auto;
+            border: 4px solid var(--border); border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+        }
+        button {
+            background-color: var(--btn-bg) !important;
+            color: var(--text) !important;
+            border: 1px solid var(--border) !important;
+            padding: 8px 16px; font-size: 0.95rem;
+            border-radius: 8px; cursor: pointer; margin: 4px;
+            font-weight: bold;
+        }
+        #hud-panel {
+            font-size: 1.25rem; font-weight: bold;
+            color: #fcc419; margin-bottom: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔢 레트로 2048 퍼즐</h1>
+    <div id="hud-panel">🏆 Score: 0 | ⭐ Max: 2</div>
+    <canvas id="puzzleCanvas" width="320" height="320"></canvas>
+    <div>
+        <button onclick="location.href='../'">🏠 오락실 메인</button>
+    </div>
+    <script>
+        // 1. 최상단 실시간 메인 오락실 CSS 변수 테마 완벽 동기화
+        const savedTheme = localStorage.getItem('minig-theme');
+        if (savedTheme && savedTheme !== 'white') {
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        }
+
+        // 🎵 2048 퍼즐 전용 주파수 오디오 엔진 빌드
+        let audioCtx = null;
+        function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+        function playSound(type) {
+            initAudio();
+            try {
+                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                osc.connect(gain); gain.connect(audioCtx.destination); const now = audioCtx.currentTime;
+                if (type === 'slide') { osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); osc.frequency.linearRampToValueAtTime(250, now + 0.04); gain.gain.setValueAtTime(0.008, now); gain.gain.linearRampToValueAtTime(0, now + 0.04); osc.start(now); osc.stop(now + 0.04); }
+                else if (type === 'merge') { osc.type = 'triangle'; osc.frequency.setValueAtTime(523, now); osc.frequency.setValueAtTime(783, now + 0.04); gain.gain.setValueAtTime(0.02, now); gain.gain.linearRampToValueAtTime(0, now + 0.08); osc.start(now); osc.stop(now + 0.08); }
+                else if (type === 'win') { osc.type = 'square'; osc.frequency.setValueAtTime(523, now); osc.frequency.setValueAtTime(659, now + 0.05); osc.frequency.setValueAtTime(783, now + 0.1); osc.frequency.setValueAtTime(1046, now + 0.15); gain.gain.setValueAtTime(0.02, now); gain.gain.linearRampToValueAtTime(0, now + 0.3); osc.start(now); osc.stop(now + 0.3); }
+                else if (type === 'over') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(180, now); osc.frequency.linearRampToValueAtTime(40, now + 0.4); gain.gain.setValueAtTime(0.08, now); gain.gain.linearRampToValueAtTime(0, now + 0.4); osc.start(now); osc.stop(now + 0.4); }
+            } catch (e) {}
+        }
+
+        const canvas = document.getElementById('puzzleCanvas');
+        const ctx = canvas.getContext('2d');
+        const SIZE = 4, CELL_SIZE = 80;
+        
+        let grid = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
+        let score = 0, maxTile = 2, winTriggered = false;
+
+        const COLORS = {
+            0: "#151b22", 2: "#343a40", 4: "#495057", 8: "#e8590c",
+            16: "#f76707", 32: "#ff922b", 64: "#ffc078", 128: "#fab005",
+            256: "#fcc419", 512: "#ffd43b", 1024: "#74b816", 2048: "#2b8a3e"
+        };
+
+        function addRandomTile() {
+            let emptyCells = [];
+            for (let r = 0; r < SIZE; r++) {
+                for (let c = 0; c < SIZE; c++) { if (grid[r][c] === 0) emptyCells.push({ r, c }); }
+            }
+            if (emptyCells.length > 0) {
+                let cell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+                grid[cell.r][cell.c] = Math.random() < 0.9 ? 2 : 4;
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let r = 0; r < SIZE; r++) {
+                for (let c = 0; c < SIZE; c++) {
+                    let val = grid[r][c]; ctx.fillStyle = COLORS[val] || "#2b8a3e";
+                    ctx.fillRect(c * CELL_SIZE + 4, r * CELL_SIZE + 4, CELL_SIZE - 8, CELL_SIZE - 8);
+                    if (val > 0) {
+                        ctx.fillStyle = "#fff"; ctx.font = "bold 20px sans-serif";
+                        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                        ctx.fillText(val, c * CELL_SIZE + CELL_SIZE / 2, r * CELL_SIZE + CELL_SIZE / 2);
+                    }
+                }
+            }
+            document.getElementById('hud-panel').innerText = `🏆 Score: ${score} | ⭐ Max: ${maxTile}`;
+        }
+
+        function slide(row) {
+            let arr = row.filter(val => val); let missing = SIZE - arr.length;
+            let zeros = Array(missing).fill(0); return arr.concat(zeros);
+        }
+
+        function combine(row) {
+            for (let i = 0; i < SIZE - 1; i++) {
+                if (row[i] !== 0 && row[i] === row[i + 1]) {
+                    row[i] *= 2; score += row[i];
+                    if (row[i] > maxTile) maxTile = row[i];
+                    row[i + 1] = 0; playSound('merge');
+                }
+            }
+            return row;
+        }
+
+        function operate(row) {
+            row = slide(row); row = combine(row); row = slide(row); return row;
+        }
+
+        function rotateGrid() {
+            let nextGrid = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
+            for (let r = 0; r < SIZE; r++) {
+                for (let c = 0; c < SIZE; c++) { nextGrid[c][SIZE - 1 - r] = grid[r][c]; }
+            }
+            grid = nextGrid;
+        }
+
+        function move(dir) {
+            let past = JSON.stringify(grid);
+            for (let i = 0; i < dir; i++) rotateGrid();
+            for (let r = 0; r < SIZE; r++) grid[r] = operate(grid[r]);
+            for (let i = 0; i < (4 - dir) % 4; i++) rotateGrid();
+
+            if (past !== JSON.stringify(grid)) {
+                playSound('slide'); addRandomTile(); checkGameState(); draw();
+            }
+        }
+
+        function checkGameState() {
+            if (maxTile === 2048 && !winTriggered) {
+                winTriggered = true; playSound('win');
+                alert("🎉 축하합니다! 전설의 2048 타일을 결합해 냈습니다!");
+            }
+            for (let r = 0; r < SIZE; r++) {
+                for (let c = 0; c < SIZE; c++) {
+                    if (grid[r][c] === 0) return;
+                    if (r < SIZE - 1 && grid[r][c] === grid[r + 1][c]) return;
+                    if (c < SIZE - 1 && grid[r][c] === grid[r][c + 1]) return;
+                }
+            }
+            playSound('over'); alert(`💥 더 이상 결합할 타일이 없습니다!\n최종 점수: ${score}점`); restart();
+        }
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'ArrowLeft' || e.key === 'a') move(0);
+            if (e.key === 'ArrowDown' || e.key === 's') move(1);
+            if (e.key === 'ArrowRight' || e.key === 'd') move(2);
+            if (e.key === 'ArrowUp' || e.key === 'w') move(3);
+        });
+
+        function restart() {
+            grid = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
+            score = 0; maxTile = 2; winTriggered = false;
+            addRandomTile(); addRandomTile(); draw();
+        }
+
+        restart();
+    </script>
+</body>
+</html>
