@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>미니지 - 테트리스</title>
+    <style>
+        :root {
+            --bg: #f8f9fa; --text: #333;
+            --canvas-bg: #05070a; --border: #e9ecef;
+            --btn-bg: #fff;
+        }
+        [data-theme="dark"] {
+            --bg: #0d1117; --text: #c9d1d9;
+            --canvas-bg: #020305; --border: #30363d;
+            --btn-bg: #21262d;
+        }
+        [data-theme="beige"] {
+            --bg: #f5ebe0; --text: #4e3d30;
+            --canvas-bg: #14100c; --border: #ddcbbb;
+            --btn-bg: #eddfd0;
+        }
+        body {
+            background-color: var(--bg) !important;
+            color: var(--text) !important;
+            text-align: center; font-family: sans-serif;
+            padding-top: 15px; margin: 0; transition: 0.3s;
+        }
+        canvas {
+            background-color: var(--canvas-bg);
+            display: block; margin: 10px auto;
+            border: 4px solid var(--border); border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+        }
+        button {
+            background-color: var(--btn-bg) !important;
+            color: var(--text) !important;
+            border: 1px solid var(--border) !important;
+            padding: 8px 16px; font-size: 0.95rem;
+            border-radius: 8px; cursor: pointer; margin: 4px;
+            font-weight: bold;
+        }
+        #score-board {
+            font-size: 1.25rem; font-weight: bold;
+            color: #fcc419; margin-bottom: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧱 레트로 테트리스</h1>
+    <div id="score-board">🏆 Score: 0 | 🟥 Next: ?</div>
+    <canvas id="tetrisCanvas" width="240" height="400"></canvas>
+    <div>
+        <button onclick="location.href='../'">🏠 오락실 메인</button>
+    </div>
+    <script>
+        // 최상단 오락실 변수 테마 실시간 흡수 연동
+        const savedTheme = localStorage.getItem('minig-theme');
+        if (savedTheme && savedTheme !== 'white') {
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        }
+
+        const canvas = document.getElementById('tetrisCanvas');
+        const ctx = canvas.getContext('2d');
+        const ROW = 20, COL = 12, BLOCK_SIZE = 20;
+        
+        let board = Array.from({ length: ROW }, () => Array(COL).fill(0));
+        let score = 0, isGameOver = false, dropCounter = 0, lastTime = 0;
+
+        // 7가지 블록 모양과 고유의 이모지 그래픽 매핑
+        const SHAPES = [
+            [],
+            [[1,1,1,1]], // I (cyan)
+            [[1,1,1],[0,1,0]], // T (purple)
+            [[1,1,1],[1,0,0]], // L (orange)
+            [[1,1,1],[0,0,1]], // J (blue)
+            [[1,1,0],[0,1,1]], // Z (red)
+            [[0,1,1],[1,1,0]], // S (green)
+            [[1,1],[1,1]]      // O (yellow)
+        ];
+        const EMOJIS = ["⬛", "🟦", "🟪", "🟧", "🟫", "🟥", "🟩", "🟨"];
+
+        let playerPiece = { matrix: null, x: 0, y: 0, id: 0 };
+        let nextPieceId = Math.floor(Math.random() * 7) + 1;
+
+        function createPiece() {
+            let id = nextPieceId;
+            nextPieceId = Math.floor(Math.random() * 7) + 1;
+            playerPiece.matrix = SHAPES[id];
+            playerPiece.id = id;
+            playerPiece.y = 0;
+            playerPiece.x = Math.floor((COL - playerPiece.matrix[0].length) / 2);
+            
+            document.getElementById('score-board').innerText = `🏆 Score: ${score} | 🟥 Next: ${EMOJIS[nextPieceId]}`;
+            
+            if (collide()) {
+                isGameOver = true;
+                alert(`💥 GAME OVER!\n최종 점수: ${score}점`);
+                restart();
+            }
+        }
+
+        function collide() {
+            const m = playerPiece.matrix;
+            for (let r = 0; r < m.length; r++) {
+                for (let c = 0; r < m[r].length; c++) {
+                    if (m[r][c] !== 0) {
+                        let boardX = playerPiece.x + c;
+                        let boardY = playerPiece.y + r;
+                        if (boardX < 0 || boardX >= COL || boardY >= ROW) return true;
+                        if (boardY >= 0 && board[boardY][boardX] !== 0) return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        function merge() {
+            playerPiece.matrix.forEach((row, r) => {
+                row.forEach((value, c) => {
+                    if (value !== 0) {
+                        if (playerPiece.y + r >= 0) {
+                            board[playerPiece.y + r][playerPiece.x + c] = playerPiece.id;
+                        }
+                    }
+                });
+            });
+        }
+
+        function rotate() {
+            const m = playerPiece.matrix;
+            const n = Array.from({ length: m[0].length }, () => Array(m.length).fill(0));
+            for (let r = 0; r < m.length; r++) {
+                for (let c = 0; c < m[r].length; c++) {
+                    n[c][m.length - 1 - r] = m[r][c];
+                }
+            }
+            const oldX = playerPiece.x;
+            playerPiece.matrix = n;
+            if (collide()) { playerPiece.x = oldX; }
+        }
+
+        function clearLines() {
+            let linesCleared = 0;
+            for (let r = ROW - 1; r >= 0; r--) {
+                if (board[r].every(val => val !== 0)) {
+                    board.splice(r, 1);
+                    board.unshift(Array(COL).fill(0));
+                    linesCleared++;
+                    r++;
+                }
+            }
+            if (linesCleared > 0) {
+                score += linesCleared * 100;
+                document.getElementById('score-board').innerText = `🏆 Score: ${score} | 🟥 Next: ${EMOJIS[nextPieceId]}`;
+            }
+        }
+
+        function playerDrop() {
+            playerPiece.y++;
+            if (collide()) {
+                playerPiece.y--;
+                merge();
+                clearLines();
+                createPiece();
+            }
+            dropCounter = 0;
+        }
+
+        function draw() {
+            ctx.fillStyle = '#05070a'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // 보드판 그리기
+            board.forEach((row, r) => {
+                row.forEach((value, c) => {
+                    ctx.font = "18px sans-serif";
+                    ctx.fillText(EMOJIS[value], c * BLOCK_SIZE, (r + 1) * BLOCK_SIZE);
+                });
+            });
+            // 조작중인 블록 그리기
+            if (playerPiece.matrix) {
+                playerPiece.matrix.forEach((row, r) => {
+                    row.forEach((value, c) => {
+                        if (value !== 0) {
+                            ctx.font = "18px sans-serif";
+                            ctx.fillText(EMOJIS[playerPiece.id], (playerPiece.x + c) * BLOCK_SIZE, (playerPiece.y + r + 1) * BLOCK_SIZE);
+                        }
+                    });
+                });
+            }
+        }
+
+        function update(time = 0) {
+            if (isGameOver) return;
+            const deltaTime = time - lastTime; lastTime = time;
+            dropCounter += deltaTime;
+            if (dropCounter > 1000) { playerDrop(); }
+            draw();
+            gameId = requestAnimationFrame(update);
+        }
+
+        document.addEventListener('keydown', e => {
+            if (isGameOver) return;
+            if (e.key === 'ArrowLeft' || e.key === 'a') { playerPiece.x--; if(collide()) playerPiece.x++; }
+            if (e.key === 'ArrowRight' || e.key === 'd') { playerPiece.x++; if(collide()) playerPiece.x--; }
+            if (e.key === 'ArrowDown' || e.key === 's') { playerDrop(); }
+            if (e.key === 'ArrowUp' || e.key === 'w') { rotate(); }
+        });
+
+        function restart() {
+            board = Array.from({ length: ROW }, () => Array(COL).fill(0));
+            score = 0; isGameOver = false; dropCounter = 0;
+            createPiece(); update();
+        }
+
+        restart();
+    </script>
+</body>
+</html>
