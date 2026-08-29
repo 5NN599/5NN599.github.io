@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>지구 방위대 최후의 함선 '미니지호'</title>
+  <title>미니지 - 지구 방위대 최후의 함선 '미니지호'</title>
   <style>
     :root {
       --bg: #f8f9fa;
@@ -708,11 +708,9 @@
         }
       });
 
-      // 범위 미사일 폭발 피격 연산 (일반 적군 및 보스 포함)
       explosions.forEach((exp, expIdx) => {
         exp.radius += 3;
 
-        // 일반 적군 폭발 범위 감지
         enemies.forEach((e, eIdx) => {
           if (!exp.hitEnemies.has(e) && Math.hypot(e.x - exp.x, e.y - exp.y) < exp.radius + e.w / 2) {
             exp.hitEnemies.add(e);
@@ -728,10 +726,9 @@
           }
         });
 
-        // 보스 폭발 범위 감지 및 데미지 적용
         if (boss && !exp.hitBoss && Math.hypot(boss.x - exp.x, boss.y - exp.y) < exp.radius + boss.w / 2) {
           exp.hitBoss = true;
-          boss.hp -= exp.power * 2.5; // 미사일 폭발 광역 데미지
+          boss.hp -= exp.power * 2.5;
           createExplosion(boss.x, boss.y, 20);
           checkBossDefeat();
         }
