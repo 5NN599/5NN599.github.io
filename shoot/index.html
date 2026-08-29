@@ -524,7 +524,6 @@
       const pType = AI_PATTERNS[typeIdx];
       const enemyX = Math.random() * (CANVAS_WIDTH - 40) + 20;
 
-      // 화성 모드에서는 가끔 고속 사격 포탑(📡) 생성
       if (marsMode && Math.random() < 0.3) {
         enemies.push({
           x: enemyX,
@@ -572,7 +571,8 @@
         hp: hpVal,
         maxHp: hpVal,
         vx: 1.8,
-        shootTimer: 0
+        shootTimer: 0,
+        patternCount: 0
       };
     }
 
@@ -798,10 +798,10 @@
         e.time += 0.05;
 
         if (e.pType === 'turret') {
-          // 포탑 패턴: 천천히 이동하며 매우 빠른 주기로 플레이어 조준 사격
           e.y += e.speed;
           e.shootTimer++;
-          if (e.shootTimer > 25 && e.y > 20 && e.y < CANVAS_HEIGHT - 50) {
+          // 포탑 1.5배 빠른 탄환 발사 주기 (기존 25 -> 16)
+          if (e.shootTimer > 16 && e.y > 20 && e.y < CANVAS_HEIGHT - 50) {
             e.shootTimer = 0;
             const angle = Math.atan2(player.y - e.y, player.x - e.x);
             enemyBullets.push({
@@ -834,13 +834,14 @@
 
         if (e.pType !== 'turret') {
           e.shootTimer++;
-          if (e.shootTimer > 90 && e.y > 20 && e.y < CANVAS_HEIGHT - 100) {
+          // 잡몹 1.5배 빠른 탄환 발사 주기 (기존 90 -> 60)
+          if (e.shootTimer > 60 && e.y > 20 && e.y < CANVAS_HEIGHT - 100) {
             e.shootTimer = 0;
-            if (Math.random() < 0.35) {
+            if (Math.random() < 0.45) {
               const angle = Math.atan2(player.y - e.y, player.x - e.x);
               enemyBullets.push({
                 x: e.x, y: e.y + 10,
-                vx: Math.cos(angle) * 2.6, vy: Math.sin(angle) * 2.6,
+                vx: Math.cos(angle) * 2.8, vy: Math.sin(angle) * 2.8,
                 radius: 3.5
               });
             }
@@ -884,16 +885,49 @@
           if (boss.x < boss.w / 2 + 15 || boss.x > CANVAS_WIDTH - boss.w / 2 - 15) boss.vx *= -1;
 
           boss.shootTimer++;
-          if (boss.shootTimer > (marsMode ? 25 : 36)) {
+          const bossDelay = marsMode ? 22 : 30;
+
+          if (boss.shootTimer > bossDelay) {
             boss.shootTimer = 0;
-            const count = 7 + Math.min(6, level);
-            for (let i = 0; i < count; i++) {
-              const spreadAngle = (Math.PI / (count - 1)) * i;
-              enemyBullets.push({
-                x: boss.x, y: boss.y + 20,
-                vx: Math.cos(spreadAngle) * 2.8, vy: Math.sin(spreadAngle) * 2.8,
-                radius: 3.5
-              });
+            boss.patternCount++;
+
+            // 보스 패턴 순환 (0: 부채꼴 확산, 1: 플레이어 조준 3연사, 2: 360도 나선 회전 탄막)
+            const currentPattern = Math.floor(boss.patternCount / 2) % 3;
+
+            if (currentPattern === 0) {
+              // 패턴 1: 부채꼴 탄막
+              const count = 7 + Math.min(5, level);
+              for (let i = 0; i < count; i++) {
+                const spreadAngle = (Math.PI / (count - 1)) * i;
+                enemyBullets.push({
+                  x: boss.x, y: boss.y + 20,
+                  vx: Math.cos(spreadAngle) * 2.8, vy: Math.sin(spreadAngle) * 2.8,
+                  radius: 3.5
+                });
+              }
+            } else if (currentPattern === 1) {
+              // 패턴 2: 플레이어 위치 조준 3연사
+              const targetAngle = Math.atan2(player.y - boss.y, player.x - boss.x);
+              for (let i = -1; i <= 1; i++) {
+                const spread = targetAngle + (i * 0.22);
+                enemyBullets.push({
+                  x: boss.x, y: boss.y + 20,
+                  vx: Math.cos(spread) * 3.8, vy: Math.sin(spread) * 3.8,
+                  radius: 4.0
+                });
+              }
+            } else if (currentPattern === 2) {
+              // 패턴 3: 360도 나선 전방위 탄막
+              const count = 10;
+              const baseAngle = boss.patternCount * 0.5;
+              for (let i = 0; i < count; i++) {
+                const angle = baseAngle + (Math.PI * 2 / count) * i;
+                enemyBullets.push({
+                  x: boss.x, y: boss.y + 20,
+                  vx: Math.cos(angle) * 2.6, vy: Math.sin(angle) * 2.6,
+                  radius: 3.5
+                });
+              }
             }
           }
         }
@@ -934,7 +968,6 @@
                 playSound('explosion');
 
                 if (marsMode) {
-                  // 화성 기지 파괴 시 아이템 드롭 확률: [S](15% 낮음), [D-데미지](42.5% 보통), [D-실드](42.5% 보통)
                   const rand = Math.random();
                   if (rand < 0.15) {
                     items.push({ x: bldg.x, y: bldg.y, w: 22, h: 22, speed: 1.2, type: 'SUPER_CAPSULE', label: '[S]' });
