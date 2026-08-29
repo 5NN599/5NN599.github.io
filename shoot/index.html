@@ -5,6 +5,34 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>정통 수직 종스크롤 슈팅 게임 (Vertical Arcade Shooter)</title>
   <style>
+    :root {
+      --bg: #0b0c10;
+      --text: #ffffff;
+      --border: #00ffcc;
+      --btn-bg: #00ffcc;
+      --btn-text: #000000;
+      --hud-bg: rgba(10, 12, 18, 0.85);
+      --card-bg: rgba(15, 18, 26, 0.95);
+    }
+    [data-theme="white"], [data-theme="light"] {
+      --bg: #f4f5f7;
+      --text: #1a1a24;
+      --border: #0088cc;
+      --btn-bg: #0088cc;
+      --btn-text: #ffffff;
+      --hud-bg: rgba(240, 243, 248, 0.9);
+      --card-bg: rgba(255, 255, 255, 0.95);
+    }
+    [data-theme="beige"] {
+      --bg: #f5f0eb;
+      --text: #3d342b;
+      --border: #8c6d53;
+      --btn-bg: #8c6d53;
+      --btn-text: #ffffff;
+      --hud-bg: rgba(245, 240, 235, 0.9);
+      --card-bg: rgba(250, 246, 240, 0.95);
+    }
+
     * {
       box-sizing: border-box;
       user-select: none;
@@ -12,8 +40,8 @@
     body {
       margin: 0;
       padding: 0;
-      background-color: #0b0c10;
-      color: #ffffff;
+      background-color: var(--bg);
+      color: var(--text);
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       display: flex;
       flex-direction: column;
@@ -21,17 +49,19 @@
       justify-content: center;
       min-height: 100vh;
       overflow: hidden;
+      transition: background-color 0.2s ease, color 0.2s ease;
     }
     #game-container {
       position: relative;
-      border: 3px solid #00ffcc;
-      border-radius: 4px;
+      border: 3px solid var(--border);
+      border-radius: 6px;
       overflow: hidden;
-      background: #020205;
+      background: #05070a;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
     }
     canvas {
       display: block;
-      background: #020205;
+      background: #05070a;
     }
     .hud {
       position: absolute;
@@ -40,19 +70,37 @@
       right: 10px;
       display: flex;
       justify-content: space-between;
+      align-items: center;
       pointer-events: none;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: bold;
       z-index: 10;
+      background: var(--hud-bg);
+      padding: 6px 10px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      color: var(--text);
     }
     .hud-item {
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 3px;
+    }
+    .shop-btn-hud {
+      pointer-events: auto;
+      background: var(--btn-bg);
+      color: var(--btn-text);
+      border: none;
+      padding: 3px 8px;
+      font-size: 11px;
+      font-weight: bold;
+      cursor: pointer;
+      border-radius: 3px;
+      margin-left: 4px;
     }
     .boss-bar-container {
       position: absolute;
-      top: 34px;
+      top: 42px;
       left: 15%;
       width: 70%;
       height: 8px;
@@ -60,6 +108,8 @@
       border: 1px solid #ff0055;
       display: none;
       z-index: 10;
+      border-radius: 4px;
+      overflow: hidden;
     }
     .boss-bar {
       width: 100%;
@@ -72,7 +122,8 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(10, 12, 18, 0.92);
+      background: var(--card-bg);
+      color: var(--text);
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -82,37 +133,87 @@
       text-align: center;
     }
     h1 {
-      color: #00ffcc;
+      color: var(--border);
       margin: 0 0 10px 0;
       font-size: 20px;
       letter-spacing: 1px;
     }
     p {
-      color: #cccccc;
       margin: 5px 0;
       font-size: 13px;
       line-height: 1.4;
+      opacity: 0.9;
     }
     button {
-      margin-top: 16px;
-      padding: 8px 22px;
-      background: #00ffcc;
+      margin-top: 12px;
+      padding: 8px 20px;
+      background: var(--btn-bg);
+      color: var(--btn-text);
       border: none;
-      color: #000000;
       font-weight: bold;
-      font-size: 14px;
+      font-size: 13px;
       cursor: pointer;
-      border-radius: 2px;
-      transition: background 0.15s ease;
+      border-radius: 4px;
+      transition: opacity 0.15s ease;
     }
     button:hover {
-      background: #ffffff;
+      opacity: 0.85;
     }
     .controls-guide {
       margin-top: 12px;
-      background: rgba(255, 255, 255, 0.05);
+      background: rgba(0, 0, 0, 0.08);
+      padding: 10px 14px;
+      border: 1px dashed var(--border);
+      border-radius: 4px;
+    }
+
+    /* 강화 상점 모달 UI */
+    .shop-modal {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--card-bg);
+      color: var(--text);
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 30;
+      padding: 18px;
+    }
+    .shop-title {
+      font-size: 18px;
+      font-weight: bold;
+      color: var(--border);
+      margin-bottom: 6px;
+    }
+    .shop-points {
+      font-size: 14px;
+      font-weight: bold;
+      margin-bottom: 14px;
+    }
+    .shop-list {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .shop-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.1);
+      border: 1px solid var(--border);
       padding: 8px 12px;
-      border: 1px solid #333344;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    .shop-item-btn {
+      margin-top: 0;
+      padding: 5px 10px;
+      font-size: 11px;
     }
   </style>
 </head>
@@ -121,10 +222,11 @@
   <div id="game-container">
     <!-- UI HUD -->
     <div class="hud">
-      <div class="hud-item">SCORE: <span id="score-val" style="color: #00ffcc;">0</span></div>
-      <div class="hud-item">HP: <span id="hp-val" style="color: #ff3366;">100</span></div>
-      <div class="hud-item">KILLS: <span id="kills-val" style="color: #ffcc00;">0</span>/15</div>
-      <div class="hud-item">LV: <span id="level-val" style="color: #ffffff;">1</span></div>
+      <div class="hud-item">🏆 <span id="score-val">0</span></div>
+      <div class="hud-item">❤️ <span id="hp-val">100</span></div>
+      <div class="hud-item">🎯 <span id="kills-val">0</span>/15</div>
+      <div class="hud-item">💰 <span id="points-val">0</span>P</div>
+      <button class="shop-btn-hud" onclick="openShop()">🛒 상점</button>
     </div>
 
     <!-- 보스 체력바 -->
@@ -134,21 +236,56 @@
 
     <!-- 게임 시작 화면 -->
     <div id="start-screen" class="overlay-screen">
-      <h1>VERTICAL ARCADE SHOOTER</h1>
+      <h1>🚀 VERTICAL ARCADE SHOOTER</h1>
       <p>정통 수직 종스크롤 아케이드 슈팅</p>
       <div class="controls-guide">
         <p>🎮 <b>이동</b>: 방향키 또는 WASD</p>
         <p>🚀 <b>격발</b>: 스페이스바 (수직 상단 격발)</p>
-        <p>🛸 보스 및 전술 격납고 파괴 시 무기/무적 [S] 캡슐 드롭</p>
+        <p>🛸 보스 격파 시 무기 상자 🎁 드롭</p>
+        <p>🏬 전술 격납고 파괴 시 무적 [S] 캡슐 ⚡ 드롭</p>
       </div>
-      <button onclick="startGame()">출격하기</button>
+      <button onclick="startGame()">⚔️ 출격하기</button>
     </div>
 
     <!-- 게임 오버 / 클리어 화면 -->
     <div id="game-over-screen" class="overlay-screen" style="display: none;">
-      <h1 id="game-over-title">GAME OVER</h1>
+      <h1 id="game-over-title">💥 GAME OVER</h1>
       <p id="game-over-desc">함선이 파괴되었습니다.</p>
-      <button onclick="startGame()">다시 도전</button>
+      <button onclick="startGame()">🔄 다시 도전</button>
+    </div>
+
+    <!-- 강화 상점 모달 (#shopModal) -->
+    <div id="shopModal" class="shop-modal">
+      <div class="shop-title">🛒 전술 강화 연구소</div>
+      <div class="shop-points">보유 포인트: 💰 <span id="shop-points">0</span> P</div>
+      
+      <div class="shop-list">
+        <div class="shop-item">
+          <div>
+            <b>⚔️ 공격력 연구</b> (LV <span id="atk-lv">1</span>)
+            <div style="font-size:10px; opacity:0.8;">주포 데미지 및 화력 증대</div>
+          </div>
+          <button class="shop-item-btn" onclick="buyUpgrade('atk')">강화 (<span id="atk-cost">100</span>P)</button>
+        </div>
+
+        <div class="shop-item">
+          <div>
+            <b>🍀 확률 제어</b> (LV <span id="luck-lv">1</span>)
+            <div style="font-size:10px; opacity:0.8;">포인트 획득량 20% 증가</div>
+          </div>
+          <button class="shop-item-btn" onclick="buyUpgrade('luck')">강화 (<span id="luck-cost">150</span>P)</button>
+        </div>
+
+        <div class="shop-item">
+          <div>
+            <b>🛡️ 실드 확장</b> (LV <span id="shield-lv">1</span>)
+            <div style="font-size:10px; opacity:0.8;">무적 캡슐 지속시간 연장</div>
+          </div>
+          <button class="shop-item-btn" onclick="buyUpgrade('shield')">강화 (<span id="shield-cost">200</span>P)</button>
+        </div>
+      </div>
+
+      <button style="margin-top: 18px;" onclick="closeShop()">🚀 전투 복귀</button>
     </div>
 
     <!-- 캔버스 (360x500 수직 비율) -->
@@ -156,8 +293,11 @@
   </div>
 
   <script>
+    // 1. 웹사이트 테마(CSS Variable) 실시간 동기화
     const savedTheme = localStorage.getItem('minig-theme');
-    if (savedTheme && savedTheme !== 'white') { document.documentElement.setAttribute('data-theme', savedTheme); }
+    if (savedTheme && savedTheme !== 'white') { 
+      document.documentElement.setAttribute('data-theme', savedTheme); 
+    }
 
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
@@ -182,7 +322,7 @@
         osc.type = 'square';
         osc.frequency.setValueAtTime(750, now);
         osc.frequency.exponentialRampToValueAtTime(120, now + 0.07);
-        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.setValueAtTime(0.08, now);
         gain.gain.linearRampToValueAtTime(0, now + 0.07);
         osc.connect(gain);
         gain.connect(audioCtx.destination);
@@ -200,7 +340,7 @@
         filter.frequency.setValueAtTime(500, now);
         filter.frequency.linearRampToValueAtTime(30, now + 0.16);
         const gain = audioCtx.createGain();
-        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.setValueAtTime(0.18, now);
         gain.gain.linearRampToValueAtTime(0, now + 0.16);
         noise.connect(filter);
         filter.connect(gain);
@@ -221,19 +361,28 @@
       }
     }
 
-    // 게임 변수
+    // 게임 및 강화 변수
     let gameState = 'START';
+    let previousState = 'START';
     let score = 0;
+    let points = 0;
     let level = 1;
     let killCount = 0;
     const keys = {};
 
-    // 1. 아군 함선 (최하단 중앙 배치, 위쪽 방향 조준)
+    // 업그레이드 수치
+    const upgrades = {
+      atkLv: 1,
+      luckLv: 1,
+      shieldLv: 1
+    };
+
+    // 1. 아군 함선
     const player = {
       x: 180,
       y: 380,
-      width: 26,
-      height: 26,
+      width: 28,
+      height: 28,
       speed: 4.0,
       hp: 100,
       maxHp: 100,
@@ -254,7 +403,7 @@
 
     // 배경 입자 (수직 하강)
     const stars = [];
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < 50; i++) {
       stars.push({
         x: Math.random() * CANVAS_WIDTH,
         y: Math.random() * CANVAS_HEIGHT,
@@ -267,11 +416,11 @@
     const craters = [];
     function initCraters() {
       craters.length = 0;
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < 5; i++) {
         craters.push({
           x: Math.random() * CANVAS_WIDTH,
           y: Math.random() * CANVAS_HEIGHT - CANVAS_HEIGHT,
-          radius: Math.random() * 16 + 8,
+          radius: Math.random() * 14 + 8,
           speed: 1.0
         });
       }
@@ -287,7 +436,10 @@
     let hangar = null;
     let enemySpawnTimer = 0;
 
-    // 적 UFO 스폰 (상단 y: -40)
+    // 다양한 적 이모지 배열 (5종 변칙 패턴에 매핑)
+    const ENEMY_EMOJIS = ['🛸', '👾', '👽', '🤖', '🛸'];
+
+    // 적 스폰 (최상단 y: -40)
     function spawnEnemy() {
       if (boss) return;
       const type = Math.floor(Math.random() * 5);
@@ -297,10 +449,11 @@
         x: enemyX,
         baseX: enemyX,
         y: -40,
-        width: 24,
-        height: 24,
+        width: 28,
+        height: 28,
         type: type,
-        hp: type === 2 ? 3 : 1,
+        emoji: ENEMY_EMOJIS[type],
+        hp: type === 2 ? 4 : 1,
         speed: Math.random() * 1.2 + 1.5,
         vx: (Math.random() - 0.5) * 1.8,
         time: 0,
@@ -308,31 +461,33 @@
       });
     }
 
-    // 거대 보스 스폰
+    // 거대 보스 스폰 (🪐 전술 디스크 / 🛸 거대 전함 이모지)
     function spawnBoss() {
       boss = {
         x: CANVAS_WIDTH / 2,
         y: -80,
-        targetY: 50,
-        width: 64,
-        height: 44,
-        hp: 130,
-        maxHp: 130,
+        targetY: 60,
+        width: 60,
+        height: 60,
+        emoji: '🪐',
+        hp: 140,
+        maxHp: 140,
         vx: 1.6,
         shootTimer: 0
       };
     }
 
-    // 10레벨 달 기지 전술 격납고 건물 스폰
+    // 달 기지 전술 격납고 건물 스폰 (🏬 이모지)
     function spawnHangar() {
       hangar = {
         x: CANVAS_WIDTH / 2,
         y: -60,
-        targetY: 70,
-        width: 50,
-        height: 36,
-        hp: 60,
-        maxHp: 60
+        targetY: 80,
+        width: 44,
+        height: 44,
+        emoji: '🏬',
+        hp: 65,
+        maxHp: 65
       };
     }
 
@@ -378,21 +533,23 @@
       player.x = Math.max(player.width / 2, Math.min(CANVAS_WIDTH - player.width / 2, player.x));
       player.y = Math.max(player.height / 2, Math.min(CANVAS_HEIGHT - player.height / 2, player.y));
 
-      // 주포 [하단 -> 상단 방향(y축 마이너스)] 수직 격발
+      // 주포 격발 (공격력 연구 레벨 반영)
       const now = Date.now();
+      const baseDmg = 1 + (upgrades.atkLv - 1) * 0.4;
+
       if ((keys['Space'] || keys['Spacebar'] || keys['KeyZ']) && now - player.lastShot > player.shootDelay) {
         player.lastShot = now;
         playSound('shoot');
 
         if (player.powerLevel === 1) {
-          bullets.push({ x: player.x, y: player.y - 14, vx: 0, vy: -9.5, radius: 2.5, power: 1 });
+          bullets.push({ x: player.x, y: player.y - 14, vx: 0, vy: -9.5, radius: 2.5, power: baseDmg });
         } else if (player.powerLevel === 2) {
-          bullets.push({ x: player.x - 6, y: player.y - 10, vx: 0, vy: -9.5, radius: 2.5, power: 1 });
-          bullets.push({ x: player.x + 6, y: player.y - 10, vx: 0, vy: -9.5, radius: 2.5, power: 1 });
+          bullets.push({ x: player.x - 6, y: player.y - 10, vx: 0, vy: -9.5, radius: 2.5, power: baseDmg });
+          bullets.push({ x: player.x + 6, y: player.y - 10, vx: 0, vy: -9.5, radius: 2.5, power: baseDmg });
         } else {
-          bullets.push({ x: player.x, y: player.y - 14, vx: 0, vy: -10, radius: 3, power: 1 });
-          bullets.push({ x: player.x - 8, y: player.y - 8, vx: -1.8, vy: -9, radius: 2.5, power: 1 });
-          bullets.push({ x: player.x + 8, y: player.y - 8, vx: 1.8, vy: -9, radius: 2.5, power: 1 });
+          bullets.push({ x: player.x, y: player.y - 14, vx: 0, vy: -10, radius: 3, power: baseDmg * 1.1 });
+          bullets.push({ x: player.x - 8, y: player.y - 8, vx: -1.8, vy: -9, radius: 2.5, power: baseDmg });
+          bullets.push({ x: player.x + 8, y: player.y - 8, vx: 1.8, vy: -9, radius: 2.5, power: baseDmg });
         }
       }
 
@@ -411,10 +568,10 @@
         eb.y += eb.vy;
 
         const dist = Math.hypot(eb.x - player.x, eb.y - player.y);
-        if (dist < eb.radius + player.width / 3.2) {
+        if (dist < eb.radius + player.width / 3.0) {
           if (player.shieldTime <= 0) {
             player.hp -= eb.damage || 10;
-            createExplosion(player.x, player.y, '#ff3366', 8);
+            createExplosion(player.x, player.y, 16);
             if (player.hp <= 0) {
               player.hp = 0;
               gameState = 'GAMEOVER';
@@ -442,34 +599,28 @@
         spawnBoss();
       }
 
-      // 적 5종 변칙 패턴 (상단에서 하단 수직 벡터 연산)
+      // 적 5종 변칙 패턴 (상단->하단 수직 이동)
       enemies.forEach((enemy, index) => {
         enemy.time += 0.05;
 
         switch (enemy.type) {
-          case 0: // 직선 하강
-            enemy.y += enemy.speed;
-            break;
-          case 1: // Sine 곡선 하강
+          case 0: enemy.y += enemy.speed; break;
+          case 1: 
             enemy.y += enemy.speed * 0.9;
             enemy.x = enemy.baseX + Math.sin(enemy.time * 2.2) * 38;
             break;
-          case 2: // 헤비 직진 하강
-            enemy.y += enemy.speed * 0.65;
-            break;
-          case 3: // 추적 하강
+          case 2: enemy.y += enemy.speed * 0.65; break;
+          case 3:
             const dx = player.x - enemy.x;
             const dy = player.y - enemy.y;
             const angle = Math.atan2(dy, dx);
             enemy.x += Math.cos(angle) * enemy.speed * 0.85;
             enemy.y += Math.sin(angle) * enemy.speed * 0.85;
             break;
-          case 4: // 지그재그 하강
+          case 4:
             enemy.x += enemy.vx;
             enemy.y += enemy.speed * 1.1;
-            if (enemy.x < 15 || enemy.x > CANVAS_WIDTH - 15) {
-              enemy.vx *= -1;
-            }
+            if (enemy.x < 15 || enemy.x > CANVAS_WIDTH - 15) enemy.vx *= -1;
             break;
         }
 
@@ -490,17 +641,22 @@
           }
         }
 
-        // 잡몹 피격 처리 (잡몹 처치 시 아이템 상자 드롭 없음!)
+        // 잡몹 피격 처리 (잡몹 처치 시 아이템 상자 드롭 없음)
         bullets.forEach((b, bIndex) => {
           if (Math.hypot(b.x - enemy.x, b.y - enemy.y) < enemy.width / 2 + b.radius) {
             enemy.hp -= b.power;
             bullets.splice(bIndex, 1);
-            createExplosion(b.x, b.y, '#ffff55', 3);
+            createExplosion(b.x, b.y, 10);
 
             if (enemy.hp <= 0) {
-              createExplosion(enemy.x, enemy.y, '#ff6600', 10);
+              createExplosion(enemy.x, enemy.y, 22);
               playSound('explosion');
               score += (enemy.type + 1) * 100;
+              
+              // 확률 제어 연구에 따른 포인트 배율
+              const luckMult = 1 + (upgrades.luckLv - 1) * 0.2;
+              points += Math.floor(15 * luckMult);
+
               killCount++;
               if (killCount % 5 === 0) level++;
               enemies.splice(index, 1);
@@ -514,14 +670,12 @@
             player.hp -= 20;
             if (player.hp <= 0) gameState = 'GAMEOVER';
           }
-          createExplosion(enemy.x, enemy.y, '#ff0000', 12);
+          createExplosion(enemy.x, enemy.y, 24);
           playSound('explosion');
           enemies.splice(index, 1);
         }
 
-        if (enemy.y > CANVAS_HEIGHT + 40) {
-          enemies.splice(index, 1);
-        }
+        if (enemy.y > CANVAS_HEIGHT + 40) enemies.splice(index, 1);
       });
 
       // 거대 보스 처리
@@ -542,7 +696,7 @@
               const spreadAngle = (Math.PI / (count - 1)) * i;
               enemyBullets.push({
                 x: boss.x,
-                y: boss.y + 18,
+                y: boss.y + 20,
                 vx: Math.cos(spreadAngle) * 3,
                 vy: Math.sin(spreadAngle) * 3,
                 radius: 3.5,
@@ -552,21 +706,22 @@
           }
         }
 
-        // 보스 피격 (보스 파괴 시에만 확정 아이템 드롭!)
+        // 보스 피격 (보스 파괴 시 🎁 아이템 확정 드롭)
         bullets.forEach((b, bIndex) => {
           if (Math.hypot(b.x - boss.x, b.y - boss.y) < boss.width / 2) {
             boss.hp -= b.power;
             bullets.splice(bIndex, 1);
-            createExplosion(b.x, b.y, '#00ffff', 4);
+            createExplosion(b.x, b.y, 12);
 
             if (boss.hp <= 0) {
-              createExplosion(boss.x, boss.y, '#ff0055', 35);
+              createExplosion(boss.x, boss.y, 45);
               playSound('explosion');
               score += 5000;
+              points += Math.floor(300 * (1 + (upgrades.luckLv - 1) * 0.2));
 
-              // 보스 파괴 위치에 아이템 상자 확정 드롭
-              items.push({ x: boss.x - 10, y: boss.y, width: 16, height: 16, speed: 1.2, type: 'POWER' });
-              items.push({ x: boss.x + 10, y: boss.y, width: 16, height: 16, speed: 1.2, type: 'HEAL' });
+              // 보스 사망 위치에 선물 상자 🎁 아이템 확정 드롭
+              items.push({ x: boss.x - 12, y: boss.y, width: 22, height: 22, speed: 1.2, type: 'POWER', emoji: '🎁' });
+              items.push({ x: boss.x + 12, y: boss.y, width: 22, height: 22, speed: 1.2, type: 'HEAL', emoji: '💖' });
 
               boss = null;
               gameState = 'VICTORY';
@@ -575,7 +730,7 @@
         });
       }
 
-      // 10레벨 전술 격납고 건물 처리
+      // 달 기지 전술 격납고 건물 처리 (파괴 시 ⚡/S 무적 캡슐 드롭)
       if (hangar) {
         if (hangar.y < hangar.targetY) hangar.y += 1.0;
 
@@ -583,13 +738,13 @@
           if (Math.hypot(b.x - hangar.x, b.y - hangar.y) < hangar.width / 2) {
             hangar.hp -= b.power;
             bullets.splice(bIndex, 1);
-            createExplosion(b.x, b.y, '#ffaa00', 3);
+            createExplosion(b.x, b.y, 10);
 
             if (hangar.hp <= 0) {
-              createExplosion(hangar.x, hangar.y, '#00ffcc', 25);
+              createExplosion(hangar.x, hangar.y, 35);
               playSound('explosion');
-              // 격납고 파괴 시 무적 [S] 캡슐 드롭
-              items.push({ x: hangar.x, y: hangar.y, width: 16, height: 16, speed: 1.2, type: 'SHIELD' });
+              // 무적 [S] 캡슐 ⚡ 드롭
+              items.push({ x: hangar.x, y: hangar.y, width: 22, height: 22, speed: 1.2, type: 'SHIELD', emoji: '⚡' });
               hangar = null;
             }
           }
@@ -605,9 +760,10 @@
           if (item.type === 'POWER') {
             player.powerLevel = Math.min(3, player.powerLevel + 1);
           } else if (item.type === 'HEAL') {
-            player.hp = Math.min(player.maxHp, player.hp + 35);
+            player.hp = Math.min(player.maxHp, player.hp + 40);
           } else if (item.type === 'SHIELD') {
-            player.shieldTime = 300; // 약 5초간 무적
+            // 실드 확장 연구 레벨 반영
+            player.shieldTime = 300 + (upgrades.shieldLv - 1) * 90;
           }
           items.splice(index, 1);
         } else if (item.y > CANVAS_HEIGHT + 20) {
@@ -615,16 +771,17 @@
         }
       });
 
-      // 폭발 입자 연산
+      // 💥 이모지 폭발 효과 연산
       particles.forEach((p, index) => {
         p.x += p.vx;
         p.y += p.vy;
+        p.size += 0.8;
         p.alpha -= 0.04;
         if (p.alpha <= 0) particles.splice(index, 1);
       });
     }
 
-    // 메인 렌더링 (네온 및 그림자 효과 완전 제외, 단색 채우기)
+    // 메인 렌더링 (그림자 효과 제거, 이모지 중심으로 표현)
     function render() {
       ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
@@ -636,7 +793,7 @@
 
       // 2. 달 표면 크레이터
       if (level >= 10 || killCount >= 20) {
-        ctx.fillStyle = '#222233';
+        ctx.fillStyle = '#1c2230';
         craters.forEach(c => {
           ctx.beginPath();
           ctx.arc(c.x, c.y, c.radius, 0, Math.PI * 2);
@@ -644,48 +801,35 @@
         });
       }
 
-      // 3. 전술 격납고 건물
+      // 3. 전술 격납고 건물 (🏬 이모지)
       if (hangar) {
-        ctx.fillStyle = '#555577';
-        ctx.fillRect(hangar.x - hangar.width / 2, hangar.y - hangar.height / 2, hangar.width, hangar.height);
-        ctx.fillStyle = '#00ffcc';
-        ctx.fillRect(hangar.x - 8, hangar.y - 4, 16, 8);
+        ctx.font = '36px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(hangar.emoji, hangar.x, hangar.y);
       }
 
-      // 4. 아군 함선 (상단 솟구침)
+      // 4. 아군 함선 (일반: 🚀, 무적/불타는 상태: 🔥)
       ctx.save();
       ctx.translate(player.x, player.y);
 
-      // 무적 막 (단색 원형 선)
+      // 무적 서클 링
       if (player.shieldTime > 0) {
         ctx.strokeStyle = '#00ffff';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(0, 0, 20, 0, Math.PI * 2);
+        ctx.arc(0, 0, 22, 0, Math.PI * 2);
         ctx.stroke();
       }
 
-      // 기체 바디
-      ctx.fillStyle = '#00ffcc';
-      ctx.beginPath();
-      ctx.moveTo(0, -14);
-      ctx.lineTo(-12, 10);
-      ctx.lineTo(0, 5);
-      ctx.lineTo(12, 10);
-      ctx.closePath();
-      ctx.fill();
-
-      // 추진체 불꽃
-      ctx.fillStyle = '#ff9900';
-      ctx.beginPath();
-      ctx.moveTo(-4, 8);
-      ctx.lineTo(0, 8 + Math.random() * 6 + 2);
-      ctx.lineTo(4, 8);
-      ctx.closePath();
-      ctx.fill();
+      ctx.font = '28px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const playerEmoji = player.shieldTime > 0 ? '🔥' : '🚀';
+      ctx.fillText(playerEmoji, 0, 0);
       ctx.restore();
 
-      // 5. 아군 총알
+      // 5. 아군 총알 (단색 오락실 스타일 레이저)
       ctx.fillStyle = '#ffff00';
       bullets.forEach(b => {
         ctx.beginPath();
@@ -701,42 +845,20 @@
         ctx.fill();
       });
 
-      // 7. 적 UFO
+      // 7. 적군 이모지 (🛸, 👾, 👽, 🤖)
       enemies.forEach(e => {
-        ctx.save();
-        ctx.translate(e.x, e.y);
-
-        const colors = ['#ff4444', '#cc44ff', '#33ff66', '#ffaa00', '#00ccff'];
-        ctx.fillStyle = colors[e.type] || '#ff4444';
-
-        ctx.beginPath();
-        ctx.ellipse(0, 0, e.width / 2, e.height / 3.2, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(0, -e.height / 6, e.width / 4, Math.PI, 0);
-        ctx.fill();
-
-        ctx.restore();
+        ctx.font = '26px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(e.emoji, e.x, e.y);
       });
 
-      // 8. 거대 보스
+      // 8. 거대 보스 이모지 (🪐 / 🛸)
       if (boss) {
-        ctx.save();
-        ctx.translate(boss.x, boss.y);
-
-        ctx.fillStyle = '#ff0055';
-        ctx.beginPath();
-        ctx.ellipse(0, 0, boss.width / 2, boss.height / 2.5, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(0, 0, 12, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.restore();
+        ctx.font = '54px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(boss.emoji, boss.x, boss.y);
 
         document.getElementById('boss-bar-container').style.display = 'block';
         document.getElementById('boss-bar').style.width = Math.max(0, (boss.hp / boss.maxHp * 100)) + '%';
@@ -744,55 +866,44 @@
         document.getElementById('boss-bar-container').style.display = 'none';
       }
 
-      // 9. 드롭 아이템 상자 / [S] 무적 캡슐
+      // 9. 아이템 이모지 (선물상자 🎁, 무적 캡슐 ⚡, 체력 💖)
       items.forEach(item => {
-        if (item.type === 'SHIELD') {
-          ctx.fillStyle = '#00ffff';
-        } else if (item.type === 'POWER') {
-          ctx.fillStyle = '#ffdd00';
-        } else {
-          ctx.fillStyle = '#00ff66';
-        }
-        ctx.fillRect(item.x - item.width / 2, item.y - item.height / 2, item.width, item.height);
-
-        ctx.fillStyle = '#000000';
-        ctx.font = 'bold 10px monospace';
+        ctx.font = '22px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        const label = item.type === 'POWER' ? 'P' : item.type === 'HEAL' ? 'H' : 'S';
-        ctx.fillText(label, item.x, item.y);
+        ctx.fillText(item.emoji, item.x, item.y);
       });
 
-      // 10. 폭발 파티클
+      // 10. 💥 이모지 폭발 효과
       particles.forEach(p => {
         ctx.save();
-        ctx.globalAlpha = p.alpha;
-        ctx.fillStyle = p.color;
-        ctx.fillRect(p.x - p.radius, p.y - p.radius, p.radius * 2, p.radius * 2);
+        ctx.globalAlpha = Math.max(0, p.alpha);
+        ctx.font = `${Math.floor(p.size)}px "Segoe UI Emoji", sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('💥', p.x, p.y);
         ctx.restore();
       });
 
-      // UI 정보 반영
+      // UI HUD 정보 반영
       document.getElementById('score-val').innerText = score;
-      document.getElementById('level-val').innerText = level;
       document.getElementById('hp-val').innerText = Math.ceil(player.hp);
       document.getElementById('kills-val').innerText = killCount;
+      document.getElementById('points-val').innerText = points;
     }
 
-    function createExplosion(x, y, color, count = 8) {
-      for (let i = 0; i < count; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const speed = Math.random() * 2.8 + 1;
-        particles.push({
-          x: x,
-          y: y,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          color: color,
-          radius: Math.random() * 2 + 1,
-          alpha: 1
-        });
-      }
+    // 💥 이모지 폭발 생성 연산
+    function createExplosion(x, y, startSize = 18) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = Math.random() * 1.5 + 0.5;
+      particles.push({
+        x: x,
+        y: y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        size: startSize,
+        alpha: 1.0
+      });
     }
 
     // 메인 게임 루프
@@ -802,18 +913,76 @@
 
       if (gameState === 'GAMEOVER') {
         document.getElementById('game-over-screen').style.display = 'flex';
-        document.getElementById('game-over-title').innerText = 'GAME OVER';
-        document.getElementById('game-over-desc').innerText = `최종 점수: ${score} | 처치 수: ${killCount}`;
+        document.getElementById('game-over-title').innerText = '💥 GAME OVER';
+        document.getElementById('game-over-desc').innerText = `최종 점수: ${score} | 획득 포인트: 💰 ${points}P`;
       } else if (gameState === 'VICTORY') {
         document.getElementById('game-over-screen').style.display = 'flex';
-        document.getElementById('game-over-title').innerText = 'MISSION CLEAR!';
+        document.getElementById('game-over-title').innerText = '🎉 MISSION CLEAR!';
         document.getElementById('game-over-desc').innerText = `보스 파괴 완료! 최종 점수: ${score}`;
-      } else {
+      } else if (gameState === 'PLAYING') {
         requestAnimationFrame(gameLoop);
       }
     }
 
-    // 이벤트 리스너
+    // 강화 상점 모달 제어 함수
+    function openShop() {
+      if (gameState === 'PLAYING') {
+        previousState = 'PLAYING';
+        gameState = 'PAUSED';
+      } else {
+        previousState = gameState;
+      }
+      updateShopUI();
+      document.getElementById('shopModal').style.display = 'flex';
+    }
+
+    function closeShop() {
+      document.getElementById('shopModal').style.display = 'none';
+      if (previousState === 'PLAYING') {
+        gameState = 'PLAYING';
+        requestAnimationFrame(gameLoop);
+      }
+    }
+
+    function updateShopUI() {
+      document.getElementById('shop-points').innerText = points;
+      document.getElementById('atk-lv').innerText = upgrades.atkLv;
+      document.getElementById('atk-cost').innerText = upgrades.atkLv * 100;
+
+      document.getElementById('luck-lv').innerText = upgrades.luckLv;
+      document.getElementById('luck-cost').innerText = upgrades.luckLv * 150;
+
+      document.getElementById('shield-lv').innerText = upgrades.shieldLv;
+      document.getElementById('shield-cost').innerText = upgrades.shieldLv * 200;
+    }
+
+    function buyUpgrade(type) {
+      if (type === 'atk') {
+        const cost = upgrades.atkLv * 100;
+        if (points >= cost) {
+          points -= cost;
+          upgrades.atkLv++;
+          playSound('powerup');
+        }
+      } else if (type === 'luck') {
+        const cost = upgrades.luckLv * 150;
+        if (points >= cost) {
+          points -= cost;
+          upgrades.luckLv++;
+          playSound('powerup');
+        }
+      } else if (type === 'shield') {
+        const cost = upgrades.shieldLv * 200;
+        if (points >= cost) {
+          points -= cost;
+          upgrades.shieldLv++;
+          playSound('powerup');
+        }
+      }
+      updateShopUI();
+    }
+
+    // 키 리스너
     window.addEventListener('keydown', e => {
       keys[e.code] = true;
       if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
@@ -843,6 +1012,7 @@
 
       document.getElementById('start-screen').style.display = 'none';
       document.getElementById('game-over-screen').style.display = 'none';
+      document.getElementById('shopModal').style.display = 'none';
       requestAnimationFrame(gameLoop);
     }
   </script>
