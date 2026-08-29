@@ -1,0 +1,149 @@
+const savedTheme = localStorage.getItem('minig-theme'); if (savedTheme && savedTheme !== 'white') document.documentElement.setAttribute('data-theme', savedTheme);
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let bgmInterval = null, bgmStep = 0, bgmGain = null;
+function startBGM() {
+    if(bgmInterval) return; try { bgmGain = audioCtx.createGain(); bgmGain.gain.setValueAtTime(0.01, audioCtx.currentTime); bgmGain.connect(audioCtx.destination); } catch(e){}
+    bgmInterval = setInterval(() => {
+        if(gameState !== 'play' || isOver || document.getElementById("shopModal").style.display === "flex") return;
+        try {
+            const osc = audioCtx.createOscillator(); osc.connect(bgmGain); osc.type = 'triangle';
+            let f = (bgmStep % 4 === 0) ? 110 : (bgmStep % 4 === 2) ? 146 : 130;
+            if(bgmStep % 8 >= 6) f = 165; osc.frequency.setValueAtTime(f, audioCtx.currentTime);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.12); bgmStep++;
+        } catch(e){}
+    }, 180);
+}
+function playSound(type) {
+    try {
+        const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.connect(gain); gain.connect(audioCtx.destination); const now = audioCtx.currentTime;
+        if (type === 'laser') { osc.type = 'square'; osc.frequency.setValueAtTime(900, now); osc.frequency.exponentialRampToValueAtTime(300, now + 0.05); gain.gain.setValueAtTime(0.015, now); gain.gain.linearRampToValueAtTime(0, now + 0.05); osc.start(now); osc.stop(now + 0.05); }
+        else if (type === 'hit') { osc.type = 'triangle'; osc.frequency.setValueAtTime(220, now); gain.gain.setValueAtTime(0.05, now); gain.gain.linearRampToValueAtTime(0, now + 0.05); osc.start(now); osc.stop(now + 0.05); }
+        else if (type === 'explode') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(350, now); osc.frequency.linearRampToValueAtTime(50, now + 0.1); gain.gain.setValueAtTime(0.04, now); gain.gain.linearRampToValueAtTime(0, now + 0.1); osc.start(now); osc.stop(now + 0.1); }
+        else if (type === 'win') { osc.type = 'square'; osc.frequency.setValueAtTime(523, now); osc.frequency.setValueAtTime(659, now+0.06); osc.frequency.setValueAtTime(783, now+0.12); gain.gain.setValueAtTime(0.03, now); gain.gain.linearRampToValueAtTime(0, now+0.2); osc.start(now); osc.stop(now + 0.2); }
+        else if (type === 'over') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(180, now); osc.frequency.linearRampToValueAtTime(30, now + 0.4); gain.gain.setValueAtTime(0.12, now); gain.gain.linearRampToValueAtTime(0, now + 0.4); osc.start(now); osc.stop(now + 0.4); }
+        else if (type === 'talk') { osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); gain.gain.setValueAtTime(0.01, now); gain.gain.linearRampToValueAtTime(0, now + 0.03); osc.start(now); osc.stop(now + 0.03); }
+        else if (type === 'start') { osc.type = 'square'; osc.frequency.setValueAtTime(587, now); osc.frequency.setValueAtTime(880, now + 0.08); gain.gain.setValueAtTime(0.04, now); gain.gain.linearRampToValueAtTime(0, now + 0.12); osc.start(now); osc.stop(now + 0.12); }
+    } catch(e){}
+}
+const canvas = document.getElementById("gameCanvas"); const ctx = canvas.getContext("2d");
+let player = { x: 180, y: 380, w: 32, h: 32, speed: 6, hp: 10, maxHp: 10, invuln: 0, currentWeapon: '기본 레이저', dmg: 1, upgProbLv: 0 };
+let bullets = [], enemyBullets = [], enemies = [], stars = [], items = [], explosions = [];
+let score = 0, keys = {}, isOver = false, gameId = null, boss = null, bossSpawned = false, shopPoints = 0, bossLevel = 1;
+let gameState = 'story'; let storyIndex = 0; let textProgress = 0, pendingWeapon = null, enemiesKilled = 0;
+let upgCost = { dmg: 5, prob: 5, hp: 5 }, upgLv = { dmg: 1, prob: 1, hp: 10 };
+const storyTexts = [
+    "서기 2026년... 지구 방위대 최후의 함선 '미니지호'..",
+    "상점에서 확률 연구 시 커먼 확률은 줄어들고 레어/에픽/전설 확률이 일제히 상승한다!",
+    "다이아몬드 기동, 공중 루프 도약 등 잡몹들의 비행 전술 모션이 대폭 강화되었다.",
+    "격파할 때마다 진화하여 차원을 넘어 쳐들어오는 보스를 섬멸하라!",
+    "👉 [Space] 또는 화면을 터치해 우주 전쟁을 시작하세요!"
+];
+document.addEventListener("keydown", e => { keys[e.key] = true; if(gameState==='story' && e.key===" ") { if(textProgress<storyTexts[storyIndex].length) textProgress=storyTexts[storyIndex].length; else { storyIndex++; textProgress=0; if(storyIndex>=storyTexts.length) { gameState='play'; playSound('start'); startBGM(); } } } else if(gameState==='play' && e.key===" " && !isOver && document.getElementById("weaponModal").style.display !== "flex" && document.getElementById("shopModal").style.display !== "flex") { fireWeapon(); } });
+document.addEventListener("keyup", e => keys[e.key] = false);
+function openShop() { document.getElementById("shopModal").style.display = "flex"; updateShopUI(); }
+function closeShop() { document.getElementById("shopModal").style.display = "none"; keys[" "] = false; }
+function updateShopUI() { 
+    let c = Math.max(10, 50 - player.upgProbLv * 5); let r = 35 + player.upgProbLv * 3; let ep = 13 + player.upgProbLv * 1.5; let lg = 2 + player.upgProbLv * 0.5;
+    document.getElementById("shopPoints").innerText = `보유 포인트: ${shopPoints} P`; document.getElementById("strLv").innerText = `⚔️ 공격력 Lv.${upgLv.dmg} (+${upgLv.dmg-1})`; document.getElementById("probLv").innerText = `🍀 확률업 Lv.${upgLv.prob} (전설:${lg.toFixed(1)}%)`; document.getElementById("hpLv").innerText = `🛡️ 최대실드 Lv.${upgLv.hp}`; document.getElementById("dmgCostBtn").innerText = `${upgCost.dmg} P`; document.getElementById("probCostBtn").innerText = `${upgCost.prob} P`; document.getElementById("hpCostBtn").innerText = `${upgCost.hp} P`; 
+}
+function buyUpgrade(type) { if(shopPoints >= upgCost[type]) { shopPoints -= upgCost[type]; if(type === 'dmg') { upgLv.dmg++; player.dmg += 0.5; } else if(type === 'prob') { upgLv.prob++; player.upgProbLv++; } else if(type === 'hp') { upgLv.hp += 2; player.maxHp += 2; player.hp += 2; } upgCost[type] = Math.floor(upgCost[type] * 1.6); updateShopUI(); updateBoard(); playSound('start'); } }
+function getRandomWeapon() {
+    let rnd = Math.random() * 100; let cProb = Math.max(10, 50 - player.upgProbLv * 5); let rProb = 35 + player.upgProbLv * 3; let eProb = 13 + player.upgProbLv * 1.5;
+    if (rnd < cProb) return Math.random() < 0.5 ? { wp: '기본 레이저', grade: '🟢 [커먼]' } : { wp: '🔱 3갈래 확산탄', grade: '🟢 [커먼]' };
+    else if (rnd < cProb + rProb) { let r = Math.random(); if (r < 0.33) return { wp: '🚀 범위 미사일', grade: '🔵 [레어]' }; else if (r < 0.66) return { wp: '⚡ 관통 레이저', grade: '🔵 [레어]' }; else return { wp: '💣 기뢰 설치', grade: '🔵 [레어]' }; }
+    else if (rnd < cProb + rProb + eProb) return Math.random() < 0.5 ? { wp: '🛡️ 유도 드론', grade: '🟣 [에픽]' } : { wp: 'CNG 블랙홀', grade: '🟣 [에픽]' };
+    else return { wp: '💥 핵융합 폭탄', grade: '🟡 [전설]' };
+}
+function fireWeapon() {
+    if(player.currentWeapon === '기본 레이저') { bullets.push({ x: player.x + 14, y: player.y, w: 4, h: 10, speed: 9, type: 'normal' }); playSound('laser'); }
+    else if(player.currentWeapon === '🚀 범위 미사일') { bullets.push({ x: player.x + 10, y: player.y, w: 12, h: 16, speed: 7, type: 'missile' }); playSound('laser'); }
+    else if(player.currentWeapon === '💣 기뢰 설치') { bullets.push({ x: player.x + 14, y: player.y + player.h, w: 10, h: 10, speed: -1, type: 'mine' }); playSound('hit'); }
+    else if(player.currentWeapon === '⚡ 관통 레이저') { bullets.push({ x: player.x + 13, y: player.y, w: 6, h: 25, speed: 12, type: 'piece' }); playSound('laser'); }
+    else if(player.currentWeapon === '🔱 3갈래 확산탄') { bullets.push({ x: player.x + 14, y: player.y, w: 4, h: 8, speed: 8, dx: -2, type: 'normal' }); bullets.push({ x: player.x + 14, y: player.y, w: 4, h: 10, speed: 9, dx: 0, type: 'normal' }); bullets.push({ x: player.x + 14, y: player.y, w: 4, h: 8, speed: 8, dx: 2, type: 'normal' }); playSound('laser'); }
+    else if(player.currentWeapon === '🛡️ 유도 드론') { bullets.push({ x: player.x - 8, y: player.y + 10, w: 6, h: 6, speed: 7, type: 'drone' }); bullets.push({ x: player.x + player.w + 2, y: player.y + 10, w: 6, h: 6, speed: 7, type: 'drone' }); playSound('laser'); }
+    else if(player.currentWeapon === 'CNG 블랙홀') { bullets.push({ x: player.x + 10, y: player.y, w: 12, h: 12, speed: 4, type: 'blackhole' }); playSound('hit'); }
+    else if(player.currentWeapon === '💥 핵융합 폭탄') { explosions.push({ x: 200, y: 220, rad: 10, isNuke: true }); playSound('explode'); player.currentWeapon = '기본 레이저'; }
+}
+function askEquip(g, wp) { pendingWeapon = wp; document.getElementById("weaponDesc").innerText = `${g} ${wp}`; document.getElementById("weaponModal").style.display = "flex"; }
+function equipWeapon(yes) { if(yes && pendingWeapon) { player.currentWeapon = pendingWeapon; playSound('start'); } document.getElementById("weaponModal").style.display = "none"; pendingWeapon = null; keys[" "] = false; openShop(); }
+function initStars() { for(let i=0; i<25; i++) stars.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, size: 1+Math.random()*1.5, speed: 1+Math.random()*2 }); }
+function restart() { document.getElementById("overModal").style.display="none"; document.getElementById("weaponModal").style.display="none"; document.getElementById("shopModal").style.display="none"; player.x = 180; player.y = 380; player.hp = 10; player.maxHp = 10; player.currentWeapon = '기본 레이저'; player.dmg = 1; player.upgProbLv = 0; upgCost={dmg:5,prob:5,hp:5}; upgLv={dmg:1,prob:1,hp:10}; bullets = []; enemyBullets = []; enemies = []; items = []; explosions = []; boss = null; bossSpawned = false; score = 0; enemiesKilled = 0; bossLevel = 1; shopPoints = 0; isOver = false; gameState = 'story'; storyIndex = 0; textProgress = 0; updateBoard(); loop(); }
+function updateBoard() { const b = document.getElementById("board"); if(gameState==='story') b.innerText = "🌌 우주 상황실"; else if(bossSpawned && boss && boss.hp > 0) b.innerText = `🛡️ 실드: ${player.hp}/${player.maxHp} | 🏆 점수: ${score} | 👾 BOSS Lv.${bossLevel}: ${Math.ceil(boss.hp)} / ${bossLevel * 30}`; else b.innerText = `🛡️ 실드: ${player.hp}/${player.maxHp} | 🏆 점수: ${score} | 다음 습격까지 잡몹: ${Math.max(0, 15 - enemiesKilled)}마리`; }
+let frameCount = 0;
+function loop() {
+    if(isOver) return; gameId = requestAnimationFrame(loop); ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = "rgba(255,255,255,0.5)"; stars.forEach(s => { s.y += s.speed; if(s.y > canvas.height) { s.y = 0; s.x = Math.random()*canvas.width; } ctx.fillRect(s.x, s.y, s.size, s.size); });
+    if(gameState === 'story') {
+        updateBoard(); ctx.fillStyle = "rgba(0, 0, 0, 0.7)"; ctx.fillRect(20, 240, 360, 180); ctx.strokeStyle = "#00ffcc"; ctx.lineWidth = 2; ctx.strokeRect(20, 240, 360, 180); ctx.fillStyle = "#fff"; ctx.font = "15px sans-serif"; ctx.textAlign = "left"; let fText = storyTexts[storyIndex];
+        if(frameCount % 3 === 0 && textProgress < fText.length) { textProgress++; playSound('talk'); } frameCount++;
+        let lines = []; for (let i = 0; i < textProgress; i += 18) { lines.push(fText.slice(i, i + 18)); }
+        lines.forEach((line, idx) => { ctx.fillText(line, 40, 280 + (idx * 26)); }); ctx.save(); ctx.font = "60px sans-serif"; ctx.textAlign = "center"; ctx.fillText("🚀", 200, 140); ctx.restore(); return;
+    }
+    if(document.getElementById("weaponModal").style.display === "flex" || document.getElementById("shopModal").style.display === "flex") { keys = {}; return; }
+    if(player.invuln > 0) player.invuln--;
+    if((keys["ArrowLeft"] || keys["a"]) && player.x > 0) player.x -= player.speed; if((keys["ArrowRight"] || keys["d"]) && player.x < canvas.width - player.w) player.x += player.speed;
+    if((keys["ArrowUp"] || keys["w"]) && player.y > 0) player.y -= player.speed; if((keys["ArrowDown"] || keys["s"]) && player.y < canvas.height - player.h) player.y += player.speed;
+    if(player.invuln == 0 || Math.floor(player.invuln/4) % 2 == 0) { ctx.save(); ctx.font = "32px sans-serif"; ctx.fillText("🚀", player.x, player.y + 26); ctx.restore(); }
+    ctx.save(); ctx.fillStyle = "rgba(255, 255, 255, 0.15)"; ctx.fillRect(230, 8, 160, 28); ctx.strokeStyle = "#fcc419"; ctx.strokeRect(230, 8, 160, 28); ctx.fillStyle = "#fff"; ctx.font = "11px sans-serif"; ctx.textAlign = "center"; ctx.fillText(`장비: ${player.currentWeapon}`, 310, 26); ctx.restore();
+    for(let e=explosions.length-1; e>=0; e--) {
+        explosions[e].rad += explosions[e].isNuke ? 16 : 4; ctx.save(); ctx.beginPath(); ctx.arc(explosions[e].x, explosions[e].y, explosions[e].rad, 0, Math.PI*2); ctx.fillStyle = explosions[e].isNuke ? `rgba(255, 100, 0, ${1 - explosions[e].rad/400})` : `rgba(0, 255, 200, ${1 - explosions[e].rad/80})`; ctx.fill(); ctx.closePath(); ctx.restore();
+        if(explosions[e].isNuke && explosions[e].rad >= 400) explosions.splice(e, 1); else if(!explosions[e].isNuke && explosions[e].rad >= 80) explosions.splice(e, 1);
+    }
+    for(let i=bullets.length-1; i>=0; i--) {
+        bullets[i].y -= bullets[i].speed; if(bullets[i].dx) bullets[i].x += bullets[i].dx;
+        if(bullets[i].type === 'normal') { ctx.fillStyle = "#00ffcc"; ctx.fillRect(bullets[i].x, bullets[i].y, bullets[i].w, bullets[i].h); }
+        else if(bullets[i].type === 'missile') { ctx.fillStyle = "#ff922b"; ctx.fillRect(bullets[i].x, bullets[i].y, bullets[i].w, bullets[i].h); ctx.font="11px sans-serif"; ctx.fillText("🚀", bullets[i].x-2, bullets[i].y+12); }
+        else if(bullets[i].type === 'mine') { ctx.fillStyle = "#fcc419"; ctx.font="12px sans-serif"; ctx.fillText("💥", bullets[i].x-2, bullets[i].y); }
+        else if(bullets[i].type === 'piece') { ctx.fillStyle = "#ff00ff"; ctx.fillRect(bullets[i].x, bullets[i].y, bullets[i].w, bullets[i].h); }
+        else if(bullets[i].type === 'drone') { ctx.fillStyle = "#51cf66"; ctx.fillRect(bullets[i].x, bullets[i].y, bullets[i].w, bullets[i].h); if(enemies.length > 0 && enemies) { bullets[i].x += (enemies[0].x + 18 - bullets[i].x) * 0.12; bullets[i].y += (enemies[0].y + 16 - bullets[i].y) * 0.05; } else if(bossSpawned && boss && boss.hp > 0) { bullets[i].x += (boss.x + 32 - bullets[i].x) * 0.12; bullets[i].y += (boss.y + 22 - bullets[i].y) * 0.05; } else { bullets[i].y -= 4; } }
+        else if(bullets[i].type === 'blackhole') { ctx.fillStyle = "#748ffc"; ctx.font="14px sans-serif"; ctx.fillText("🌀", bullets[i].x-2, bullets[i].y); enemies.forEach(en => { if(Math.abs(en.x - bullets[i].x) < 100) { en.x += (bullets[i].x - en.x) * 0.04; en.y += (bullets[i].y - en.y) * 0.02; } }); }
+        if(bullets[i].y < -40 || bullets[i].y > canvas.height + 40 || bullets[i].x < -40 || bullets[i].x > canvas.width + 40) { bullets.splice(i, 1); continue; }
+    }
+    for(let i=enemyBullets.length-1; i>=0; i--) {
+        enemyBullets[i].y += enemyBullets[i].speed; if(enemyBullets[i].dx) enemyBullets[i].x += enemyBullets[i].dx; ctx.fillStyle = "#ff4d4d"; ctx.fillRect(enemyBullets[i].x, enemyBullets[i].y, enemyBullets[i].w, enemyBullets[i].h);
+        if(enemyBullets[i].y > canvas.height || enemyBullets[i].x < 0 || enemyBullets[i].x > canvas.width) { enemyBullets.splice(i, 1); continue; }
+        explosions.forEach(exp => { if(enemyBullets[i]) { let d=Math.sqrt((enemyBullets[i].x-exp.x)**2+(enemyBullets[i].y-exp.y)**2); if(d<=exp.rad) enemyBullets.splice(i,1); } }); if(!enemyBullets[i]) continue;
+        if(player.invuln == 0 && enemyBullets[i].x < player.x+player.w && enemyBullets[i].x+enemyBullets[i].w > player.x && enemyBullets[i].y < player.y+player.h && enemyBullets[i].y+enemyBullets[i].h > player.y) {
+            enemyBullets.splice(i, 1); player.hp--; player.invuln = 60; updateBoard(); playSound('hit'); if(player.hp <= 0) { triggerGameOver(); return; } continue;
+        }
+    }
+    for(let i=items.length-1; i>=0; i--) {
+        items[i].y += 1.5; ctx.save(); ctx.font="24px sans-serif"; ctx.fillText("🎁", items[i].x, items[i].y+20); ctx.restore();
+        if(items[i].x < player.x+player.w && items[i].x+24 > player.x && items[i].y < player.y+player.h && items[i].y+20 > player.y) { items.splice(i, 1); playSound('item'); player.hp = player.maxHp; updateBoard(); let res = getRandomWeapon(); askEquip(res.grade, res.wp); continue; }
+        if(items[i].y > canvas.height) { items.splice(i, 1); openShop(); }
+    }
+    if(enemiesKilled >= 15 && !bossSpawned) { bossSpawned = true; boss = { x: 160, y: -60, w: 64, h: 44, hp: 30 * bossLevel, maxHp: 30 * bossLevel, targetY: 50, speed: 1.8 + bossLevel*0.1, dx: 2, shotTimer: 0 }; updateBoard(); }
+    if(bossSpawned && boss) {
+        if(boss.hp > 0) {
+            if(boss.y < boss.targetY) boss.y += 1; 
+            else { boss.x += boss.dx; if(boss.x < 10 || boss.x > canvas.width - boss.w - 10) boss.dx = -boss.dx; boss.shotTimer++; 
+                if(boss.shotTimer % Math.max(15, 35 - bossLevel*2) === 0) { enemyBullets.push({ x: boss.x + boss.w/2 - 2, y: boss.y + boss.h, w: 6, h: 12, speed: 4.5 }); } 
+                if(boss.shotTimer % 70 === 0) { enemyBullets.push({ x: boss.x + 10, y: boss.y + boss.h, w: 6, h: 6, speed: 3.8, dx: -1.2 }); enemyBullets.push({ x: boss.x + boss.w/2, y: boss.y + boss.h, w: 6, h: 6, speed: 4.2, dx: 0 }); enemyBullets.push({ x: boss.x + boss.w - 10, y: boss.y + boss.h, w: 6, h: 6, speed: 3.5, dx: 1.2 }); } 
+                if(boss.shotTimer % 110 === 0) { for(let a=0; a<6; a++) { let ang = (a * Math.PI) / 3; enemyBullets.push({ x: boss.x + 32, y: boss.y + 22, w: 5, h: 5, speed: 2.2, dx: Math.cos(ang)*2.0 }); } } 
+                if(boss.shotTimer % 140 === 0) { enemyBullets.push({ x: boss.x + 5, y: boss.y + boss.h, w: 4, h: 10, speed: 3.0 }); enemyBullets.push({ x: boss.x + 30, y: boss.y + boss.h, w: 4, h: 10, speed: 3.0 }); enemyBullets.push({ x: boss.x + 55, y: boss.y + boss.h, w: 4, h: 10, speed: 3.0 }); } 
+            }
+            ctx.save(); ctx.font = "54px sans-serif"; ctx.fillText("🛸", boss.x, boss.y + 44); ctx.restore();
+            explosions.forEach(exp => { if(boss && boss.hp > 0) { let d=Math.sqrt((boss.x+32-exp.x)**2+(boss.y+22-exp.y)**2); if(d <= exp.rad + 32) { boss.hp -= (exp.isNuke ? player.dmg * 0.4 : player.dmg * 0.15); updateBoard(); if(boss.hp <= 0) { score += (150 * bossLevel); shopPoints += (5 + bossLevel * 5); enemiesKilled = 0; bossSpawned = false; playSound('win'); items.push({ x: boss.x + boss.w/2 - 12, y: boss.y }); bossLevel++; enemies = []; enemyBullets = []; updateBoard(); } } } });
+            if(boss && boss.hp > 0 && player.invuln == 0 && player.x < boss.x + boss.w && player.x + player.w > boss.x && player.y < boss.y + boss.h && player.y + player.h > boss.y) { player.hp = 0; triggerGameOver(); return; }
+        }
+        for(let j=bullets.length-1; j>=0; j--) { if(boss && boss.hp > 0 && bullets[j].x < boss.x+boss.w && bullets[j].x+bullets[j].w > boss.x && bullets[j].y < boss.y+boss.h && bullets[j].y+bullets[j].h > boss.y) { if(bullets[j].type === 'missile') explosions.push({ x: bullets[j].x, y: bullets[j].y, rad: 10 }); boss.hp -= player.dmg; if(bullets[j].type !== 'pierce') bullets.splice(j,1); updateBoard(); playSound('hit'); if(boss.hp <= 0) { score += (150 * bossLevel); shopPoints += (5 + bossLevel * 5); enemiesKilled = 0; bossSpawned = false; playSound('win'); items.push({ x: boss.x + boss.w/2 - 12, y: boss.y }); bossLevel++; enemies = []; enemyBullets = []; updateBoard(); } break; } }
+    }
+    if(!bossSpawned && Math.random() < 0.025) { let rType = Math.random(); let type = 'sine'; let spd = 2.2 + Math.random()*1.5; if(rType < 0.20) type = 'rush'; else if(rType < 0.40) type = 'track'; else if(rType < 0.65) type = 'diamond'; else if(rType < 0.85) type = 'loop'; if(type==='rush') spd = 4.5; enemies.push({ x: Math.random()*(canvas.width-38), y: -40, w: 36, h: 32, speed: spd, pType: type, sinTimer: Math.random()*10, shotTimer: Math.floor(Math.random()*60), dx: Math.random() < 0.5 ? -2 : 2, dirY: 1 }); }
+    for(let i=enemies.length-1; i>=0; i--) {
+        if(enemies[i].pType === 'diamond') { enemies[i].y += enemies[i].speed * 0.7; enemies[i].x += enemies[i].dx; if(enemies[i].x < 10 || enemies[i].x > canvas.width-45) enemies[i].dx = -enemies[i].dx; }
+        else if(enemies[i].pType === 'loop') { enemies[i].sinTimer += 0.06; enemies[i].y += enemies[i].speed * enemies[i].dirY; enemies[i].x += Math.cos(enemies[i].sinTimer)*1.8; if(enemies[i].y > 180 && enemies[i].dirY === 1) { enemies[i].dirY = -0.4; } if(enemies[i].y < 60 && enemies[i].dirY < 0) { enemies[i].dirY = 1; } }
+        else { enemies[i].y += enemies[i].speed; if(enemies[i].pType === 'sine') { enemies[i].sinTimer += 0.05; enemies[i].x += Math.sin(enemies[i].sinTimer) * 2.5; } else if(enemies[i].pType === 'track') { enemies[i].x += (player.x - enemies[i].x) * 0.015; } }
+        if(enemies[i].x < 5) enemies[i].x = 5; if(enemies[i].x > canvas.width-40) enemies[i].x = canvas.width-40;
+        enemies[i].shotTimer++; 
+        if(!bossSpawned && enemies[i].shotTimer >= 150 && enemies[i].y < player.y - 30) { 
+            let dx = player.x + 16 - (enemies[i].x + 18); let dy = player.y + 16 - (enemies[i].y + 32); let dist = Math.sqrt(dx*dx + dy*dy);
+            enemyBullets.push({ x: enemies[i].x + 16, y: enemies[i].y + 32, w: 5, h: 5, speed: 3.2, dx: (dx/dist) * 1.6 }); enemies[i].shotTimer = 0; 
+        }
+        ctx.save(); ctx.font = "36px sans-serif"; ctx.fillText("🛸", enemies[i].x, enemies[i].y + 30); ctx.restore(); if(enemies[i].y > canvas.height) { enemies.splice(i,1); continue; }
+        explosions.forEach(exp => { if(enemies[i]) { let d=Math.sqrt((enemies[i].x+18-exp.x)**2+(enemies[i].y+16-exp.y)**2); if(d <= exp.rad + 16) { enemies.splice(i,1); score += 10; enemiesKilled++; updateBoard(); playSound('explode'); } } }); if(!enemies[i]) continue;
+        if(player.invuln == 0 && enemies[i].x < player.x+player.w && enemies[i].x+enemies[i].w > player.x && enemies[i].y < player.y+player.h && enemies[i].y+enemies[i].h > player.y) { enemies.splice(i, 1); player.hp--; player.invuln = 60; updateBoard(); playSound('hit'); if(player.hp <= 0) { triggerGameOver(); return; } continue; }
+        for(let j=bullets.length-1; j>=0; j--) { if(bullets[j].x < enemies[i].x+enemies[i].w && bullets[j].x+bullets[j].w > enemies[i].x && bullets[j].y < enemies[i].y+enemies[i].h && bullets[j].y+bullets[j].h > enemies[i].y) { if(bullets[j].type === 'missile') explosions.push({ x: bullets[j].x, y: bullets[j].y, rad: 10 }); enemies.splice(i,1); if(bullets[j].type !== 'pierce') bullets.splice(j,1); score += 10; enemiesKilled++; updateBoard(); playSound('explode'); break; } }
+    }
+}
+function triggerGameOver() { isOver = true; cancelAnimationFrame(gameId); playSound('over'); document.getElementById("modalTitle").innerText = "💥 GAME OVER"; document.getElementById("finalScore").innerText = `최종 점수: ${score}점\n처치한 보스: ${bossLevel-1}기`; document.getElementById("overModal").style.display = "flex"; }
+initStars(); restart();
