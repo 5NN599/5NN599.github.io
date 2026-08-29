@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>미니지 - 테트리스</title>
+    <title>지구 방위대 최후의 함선 '미니지호' 오락실 - 테트리스</title>
     <style>
         :root {
             --bg: #f8f9fa; --text: #333;
@@ -52,8 +52,8 @@
     <div>
         <button onclick="location.href='../'">🏠 오락실 메인</button>
     </div>
+
     <script>
-        // 최상단 오락실 변수 테마 실시간 흡수 연동
         const savedTheme = localStorage.getItem('minig-theme');
         if (savedTheme && savedTheme !== 'white') {
             document.documentElement.setAttribute('data-theme', savedTheme);
@@ -64,18 +64,18 @@
         const ROW = 20, COL = 12, BLOCK_SIZE = 20;
         
         let board = Array.from({ length: ROW }, () => Array(COL).fill(0));
-        let score = 0, isGameOver = false, dropCounter = 0, lastTime = 0;
+        let score = 0, isGameOver = false, dropCounter = 0, lastTime = 0, gameId = null;
 
-        // 7가지 블록 모양과 고유의 이모지 그래픽 매핑
+        // 7가지 테트리스 블록 매트릭스 완벽 복원
         const SHAPES = [
             [],
-            [[1,1,1,1]], // I (cyan)
-            [[1,1,1],[0,1,0]], // T (purple)
-            [[1,1,1],[1,0,0]], // L (orange)
-            [[1,1,1],[0,0,1]], // J (blue)
-            [[1,1,0],[0,1,1]], // Z (red)
-            [[0,1,1],[1,1,0]], // S (green)
-            [[1,1],[1,1]]      // O (yellow)
+            [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]], // I
+            [[0,2,0],[2,2,2],[0,0,0]],                 // T
+            [[0,0,3],[3,3,3],[0,0,0]],                 // L
+            [[4,0,0],[4,4,4],[0,0,0]],                 // J
+            [[5,5,0],[0,5,5],[0,0,0]],                 // Z
+            [[0,6,6],[6,6,0],[0,0,0]],                 // S
+            [[7,7],[7,7]]                              // O
         ];
         const EMOJIS = ["⬛", "🟦", "🟪", "🟧", "🟫", "🟥", "🟩", "🟨"];
 
@@ -102,7 +102,7 @@
         function collide() {
             const m = playerPiece.matrix;
             for (let r = 0; r < m.length; r++) {
-                for (let c = 0; r < m[r].length; c++) {
+                for (let c = 0; c < m[r].length; c++) {
                     if (m[r][c] !== 0) {
                         let boardX = playerPiece.x + c;
                         let boardY = playerPiece.y + r;
@@ -128,15 +128,15 @@
 
         function rotate() {
             const m = playerPiece.matrix;
-            const n = Array.from({ length: m[0].length }, () => Array(m.length).fill(0));
+            const n = Array.from({ length: m.length }, () => Array(m.length).fill(0));
             for (let r = 0; r < m.length; r++) {
                 for (let c = 0; c < m[r].length; c++) {
                     n[c][m.length - 1 - r] = m[r][c];
                 }
             }
-            const oldX = playerPiece.x;
+            const oldMatrix = playerPiece.matrix;
             playerPiece.matrix = n;
-            if (collide()) { playerPiece.x = oldX; }
+            if (collide()) { playerPiece.matrix = oldMatrix; }
         }
 
         function clearLines() {
@@ -168,14 +168,12 @@
 
         function draw() {
             ctx.fillStyle = '#05070a'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-            // 보드판 그리기
             board.forEach((row, r) => {
                 row.forEach((value, c) => {
                     ctx.font = "18px sans-serif";
                     ctx.fillText(EMOJIS[value], c * BLOCK_SIZE, (r + 1) * BLOCK_SIZE);
                 });
             });
-            // 조작중인 블록 그리기
             if (playerPiece.matrix) {
                 playerPiece.matrix.forEach((row, r) => {
                     row.forEach((value, c) => {
@@ -192,7 +190,7 @@
             if (isGameOver) return;
             const deltaTime = time - lastTime; lastTime = time;
             dropCounter += deltaTime;
-            if (dropCounter > 1000) { playerDrop(); }
+            if (dropCounter > 800) { playerDrop(); }
             draw();
             gameId = requestAnimationFrame(update);
         }
@@ -208,6 +206,7 @@
         function restart() {
             board = Array.from({ length: ROW }, () => Array(COL).fill(0));
             score = 0; isGameOver = false; dropCounter = 0;
+            if (gameId) cancelAnimationFrame(gameId);
             createPiece(); update();
         }
 
