@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://sitemaps.org">
+  <!-- 1. 오락실 메인 대문 -->
+  <url>
+    <loc>https://github.io</loc>
+    <priority>1.0</loc>
+  </url>
+  <!-- 2. 지구 방위대 최후의 함선 슈팅게임 -->
+  <url>
+    <loc>https://github.ioshoot/</loc>
+    <priority>0.9</loc>
+  </url>
+  <!-- 3. 벽돌깨기 -->
+  <url>
+    <loc>https://github.iobrick/</loc>
+    <priority>0.8</loc>
+  </url>
+  <!-- 4. 카드게임 -->
+  <url>
+    <loc>https://github.iocard/</loc>
+    <priority>0.8</loc>
+  </url>
+  <!-- 5. 구글 공룡게임 -->
+  <url>
+    <loc>https://github.iodino/</loc>
+    <priority>0.8</loc>
+  </url>
+  <!-- 6. 닷지 똥피하기 -->
+  <url>
+    <loc>https://github.iododge/</loc>
+    <priority>0.8</loc>
+  </url>
+  <!-- 7. 가챠 장비 가동방 -->
+  <url>
+    <loc>https://github.iogacha/</loc>
+    <priority>0.8</loc>
+  </url>
+  <!-- 8. 점프게임 -->
+  <url>
+    <loc>https://github.iojump/</loc>
+    <priority>0.8</loc>
+  </url>
+  <!-- 9. 스네이크 뱀꼬리 게임 -->
+  <url>
+    <loc>https://github.iosnake/</loc>
+    <priority>0.8</loc>
+  </url>
+  <!-- 10. 틱택토 대전방 -->
+  <url>
+    <loc>https://github.iotictactoe/</loc>
+    <priority>0.8</loc>
+  </url>
+</urlset>
