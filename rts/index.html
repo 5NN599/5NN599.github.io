@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>미니지 - RTS</title></title>
+  <title>미니지 - RTS</title>
   <style>
     :root { --bg: #f8f9fa; --text: #333; --canvas-bg: #05070a; --border: #e9ecef; --btn-bg: #fff; }
     [data-theme="dark"] { --bg: #0d1117; --text: #c9d1d9; --canvas-bg: #020305; --border: #30363d; --btn-bg: #21262d; }
@@ -466,11 +466,11 @@
       let intervalCheck = 40;
       if (playerPower >= 14) {
         aiPaceRating = 'fast';
-        intervalCheck = 18; // 플레이어가 가파르게 성장하면 AI도 부랴부랴 빠르게 연산
-        resources.enemyMin += 0.4; // 보너스 자원 수급
+        intervalCheck = 18; 
+        resources.enemyMin += 0.4; 
       } else if (playerPower <= 5) {
         aiPaceRating = 'slow';
-        intervalCheck = 55; // 플레이어가 느리면 AI도 서두르지 않음
+        intervalCheck = 55; 
       } else {
         aiPaceRating = 'normal';
         intervalCheck = 35;
@@ -490,7 +490,6 @@
       const enemySquad = entities.filter(e => e.faction === 'enemy' && ['fighter','scout','tank','mech','cruiser','carrier'].includes(e.type));
       const playerThreats = entities.filter(e => e.faction === 'player' && Math.hypot(e.x - mainHQ.x, e.y - mainHQ.y) < 550);
 
-      // AI 위기/공격 상태 결정
       if (playerThreats.length > 0) {
         aiStateMode = 'emergency';
         enemySquad.forEach(u => {
@@ -539,7 +538,7 @@
         }
       }
 
-      // 5. 유닛 생산 (플레이어 속도에 따라 고티어 비중 확대)
+      // 5. 유닛 생산
       if (eBarracks) {
         let prodPoint = (aiPaceRating === 'fast' && eStarport) ? eStarport : (eFactory || eBarracks);
         
@@ -701,279 +700,287 @@
           }
         }
 
-        // 4. SCV 수리 및 채취 스마트 로직 (손상된 건물 1대만 수리)
+        // 4. SCV 수리 및 채취 스마트 로직 (손상된 건물 수리 포함)
         if (e.type === 'scv' && !e.isBuildingSCV) {
           const damagedBuilding = entities.find(b => 
             b.faction === e.faction && 
             ['hq','barracks','factory','starport','refinery','turret'].includes(b.type) &&
             !b.isUnderConstruction && b.hp < b.maxHp &&
-            Math.hypot(b.x - e.x, b.y - e.y) <= b.radius + 40
+            (!b.repairingBy || b.repairingBy === e.id)
           );
 
           if (damagedBuilding) {
-            // 해당 건물을 이미 수리 중인 다른 SCV가 있는지 확인 (최대 1대)
-            const otherRepairer = entities.find(s => s.type === 'scv' && s.id !== e.id && s.repairingTargetId === damagedBuilding.id);
-            if (!otherRepairer) {
-              e.repairingTargetId = damagedBuilding.id;
+            damagedBuilding.repairingBy = e.id;
+            let dist = Math.hypot(damagedBuilding.x - e.x, damagedBuilding.y - e.y);
+            if (dist > 25) {
+              e.moveTarget = { x: damagedBuilding.x, y: damagedBuilding.y };
+            } else {
               e.moveTarget = null;
-              damagedBuilding.hp = Math.min(damagedBuilding.maxHp, damagedBuilding.hp + 0.35);
-
+              damagedBuilding.hp = Math.min(damagedBuilding.maxHp, damagedBuilding.hp + 0.4);
               if (Math.random() < 0.2) {
                 particles.push({
-                  x: damagedBuilding.x + (Math.random() - 0.5) * damagedBuilding.radius,
-                  y: damagedBuilding.y + (Math.random() - 0.5) * damagedBuilding.radius,
-                  vx: (Math.random() - 0.5) * 1.5, vy: (Math.random() - 0.5) * 1.5,
-                  life: 10, text: '🔧'
+                  x: damagedBuilding.x + (Math.random() - 0.5) * 15,
+                  y: damagedBuilding.y + (Math.random() - 0.5) * 15,
+                  vx: 0, vy: -0.5, life: 10, text: '🔧'
                 });
               }
-              continue; // 수리 중일 땐 채취 안 함
+              if (damagedBuilding.hp >= damagedBuilding.maxHp) {
+                damagedBuilding.repairingBy = null;
+              }
+              continue;
             }
           } else {
-            e.repairingTargetId = null;
-          }
-
-          // 일반 채취 로직
-          const hq = entities.find(h => h.type === 'hq' && h.faction === e.faction && !h.isUnderConstruction);
-          if (!e.moveTarget) {
+            // 자원 채취 로직
             if (!e.cargo) {
-              let nodes = entities.filter(n => n.type === 'resource_min' || (n.type === 'resource_gas' && n.hasRefinery));
-              let closestNode = null;
-              let minDist = 999999;
-              nodes.forEach(n => {
-                let d = Math.hypot(n.x - e.x, n.y - e.y);
-                if (d < minDist) { minDist = d; closestNode = n; }
-              });
+              const nodeType = e.faction === 'enemy' ? 'resource_min' : 'resource_min';
+              const nearestNode = entities.filter(n => n.type === 'resource_min' || n.type === 'resource_gas').reduce((prev, curr) => {
+                return Math.hypot(curr.x - e.x, curr.y - e.y) < Math.hypot(prev.x - e.x, prev.y - e.y) ? curr : prev;
+              }, entities.find(n => n.type === 'resource_min'));
 
-              if (closestNode) {
-                if (minDist > 16) {
-                  let angle = Math.atan2(closestNode.y - e.y, closestNode.x - e.x);
-                  e.x += Math.cos(angle) * e.speed;
-                  e.y += Math.sin(angle) * e.speed;
+              if (nearestNode) {
+                let dist = Math.hypot(nearestNode.x - e.x, nearestNode.y - e.y);
+                if (dist > 25) {
+                  e.moveTarget = { x: nearestNode.x, y: nearestNode.y };
                 } else {
-                  e.cargo = closestNode.resType;
+                  e.cargo = nearestNode.type === 'resource_gas' ? 'gas' : 'min';
                 }
               }
             } else {
+              const hq = entities.find(h => h.type === 'hq' && h.faction === e.faction);
               if (hq) {
                 let dist = Math.hypot(hq.x - e.x, hq.y - e.y);
-                if (dist > 25) {
-                  let angle = Math.atan2(hq.y - e.y, hq.x - e.x);
-                  e.x += Math.cos(angle) * e.speed;
-                  e.y += Math.sin(angle) * e.speed;
+                if (dist > 35) {
+                  e.moveTarget = { x: hq.x, y: hq.y };
                 } else {
                   if (e.faction === 'player') {
-                    if (e.cargo === 'min') resources.min += 10;
-                    if (e.cargo === 'gas') resources.gas += 5;
+                    if (e.cargo === 'gas') resources.gas += 8;
+                    else resources.min += 8;
+                    updateUI();
                   } else {
-                    if (e.cargo === 'min') resources.enemyMin += 10;
-                    if (e.cargo === 'gas') resources.enemyGas += 5;
+                    resources.enemyMin += 8;
                   }
                   e.cargo = null;
-                  updateUI();
                 }
               }
             }
           }
         }
 
-        // 5. 유닛 이동 연산
-        if (['scv','fighter','scout','tank','mech','cruiser','carrier'].includes(e.type)) {
+        // 5. 전투 유닛 이동 및 공격 로직
+        if (['fighter','scout','tank','mech','cruiser','carrier'].includes(e.type)) {
           if (e.cooldown > 0) e.cooldown--;
 
-          let targets = entities.filter(t => t.faction !== 'neutral' && t.faction !== e.faction && !t.isUnderConstruction);
-          let closestTarget = null;
-          let minDist = 999999;
-
-          targets.forEach(t => {
-            let d = Math.hypot(t.x - e.x, t.y - e.y);
-            let priorityWeight = (t.type === 'turret' ? 0.7 : (t.type === 'hq' ? 0.8 : 1.0));
-            if (d * priorityWeight < minDist) { minDist = d * priorityWeight; closestTarget = t; }
-          });
-
-          let activeTarget = e.forcedTarget && entities.includes(e.forcedTarget) ? e.forcedTarget : closestTarget;
-
-          if (e.moveTarget) {
-            let distToMove = Math.hypot(e.moveTarget.x - e.x, e.moveTarget.y - e.y);
-            if (distToMove > 6) {
-              let angle = Math.atan2(e.moveTarget.y - e.y, e.moveTarget.x - e.x);
-              e.x += Math.cos(angle) * e.speed;
-              e.y += Math.sin(angle) * e.speed;
-            } else {
-              e.moveTarget = null;
-            }
-          } else if (e.type !== 'scv' && activeTarget && Math.hypot(activeTarget.x - e.x, activeTarget.y - e.y) <= e.attackRange && e.cooldown <= 0) {
-            bullets.push({
-              x: e.x, y: e.y,
-              targetX: activeTarget.x, targetY: activeTarget.y,
-              targetId: activeTarget.id, faction: e.faction,
-              speed: 7.5, damage: e.damage,
-              splash: e.splash, splashRadius: e.splashRadius
+          let target = e.forcedTarget;
+          if (!target || target.hp <= 0) {
+            let enemies = entities.filter(t => t.faction !== 'neutral' && t.faction !== e.faction && !t.isUnderConstruction);
+            let closest = null;
+            let minDist = 999999;
+            enemies.forEach(en => {
+              let d = Math.hypot(en.x - e.x, en.y - e.y);
+              if (d < minDist) { minDist = d; closest = en; }
             });
-            playSound('laser');
-            e.cooldown = e.cooldownMax;
+            target = closest;
+          }
+
+          if (target) {
+            let d = Math.hypot(target.x - e.x, target.y - e.y);
+            if (d <= e.attackRange) {
+              e.moveTarget = null;
+              if (e.cooldown <= 0) {
+                bullets.push({
+                  x: e.x, y: e.y, targetX: target.x, targetY: target.y,
+                  targetId: target.id, faction: e.faction, speed: 9,
+                  damage: e.damage, splash: e.splash, splashRadius: e.splashRadius
+                });
+                playSound('laser');
+                e.cooldown = e.cooldownMax;
+              }
+            } else {
+              e.moveTarget = { x: target.x, y: target.y };
+            }
+          }
+        }
+
+        // 6. 물리 이동 처리
+        if (e.moveTarget && e.speed > 0) {
+          let angle = Math.atan2(e.moveTarget.y - e.y, e.moveTarget.x - e.x);
+          e.x += Math.cos(angle) * e.speed;
+          e.y += Math.sin(angle) * e.speed;
+
+          if (Math.hypot(e.moveTarget.x - e.x, e.moveTarget.y - e.y) < 4) {
+            e.moveTarget = null;
+            if (e.forcedTarget) e.forcedTarget = null;
+          }
+        }
+
+        // 유닛 간 충돌 처리
+        for (let j = i - 1; j >= 0; j--) {
+          let other = entities[j];
+          let dist = Math.hypot(other.x - e.x, other.y - e.y);
+          let minDist = e.radius + other.radius;
+          if (dist < minDist && dist > 0) {
+            let overlap = (minDist - dist) / 2;
+            let angle = Math.atan2(e.y - other.y, e.x - other.x);
+            e.x += Math.cos(angle) * overlap;
+            e.y += Math.sin(angle) * overlap;
+            other.x -= Math.cos(angle) * overlap;
+            other.y -= Math.sin(angle) * overlap;
           }
         }
       }
 
-      // 탄환 연산
+      // 총알 업데이트
       for (let i = bullets.length - 1; i >= 0; i--) {
         let b = bullets[i];
-        let angle = Math.atan2(b.targetY - b.y, b.targetX - b.x);
+        let target = entities.find(en => en.id === b.targetId);
+        let tx = target ? target.x : b.targetX;
+        let ty = target ? target.y : b.targetY;
+
+        let angle = Math.atan2(ty - b.y, tx - b.x);
         b.x += Math.cos(angle) * b.speed;
         b.y += Math.sin(angle) * b.speed;
 
-        if (Math.hypot(b.targetX - b.x, b.targetY - b.y) < 8) {
-          if (b.splash) {
-            playSound('explode');
-            particles.push({ x: b.x, y: b.y, vx: 0, vy: 0, life: 12, text: '💥' });
-            entities.forEach(t => {
-              if (t.faction !== 'neutral' && t.faction !== b.faction) {
-                if (Math.hypot(t.x - b.x, t.y - b.y) <= b.splashRadius) {
-                  t.hp -= b.damage;
+        if (Math.hypot(tx - b.x, ty - b.y) < 10) {
+          if (target) {
+            target.hp -= b.damage;
+            if (b.splash) {
+              entities.forEach(en => {
+                if (en.faction !== 'neutral' && en.faction !== b.faction && Math.hypot(en.x - target.x, en.y - target.y) <= b.splashRadius) {
+                  en.hp -= b.damage * 0.5;
                 }
-              }
-            });
-          } else {
-            let target = entities.find(e => e.id === b.targetId);
-            if (target) target.hp -= b.damage;
+              });
+            }
           }
           bullets.splice(i, 1);
-          updateUI();
         }
       }
 
+      // 파티클 업데이트
       for (let i = particles.length - 1; i >= 0; i--) {
         let p = particles[i];
-        p.x += p.vx; p.y += p.vy; p.life--;
+        p.x += p.vx; p.y += p.vy;
+        p.life--;
         if (p.life <= 0) particles.splice(i, 1);
       }
     }
 
-    function renderMinimap() {
+    function drawMinimap() {
       const mmW = 140, mmH = 100;
       const mmX = VIEW_W - mmW - 10;
       const mmY = VIEW_H - mmH - 10;
 
-      ctx.fillStyle = 'rgba(10, 16, 26, 0.88)';
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
       ctx.fillRect(mmX, mmY, mmW, mmH);
-      ctx.strokeStyle = '#4dadf7';
-      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = '#495057';
+      ctx.lineWidth = 2;
       ctx.strokeRect(mmX, mmY, mmW, mmH);
 
-      entities.forEach(ent => {
-        const mx = mmX + (ent.x / WORLD_W) * mmW;
-        const my = mmY + (ent.y / WORLD_H) * mmH;
-        
-        if (ent.faction === 'player') ctx.fillStyle = '#51cf66';
-        else if (ent.faction === 'enemy') ctx.fillStyle = '#ff6b6b';
-        else ctx.fillStyle = '#fcc419';
-
-        const dotSize = (ent.type === 'hq' ? 4 : 2);
-        ctx.fillRect(mx - dotSize/2, my - dotSize/2, dotSize, dotSize);
+      entities.forEach(e => {
+        let mx = mmX + (e.x / WORLD_W) * mmW;
+        let my = mmY + (e.y / WORLD_H) * mmH;
+        ctx.fillStyle = e.faction === 'player' ? '#339af0' : (e.faction === 'enemy' ? '#ff6b6b' : '#fab005');
+        ctx.fillRect(mx - 1.5, my - 1.5, 3, 3);
       });
 
-      const vx = mmX + (camX / WORLD_W) * mmW;
-      const vy = mmY + (camY / WORLD_H) * mmH;
-      const vw = (VIEW_W / WORLD_W) * mmW;
-      const vh = (VIEW_H / WORLD_H) * mmH;
+      let viewRectX = mmX + (camX / WORLD_W) * mmW;
+      let viewRectY = mmY + (camY / WORLD_H) * mmH;
+      let viewRectW = (VIEW_W / WORLD_W) * mmW;
+      let viewRectH = (VIEW_H / WORLD_H) * mmH;
 
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 1;
-      ctx.strokeRect(vx, vy, vw, vh);
+      ctx.strokeRect(viewRectX, viewRectY, viewRectW, viewRectH);
     }
 
-    function render() {
+    function draw() {
       ctx.clearRect(0, 0, VIEW_W, VIEW_H);
 
       ctx.save();
       ctx.translate(-camX, -camY);
 
-      ctx.strokeStyle = '#111827'; ctx.lineWidth = 1;
-      for (let x = 0; x < WORLD_W; x += 100) {
+      // 그리드 배경 렌더링
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < WORLD_W; x += 60) {
         ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, WORLD_H); ctx.stroke();
       }
-      for (let y = 0; y < WORLD_H; y += 100) {
+      for (let y = 0; y < WORLD_H; y += 60) {
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(WORLD_W, y); ctx.stroke();
       }
 
-      bullets.forEach(b => {
-        ctx.fillStyle = b.faction === 'player' ? '#4dadf7' : '#ff6b6b';
-        ctx.beginPath(); ctx.arc(b.x, b.y, b.splash ? 4 : 3, 0, Math.PI * 2); ctx.fill();
-      });
-
+      // 엔티티 렌더링
       entities.forEach(e => {
-        if (selectedUnits.includes(e)) {
-          ctx.beginPath();
-          ctx.arc(e.x, e.y, e.radius + 4, 0, Math.PI * 2);
-          ctx.strokeStyle = '#51cf66'; ctx.lineWidth = 2; ctx.stroke();
-        }
-
-        ctx.font = `${e.radius * 1.5}px sans-serif`;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(e.emoji, e.x, e.y);
-
-        if (e.cargo) {
-          ctx.font = '11px sans-serif';
-          ctx.fillText('📦', e.x + 10, e.y - 10);
-        }
+        ctx.save();
+        ctx.translate(e.x, e.y);
 
         if (e.isUnderConstruction) {
-          const barW = e.radius * 2;
-          const barH = 5;
-          const barX = e.x - barW / 2;
-          const barY = e.y + e.radius + 4;
-          const progressRatio = Math.min(1, e.buildProgress / e.buildMaxTime);
-
-          ctx.fillStyle = 'rgba(0,0,0,0.7)';
-          ctx.fillRect(barX, barY, barW, barH);
-          ctx.fillStyle = '#fcc419';
-          ctx.fillRect(barX, barY, barW * progressRatio, barH);
-        } else if (e.productionQueue && e.productionQueue.length > 0) {
-          const barW = e.radius * 2;
-          const barH = 4;
-          const barX = e.x - barW / 2;
-          const barY = e.y + e.radius + 4;
-          const qItem = e.productionQueue[0];
-          const prodRatio = qItem.progress / qItem.maxTime;
-
-          ctx.fillStyle = 'rgba(0,0,0,0.7)';
-          ctx.fillRect(barX, barY, barW, barH);
-          ctx.fillStyle = '#4dadf7';
-          ctx.fillRect(barX, barY, barW * prodRatio, barH);
+          ctx.globalAlpha = 0.5;
         }
 
-        if (e.type !== 'resource_min' && e.type !== 'resource_gas') {
-          const barW = e.radius * 1.8;
-          const barH = 4;
-          const barX = e.x - barW / 2;
-          const barY = e.y - e.radius - 8;
-          const hpRatio = Math.max(0, e.hp / e.maxHp);
+        ctx.font = `${e.radius * 1.3}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(e.emoji, 0, 0);
 
+        // 체력 바
+        if (e.hp < e.maxHp) {
           ctx.fillStyle = 'rgba(0,0,0,0.6)';
-          ctx.fillRect(barX, barY, barW, barH);
-          ctx.fillStyle = e.faction === 'player' ? '#51cf66' : '#ff6b6b';
-          ctx.fillRect(barX, barY, barW * hpRatio, barH);
+          ctx.fillRect(-15, -e.radius - 8, 30, 4);
+          ctx.fillStyle = e.faction === 'player' ? '#2ecc71' : '#e74c3c';
+          ctx.fillRect(-15, -e.radius - 8, 30 * (e.hp / e.maxHp), 4);
         }
+
+        // 건설 중 진행 바
+        if (e.isUnderConstruction) {
+          ctx.fillStyle = 'rgba(0,0,0,0.6)';
+          ctx.fillRect(-18, e.radius + 4, 36, 5);
+          ctx.fillStyle = '#f1c40f';
+          ctx.fillRect(-18, e.radius + 4, 36 * (e.buildProgress / e.buildMaxTime), 5);
+        }
+
+        ctx.restore();
       });
 
+      // 선택된 유닛 마커
+      selectedUnits.forEach(u => {
+        ctx.strokeStyle = '#339af0';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(u.x, u.y, u.radius + 4, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+
+      // 총알 렌더링
+      bullets.forEach(b => {
+        ctx.fillStyle = b.faction === 'player' ? '#74c0fc' : '#ff8787';
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // 파티클 렌더링
       particles.forEach(p => {
-        ctx.font = '15px sans-serif';
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.font = '14px sans-serif';
         ctx.fillText(p.text, p.x, p.y);
       });
 
       ctx.restore();
 
-      if (isDragging) {
-        ctx.strokeStyle = '#51cf66'; ctx.lineWidth = 1;
-        const w = dragEndScreen.x - dragStartScreen.x;
-        const h = dragEndScreen.y - dragStartScreen.y;
-        ctx.strokeRect(dragStartScreen.x, dragStartScreen.y, w, h);
-        ctx.fillStyle = 'rgba(81, 207, 102, 0.15)';
-        ctx.fillRect(dragStartScreen.x, dragStartScreen.y, w, h);
-      }
+      // UI 및 미니맵 렌더링
+      drawMinimap();
 
-      renderMinimap();
+      // 마우스 드래그 박스 렌더링
+      if (isDragging) {
+        ctx.strokeStyle = '#339af0';
+        ctx.lineWidth = 1;
+        ctx.fillStyle = 'rgba(51, 154, 240, 0.1)';
+        const x = Math.min(dragStartScreen.x, dragEndScreen.x);
+        const y = Math.min(dragStartScreen.y, dragEndScreen.y);
+        const w = Math.abs(dragEndScreen.x - dragStartScreen.x);
+        const h = Math.abs(dragEndScreen.y - dragStartScreen.y);
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeRect(x, y, w, h);
+      }
     }
 
     function gameLoop() {
@@ -981,13 +988,13 @@
         updateCamera();
         updateSmartAI();
         updateEntities();
+        draw();
       }
-      render();
       requestAnimationFrame(gameLoop);
     }
 
     initGame();
-    gameLoop();
+    requestAnimationFrame(gameLoop);
   </script>
 </body>
 </html>
