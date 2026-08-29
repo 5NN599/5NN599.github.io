@@ -8,14 +8,14 @@
     :root { --bg: #f8f9fa; --text: #333; --canvas-bg: #05070a; --border: #e9ecef; --btn-bg: #fff; }
     [data-theme="dark"] { --bg: #0d1117; --text: #c9d1d9; --canvas-bg: #020305; --border: #30363d; --btn-bg: #21262d; }
     [data-theme="beige"] { --bg: #f5ebe0; --text: #4e3d30; --canvas-bg: #14100c; --border: #ddcbbb; --btn-bg: #eddfd0; }
-    body { background-color: var(--bg) !important; color: var(--text) !important; text-align: center; font-family: sans-serif; padding-top: 15px; margin: 0; transition: 0.3s; overflow-x: hidden; }
-    button { background-color: var(--btn-bg) !important; color: var(--text) !important; border: 1px solid var(--border) !important; padding: 8px 16px; font-size: 0.9rem; border-radius: 8px; cursor: pointer; margin: 4px; font-weight: bold; }
+    body { background-color: var(--bg) !important; color: var(--text) !important; text-align: center; font-family: sans-serif; padding-top: 10px; margin: 0; transition: 0.3s; overflow-x: hidden; user-select: none; }
+    button { background-color: var(--btn-bg) !important; color: var(--text) !important; border: 1px solid var(--border) !important; padding: 6px 12px; font-size: 0.85rem; border-radius: 8px; cursor: pointer; margin: 3px; font-weight: bold; }
     button:disabled { opacity: 0.4; cursor: not-allowed; }
-    #rts-panel { font-size: 1.2rem; font-weight: bold; color: #fcc419; margin-bottom: 4px; }
-    .build-bar { margin: 8px 0; }
-    .active-mode { border: 2px solid #4dadf7 !important; }
-    #game-canvas { background: var(--canvas-bg); border: 2px solid var(--border); border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); cursor: crosshair; }
-    .help-text { font-size: 0.85rem; opacity: 0.8; margin-top: 4px; }
+    #rts-panel { font-size: 1.1rem; font-weight: bold; color: #fcc419; margin-bottom: 4px; }
+    .build-bar { margin: 6px 0; }
+    .active-mode { border: 2px solid #4dadf7 !important; background-color: #183153 !important; color: #fff !important; }
+    #game-canvas { background: var(--canvas-bg); border: 2px solid var(--border); border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); cursor: default; }
+    .help-text { font-size: 0.8rem; opacity: 0.8; margin-top: 3px; }
   </style>
 </head>
 <body>
@@ -26,53 +26,54 @@
   </div>
 
   <div class="build-bar">
-    <button id="btn-barracks" onclick="toggleBuildBarracks()">🏭 전술 병영 (💎40)</button>
+    <button id="btn-barracks" onclick="toggleBuild('barracks')">🏭 병영 (💎40)</button>
+    <button id="btn-refinery" onclick="toggleBuild('refinery')">🌋 제련소 (💎30)</button>
+    <button id="btn-turret" onclick="toggleBuild('turret')">📡 터렛 (💎35)</button>
     <button id="btn-scv" onclick="produceSCV()">🛸 SCV (💎20)</button>
     <button id="btn-fighter" onclick="produceFighter()" disabled>🚀 전투기 (💎30)</button>
     <button id="btn-cruiser" onclick="produceCruiser()" disabled>🛩️ 중순양함 (💎50/🌋15)</button>
   </div>
 
   <canvas id="game-canvas" width="600" height="440"></canvas>
-  <div class="help-text">방향키 또는 WASD로 지도 스크롤 | 병영 건설 선택 후 캔버스 땅을 클릭하여 배치</div>
+  <div class="help-text">WASD/방향키: 이동 | 좌클릭 드래그: 유닛 다중 선택 | 우클릭: 이동/어택 명령</div>
 
   <script>
     const savedTheme = localStorage.getItem('minig-theme');
     if (savedTheme && savedTheme !== 'white') { document.documentElement.setAttribute('data-theme', savedTheme); }
 
-    // World & Viewport Configuration
     const WORLD_W = 1500;
     const WORLD_H = 1100;
     const VIEW_W = 600;
     const VIEW_H = 440;
 
     let camX = 0;
-    let camY = WORLD_H - VIEW_H; // Initial camera focused at bottom-left
+    let camY = WORLD_H - VIEW_H;
 
     const canvas = document.getElementById('game-canvas');
     const ctx = canvas.getContext('2d');
 
-    // Game Resources & Tech State
     let resources = { min: 50, gas: 0, enemyMin: 50, enemyGas: 0 };
     let wave = 1;
     let waveTimer = 0;
-    let buildMode = null; // 'barracks' or null
+    let buildMode = null;
     let hasBarracks = false;
     let gameOver = false;
 
-    // Entities Arrays
     let entities = [];
     let bullets = [];
     let particles = [];
+    let selectedUnits = [];
     let keys = {};
 
-    // Web Audio Synthesizer
+    let isDragging = false;
+    let dragStartScreen = { x: 0, y: 0 };
+    let dragEndScreen = { x: 0, y: 0 };
+
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
 
     function initAudio() {
-      if (!audioCtx) {
-        audioCtx = new AudioCtx();
-      }
+      if (!audioCtx) audioCtx = new AudioCtx();
     }
 
     function playSound(type) {
@@ -87,64 +88,142 @@
         if (type === 'produce') {
           osc.type = 'sine';
           osc.frequency.setValueAtTime(440, now);
-          osc.frequency.exponentialRampToValueAtTime(880, now + 0.15);
-          gain.gain.setValueAtTime(0.2, now);
-          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
-          osc.start(now);
-          osc.stop(now + 0.15);
+          osc.frequency.exponentialRampToValueAtTime(880, now + 0.12);
+          gain.gain.setValueAtTime(0.18, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+          osc.start(now); osc.stop(now + 0.12);
         } else if (type === 'laser') {
           osc.type = 'sawtooth';
-          osc.frequency.setValueAtTime(800, now);
-          osc.frequency.exponentialRampToValueAtTime(200, now + 0.1);
-          gain.gain.setValueAtTime(0.12, now);
-          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-          osc.start(now);
-          osc.stop(now + 0.1);
+          osc.frequency.setValueAtTime(750, now);
+          osc.frequency.exponentialRampToValueAtTime(180, now + 0.08);
+          gain.gain.setValueAtTime(0.1, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+          osc.start(now); osc.stop(now + 0.08);
         } else if (type === 'explode') {
           osc.type = 'square';
-          osc.frequency.setValueAtTime(150, now);
-          osc.frequency.exponentialRampToValueAtTime(30, now + 0.25);
-          gain.gain.setValueAtTime(0.25, now);
-          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
-          osc.start(now);
-          osc.stop(now + 0.25);
+          osc.frequency.setValueAtTime(140, now);
+          osc.frequency.exponentialRampToValueAtTime(25, now + 0.22);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
+          osc.start(now); osc.stop(now + 0.22);
         }
       } catch (e) {}
     }
 
-    // Input Listeners
     window.addEventListener('keydown', (e) => { keys[e.code] = true; });
     window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
-    canvas.addEventListener('click', (e) => {
+    canvas.addEventListener('mousedown', (e) => {
       initAudio();
       const rect = canvas.getBoundingClientRect();
-      const clickX = e.clientX - rect.left + camX;
-      const clickY = e.clientY - rect.top + camY;
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      const worldX = mouseX + camX;
+      const worldY = mouseY + camY;
 
-      if (buildMode === 'barracks') {
-        if (resources.min >= 40) {
-          resources.min -= 40;
-          spawnEntity('barracks', 'player', clickX, clickY);
-          hasBarracks = true;
-          playSound('produce');
-          buildMode = null;
-          document.getElementById('btn-barracks').classList.remove('active-mode');
-          updateUI();
+      if (e.button === 2) {
+        if (selectedUnits.length > 0) {
+          selectedUnits.forEach((unit, idx) => {
+            const offsetX = (idx % 3 - 1) * 20;
+            const offsetY = (Math.floor(idx / 3) - 1) * 20;
+            unit.moveTarget = { x: worldX + offsetX, y: worldY + offsetY };
+          });
+        }
+        return;
+      }
+
+      if (e.button === 0) {
+        if (buildMode) {
+          handleBuild(worldX, worldY);
+          return;
+        }
+        isDragging = true;
+        dragStartScreen = { x: mouseX, y: mouseY };
+        dragEndScreen = { x: mouseX, y: mouseY };
+      }
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (isDragging) {
+        const rect = canvas.getBoundingClientRect();
+        dragEndScreen = {
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top
+        };
+      }
+    });
+
+    canvas.addEventListener('mouseup', (e) => {
+      if (e.button === 0 && isDragging) {
+        isDragging = false;
+        const x1 = Math.min(dragStartScreen.x, dragEndScreen.x) + camX;
+        const x2 = Math.max(dragStartScreen.x, dragEndScreen.x) + camX;
+        const y1 = Math.min(dragStartScreen.y, dragEndScreen.y) + camY;
+        const y2 = Math.max(dragStartScreen.y, dragEndScreen.y) + camY;
+
+        const dragDist = Math.hypot(dragEndScreen.x - dragStartScreen.x, dragEndScreen.y - dragStartScreen.y);
+
+        if (dragDist > 10) {
+          selectedUnits = entities.filter(ent => 
+            ent.faction === 'player' && 
+            (ent.type === 'fighter' || ent.type === 'cruiser') &&
+            ent.x >= x1 && ent.x <= x2 && ent.y >= y1 && ent.y <= y2
+          );
+        } else {
+          const clickedUnit = entities.find(ent => 
+            ent.faction === 'player' && 
+            (ent.type === 'fighter' || ent.type === 'cruiser') &&
+            Math.hypot(ent.x - (dragStartScreen.x + camX), ent.y - (dragStartScreen.y + camY)) <= ent.radius + 6
+          );
+          selectedUnits = clickedUnit ? [clickedUnit] : [];
         }
       }
     });
 
-    function toggleBuildBarracks() {
+    function toggleBuild(type) {
       initAudio();
-      if (resources.min < 40) return;
-      if (buildMode === 'barracks') {
+      resetBuildButtons();
+      if (buildMode === type) {
         buildMode = null;
-        document.getElementById('btn-barracks').classList.remove('active-mode');
       } else {
-        buildMode = 'barracks';
-        document.getElementById('btn-barracks').classList.add('active-mode');
+        buildMode = type;
+        document.getElementById(`btn-${type}`).classList.add('active-mode');
       }
+    }
+
+    function resetBuildButtons() {
+      ['barracks', 'refinery', 'turret'].forEach(t => {
+        document.getElementById(`btn-${t}`).classList.remove('active-mode');
+      });
+    }
+
+    function handleBuild(wx, wy) {
+      if (buildMode === 'barracks') {
+        if (resources.min >= 40) {
+          resources.min -= 40;
+          spawnEntity('barracks', 'player', wx, wy);
+          hasBarracks = true;
+          playSound('produce');
+        }
+      } else if (buildMode === 'refinery') {
+        const gasNode = entities.find(e => e.type === 'resource_gas' && Math.hypot(e.x - wx, e.y - wy) < 45);
+        if (gasNode && resources.min >= 30) {
+          resources.min -= 30;
+          gasNode.hasRefinery = true;
+          spawnEntity('refinery', 'player', gasNode.x, gasNode.y);
+          playSound('produce');
+        }
+      } else if (buildMode === 'turret') {
+        if (resources.min >= 35) {
+          resources.min -= 35;
+          spawnEntity('turret', 'player', wx, wy);
+          playSound('produce');
+        }
+      }
+      buildMode = null;
+      resetBuildButtons();
+      updateUI();
     }
 
     function produceSCV() {
@@ -153,7 +232,7 @@
         const playerHQ = entities.find(e => e.type === 'hq' && e.faction === 'player');
         if (playerHQ) {
           resources.min -= 20;
-          spawnEntity('scv', 'player', playerHQ.x + (Math.random() * 60 - 30), playerHQ.y + (Math.random() * 60 - 30));
+          spawnEntity('scv', 'player', playerHQ.x + (Math.random() * 50 - 25), playerHQ.y + (Math.random() * 50 - 25));
           playSound('produce');
           updateUI();
         }
@@ -166,7 +245,7 @@
       const playerHQ = entities.find(e => e.type === 'hq' && e.faction === 'player');
       if (playerHQ) {
         resources.min -= 30;
-        spawnEntity('fighter', 'player', playerHQ.x + (Math.random() * 60 - 30), playerHQ.y + (Math.random() * 60 - 30));
+        spawnEntity('fighter', 'player', playerHQ.x + (Math.random() * 50 - 25), playerHQ.y + (Math.random() * 50 - 25));
         playSound('produce');
         updateUI();
       }
@@ -179,7 +258,7 @@
       if (playerHQ) {
         resources.min -= 50;
         resources.gas -= 15;
-        spawnEntity('cruiser', 'player', playerHQ.x + (Math.random() * 60 - 30), playerHQ.y + (Math.random() * 60 - 30));
+        spawnEntity('cruiser', 'player', playerHQ.x + (Math.random() * 50 - 25), playerHQ.y + (Math.random() * 50 - 25));
         playSound('produce');
         updateUI();
       }
@@ -200,7 +279,6 @@
       document.getElementById('btn-cruiser').disabled = !hasBarracks || resources.min < 50 || resources.gas < 15;
     }
 
-    // Entity Factory
     function spawnEntity(type, faction, x, y) {
       let e = {
         id: Math.random().toString(),
@@ -217,7 +295,7 @@
         cooldownMax: 40,
         attackRange: 0,
         cargo: null,
-        target: null
+        moveTarget: null
       };
 
       if (type === 'hq') {
@@ -228,6 +306,16 @@
         e.hp = e.maxHp = 300;
         e.radius = 26;
         e.emoji = '🏭';
+      } else if (type === 'refinery') {
+        e.hp = e.maxHp = 250;
+        e.radius = 22;
+        e.emoji = '🌋';
+      } else if (type === 'turret') {
+        e.hp = e.maxHp = 200;
+        e.radius = 18;
+        e.emoji = '📡';
+        e.attackRange = 160;
+        e.cooldownMax = 45;
       } else if (type === 'resource_min') {
         e.radius = 20;
         e.emoji = '💎';
@@ -236,6 +324,7 @@
         e.radius = 20;
         e.emoji = '🌋';
         e.resType = 'gas';
+        e.hasRefinery = false;
       } else if (type === 'scv') {
         e.hp = e.maxHp = 60;
         e.speed = 2.0;
@@ -268,37 +357,32 @@
       return e;
     }
 
-    // Game Initialization
     function initGame() {
       entities = [];
       bullets = [];
       particles = [];
+      selectedUnits = [];
       resources = { min: 50, gas: 0, enemyMin: 50, enemyGas: 0 };
       wave = 1;
       waveTimer = 0;
       hasBarracks = false;
       gameOver = false;
 
-      // Player Base Setup (Bottom-Left)
       spawnEntity('hq', 'player', 160, 940);
       spawnEntity('resource_min', 'neutral', 90, 1010);
       spawnEntity('resource_gas', 'neutral', 260, 1010);
-      for (let i = 0; i < 4; i++) {
-        spawnEntity('scv', 'player', 150 + (i * 20), 880);
-      }
+      for (let i = 0; i < 4; i++) spawnEntity('scv', 'player', 150 + (i * 20), 880);
 
-      // Enemy Base Setup (Top-Right)
       spawnEntity('hq', 'enemy', 1340, 160);
       spawnEntity('resource_min', 'neutral', 1410, 90);
-      spawnEntity('resource_gas', 'neutral', 1240, 90);
-      for (let i = 0; i < 4; i++) {
-        spawnEntity('scv', 'enemy', 1300 + (i * 20), 220);
-      }
+      const enemyGas = spawnEntity('resource_gas', 'neutral', 1240, 90);
+      enemyGas.hasRefinery = true;
+      spawnEntity('refinery', 'enemy', 1240, 90);
+      for (let i = 0; i < 4; i++) spawnEntity('scv', 'enemy', 1300 + (i * 20), 220);
 
       updateUI();
     }
 
-    // Camera Handler
     function updateCamera() {
       const speed = 8;
       if (keys['ArrowLeft'] || keys['KeyA']) camX -= speed;
@@ -310,7 +394,6 @@
       camY = Math.max(0, Math.min(WORLD_H - VIEW_H, camY));
     }
 
-    // AI Logic & Wave Management
     let aiTimer = 0;
     function updateAI() {
       aiTimer++;
@@ -322,7 +405,6 @@
       const enemyBarracks = entities.find(e => e.type === 'barracks' && e.faction === 'enemy');
       const enemySCVs = entities.filter(e => e.type === 'scv' && e.faction === 'enemy');
 
-      // AI Construction Logic
       if (!enemyBarracks && resources.enemyMin >= 40) {
         resources.enemyMin -= 40;
         spawnEntity('barracks', 'enemy', enemyHQ.x - 80, enemyHQ.y + 60);
@@ -331,18 +413,16 @@
         spawnEntity('scv', 'enemy', enemyHQ.x - 30, enemyHQ.y + 30);
       } else if (enemyBarracks) {
         if (wave < 6) {
-          // Low waves: produce Fighters only
           if (resources.enemyMin >= 30) {
             resources.enemyMin -= 30;
             spawnEntity('fighter', 'enemy', enemyBarracks.x + (Math.random() * 40 - 20), enemyBarracks.y + 40);
           }
         } else {
-          // Wave >= 6: Produce Heavy Units
           if (resources.enemyMin >= 50 && resources.enemyGas >= 15) {
             resources.enemyMin -= 50;
             resources.enemyGas -= 15;
             spawnEntity('cruiser', 'enemy', enemyBarracks.x + (Math.random() * 40 - 20), enemyBarracks.y + 40);
-          } else if (resources.enemyMin >= 40 && Math.random() < 0.4) {
+          } else if (resources.enemyMin >= 40 && Math.random() < 0.35) {
             resources.enemyMin -= 40;
             spawnEntity('boss', 'enemy', enemyBarracks.x + (Math.random() * 40 - 20), enemyBarracks.y + 40);
           } else if (resources.enemyMin >= 30) {
@@ -353,7 +433,6 @@
       }
     }
 
-    // Update Entities Engine
     function updateEntities() {
       waveTimer++;
       if (waveTimer % 1000 === 0) {
@@ -364,22 +443,19 @@
       for (let i = entities.length - 1; i >= 0; i--) {
         let e = entities[i];
         if (e.hp <= 0) {
-          // Spawn explosion particles on death
           for (let p = 0; p < 5; p++) {
             particles.push({
-              x: e.x,
-              y: e.y,
+              x: e.x, y: e.y,
               vx: (Math.random() - 0.5) * 4,
               vy: (Math.random() - 0.5) * 4,
-              life: 20,
-              text: '💥'
+              life: 20, text: '💥'
             });
           }
           playSound('explode');
+          selectedUnits = selectedUnits.filter(u => u.id !== e.id);
           entities.splice(i, 1);
           updateUI();
 
-          // Victory / Loss Check
           if (e.type === 'hq') {
             gameOver = true;
             setTimeout(() => {
@@ -394,12 +470,31 @@
           continue;
         }
 
-        // SCV Resource Gathering Cycle
+        if (e.type === 'turret') {
+          if (e.cooldown > 0) e.cooldown--;
+          let targets = entities.filter(t => t.faction !== 'neutral' && t.faction !== e.faction);
+          let closestTarget = null;
+          let minDist = 999999;
+          targets.forEach(t => {
+            let d = Math.hypot(t.x - e.x, t.y - e.y);
+            if (d < minDist) { minDist = d; closestTarget = t; }
+          });
+          if (closestTarget && minDist <= e.attackRange && e.cooldown <= 0) {
+            bullets.push({
+              x: e.x, y: e.y,
+              targetX: closestTarget.x, targetY: closestTarget.y,
+              targetId: closestTarget.id, faction: e.faction,
+              speed: 8, damage: 18, splash: false
+            });
+            playSound('laser');
+            e.cooldown = e.cooldownMax;
+          }
+        }
+
         if (e.type === 'scv') {
           const hq = entities.find(h => h.type === 'hq' && h.faction === e.faction);
           if (!e.cargo) {
-            // Find Resource Node
-            let nodes = entities.filter(n => n.type === 'resource_min' || n.type === 'resource_gas');
+            let nodes = entities.filter(n => n.type === 'resource_min' || (n.type === 'resource_gas' && n.hasRefinery));
             let closestNode = null;
             let minDist = 999999;
             nodes.forEach(n => {
@@ -417,7 +512,6 @@
               }
             }
           } else {
-            // Return to HQ
             if (hq) {
               let dist = Math.hypot(hq.x - e.x, hq.y - e.y);
               if (dist > 25) {
@@ -439,11 +533,9 @@
           }
         }
 
-        // Tactical Attack Units Logic
         if (e.type === 'fighter' || e.type === 'cruiser' || e.type === 'boss') {
           if (e.cooldown > 0) e.cooldown--;
 
-          // Find target
           let targets = entities.filter(t => t.faction !== 'neutral' && t.faction !== e.faction);
           let closestTarget = null;
           let minDist = 999999;
@@ -452,32 +544,36 @@
             if (d < minDist) { minDist = d; closestTarget = t; }
           });
 
-          if (closestTarget) {
-            if (minDist > e.attackRange) {
-              let angle = Math.atan2(closestTarget.y - e.y, closestTarget.x - e.x);
+          if (e.moveTarget) {
+            let distToMove = Math.hypot(e.moveTarget.x - e.x, e.moveTarget.y - e.y);
+            if (distToMove > 10) {
+              let angle = Math.atan2(e.moveTarget.y - e.y, e.moveTarget.x - e.x);
               e.x += Math.cos(angle) * e.speed;
               e.y += Math.sin(angle) * e.speed;
-            } else if (e.cooldown <= 0) {
-              // Fire Weapon
-              bullets.push({
-                x: e.x,
-                y: e.y,
-                targetX: closestTarget.x,
-                targetY: closestTarget.y,
-                targetId: closestTarget.id,
-                faction: e.faction,
-                speed: 7,
-                damage: e.type === 'cruiser' ? 30 : (e.type === 'boss' ? 25 : 12),
-                splash: (e.type === 'cruiser' || e.type === 'boss')
-              });
-              playSound('laser');
-              e.cooldown = e.cooldownMax;
+            } else {
+              e.moveTarget = null;
             }
+          } else if (closestTarget && minDist > e.attackRange) {
+            let angle = Math.atan2(closestTarget.y - e.y, closestTarget.x - e.x);
+            e.x += Math.cos(angle) * e.speed;
+            e.y += Math.sin(angle) * e.speed;
+          }
+
+          if (closestTarget && minDist <= e.attackRange && e.cooldown <= 0) {
+            bullets.push({
+              x: e.x, y: e.y,
+              targetX: closestTarget.x, targetY: closestTarget.y,
+              targetId: closestTarget.id, faction: e.faction,
+              speed: 7,
+              damage: e.type === 'cruiser' ? 30 : (e.type === 'boss' ? 25 : 12),
+              splash: (e.type === 'cruiser' || e.type === 'boss')
+            });
+            playSound('laser');
+            e.cooldown = e.cooldownMax;
           }
         }
       }
 
-      // Update Bullets
       for (let i = bullets.length - 1; i >= 0; i--) {
         let b = bullets[i];
         let angle = Math.atan2(b.targetY - b.y, b.targetX - b.x);
@@ -485,46 +581,38 @@
         b.y += Math.sin(angle) * b.speed;
 
         if (Math.hypot(b.targetX - b.x, b.targetY - b.y) < 8) {
-          // Impact Event
           if (b.splash) {
             playSound('explode');
             particles.push({ x: b.x, y: b.y, vx: 0, vy: 0, life: 12, text: '💥' });
             entities.forEach(t => {
               if (t.faction !== 'neutral' && t.faction !== b.faction) {
-                if (Math.hypot(t.x - b.x, t.y - b.y) <= 45) {
+                if (Math.hypot(t.x - b.x, t.y - b.y) <= 35) {
                   t.hp -= b.damage;
                 }
               }
             });
           } else {
             let target = entities.find(e => e.id === b.targetId);
-            if (target) {
-              target.hp -= b.damage;
-            }
+            if (target) target.hp -= b.damage;
           }
           bullets.splice(i, 1);
           updateUI();
         }
       }
 
-      // Update Particles
       for (let i = particles.length - 1; i >= 0; i--) {
         let p = particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-        p.life--;
+        p.x += p.vx; p.y += p.vy; p.life--;
         if (p.life <= 0) particles.splice(i, 1);
       }
     }
 
-    // Main Canvas Render Engine
     function render() {
       ctx.clearRect(0, 0, VIEW_W, VIEW_H);
 
       ctx.save();
       ctx.translate(-camX, -camY);
 
-      // Render Grid Lines & Stars
       ctx.strokeStyle = '#111827';
       ctx.lineWidth = 1;
       for (let x = 0; x < WORLD_W; x += 100) {
@@ -534,7 +622,6 @@
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(WORLD_W, y); ctx.stroke();
       }
 
-      // Render Bullets
       bullets.forEach(b => {
         ctx.fillStyle = b.faction === 'player' ? '#4dadf7' : '#ff6b6b';
         ctx.beginPath();
@@ -542,20 +629,25 @@
         ctx.fill();
       });
 
-      // Render Entities & Emojis
       entities.forEach(e => {
+        if (selectedUnits.includes(e)) {
+          ctx.beginPath();
+          ctx.arc(e.x, e.y, e.radius + 4, 0, Math.PI * 2);
+          ctx.strokeStyle = '#51cf66';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+
         ctx.font = `${e.radius * 1.5}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(e.emoji, e.x, e.y);
 
-        // Draw Cargo for SCV
         if (e.cargo) {
           ctx.font = '12px sans-serif';
           ctx.fillText('📦', e.x + 10, e.y - 10);
         }
 
-        // Draw HP Bars for Units/Buildings
         if (e.type !== 'resource_min' && e.type !== 'resource_gas') {
           const barW = e.radius * 1.8;
           const barH = 4;
@@ -570,7 +662,6 @@
         }
       });
 
-      // Render Explosions / Particles
       particles.forEach(p => {
         ctx.font = '16px sans-serif';
         ctx.textAlign = 'center';
@@ -580,7 +671,16 @@
 
       ctx.restore();
 
-      // Render Minimap Overlay (Fixed Screen Space)
+      if (isDragging) {
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+        const w = dragEndScreen.x - dragStartScreen.x;
+        const h = dragEndScreen.y - dragStartScreen.y;
+        ctx.fillRect(dragStartScreen.x, dragStartScreen.y, w, h);
+        ctx.strokeRect(dragStartScreen.x, dragStartScreen.y, w, h);
+      }
+
       const miniW = 110;
       const miniH = 80;
       const miniX = 10;
@@ -595,7 +695,6 @@
       const scaleX = miniW / WORLD_W;
       const scaleY = miniH / WORLD_H;
 
-      // Radar Dots
       entities.forEach(e => {
         if (e.type === 'resource_min' || e.type === 'resource_gas') {
           ctx.fillStyle = '#fcc419';
@@ -605,7 +704,6 @@
         ctx.fillRect(miniX + e.x * scaleX, miniY + e.y * scaleY, 2, 2);
       });
 
-      // Camera Box Guide
       ctx.strokeStyle = '#4dadf7';
       ctx.lineWidth = 1;
       ctx.strokeRect(
@@ -616,7 +714,6 @@
       );
     }
 
-    // Main Loop
     function gameLoop() {
       if (!gameOver) {
         updateCamera();
@@ -627,7 +724,6 @@
       requestAnimationFrame(gameLoop);
     }
 
-    // Start Game Engine
     initGame();
     requestAnimationFrame(gameLoop);
   </script>
