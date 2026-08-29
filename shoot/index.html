@@ -555,6 +555,29 @@
       };
     }
 
+    function checkBossDefeat() {
+      if (boss && boss.hp <= 0) {
+        createExplosion(boss.x, boss.y, 50);
+        playSound('explosion');
+        score += 3000;
+        shopPoints += Math.floor(200 * (1 + (shopUpgrades.luckLv - 1) * 0.2));
+
+        items.push({ x: boss.x, y: boss.y, w: 22, h: 22, speed: 1.2, type: 'WEAPON_BOX', emoji: '🎁' });
+
+        enemiesKilled = 0;
+        bossSpawned = false;
+        boss = null;
+        enemyBullets = [];
+        level++;
+
+        if (level > 10 && !moonMode) {
+          triggerMoonTransition();
+        } else {
+          openShop();
+        }
+      }
+    }
+
     function spawnBuilding() {
       buildings.push({
         x: Math.random() * (CANVAS_WIDTH - 60) + 30,
@@ -622,6 +645,7 @@
           if (boss) {
             boss.hp -= 35 * atkMult;
             createExplosion(boss.x, boss.y, 40);
+            checkBossDefeat();
           }
           currentWeapon = WEAPONS[0];
         } else {
@@ -684,10 +708,14 @@
         }
       });
 
+      // 범위 미사일 폭발 피격 연산 (일반 적군 및 보스 포함)
       explosions.forEach((exp, expIdx) => {
         exp.radius += 3;
+
+        // 일반 적군 폭발 범위 감지
         enemies.forEach((e, eIdx) => {
-          if (Math.hypot(e.x - exp.x, e.y - exp.y) < exp.radius + e.w / 2) {
+          if (!exp.hitEnemies.has(e) && Math.hypot(e.x - exp.x, e.y - exp.y) < exp.radius + e.w / 2) {
+            exp.hitEnemies.add(e);
             e.hp -= exp.power;
             if (e.hp <= 0) {
               createExplosion(e.x, e.y, 20);
@@ -699,6 +727,14 @@
             }
           }
         });
+
+        // 보스 폭발 범위 감지 및 데미지 적용
+        if (boss && !exp.hitBoss && Math.hypot(boss.x - exp.x, boss.y - exp.y) < exp.radius + boss.w / 2) {
+          exp.hitBoss = true;
+          boss.hp -= exp.power * 2.5; // 미사일 폭발 광역 데미지
+          createExplosion(boss.x, boss.y, 20);
+          checkBossDefeat();
+        }
 
         if (exp.radius >= exp.maxRadius) {
           explosions.splice(expIdx, 1);
@@ -835,29 +871,7 @@
               boss.hp -= b.power;
               if (b.type !== 'LASER') bullets.splice(bIdx, 1);
               createExplosion(b.x, b.y, 10);
-            }
-
-            // 보스 격파 시 처리
-            if (boss.hp <= 0) {
-              createExplosion(boss.x, boss.y, 50);
-              playSound('explosion');
-              score += 3000;
-              shopPoints += Math.floor(200 * (1 + (shopUpgrades.luckLv - 1) * 0.2));
-
-              items.push({ x: boss.x, y: boss.y, w: 22, h: 22, speed: 1.2, type: 'WEAPON_BOX', emoji: '🎁' });
-
-              enemiesKilled = 0;
-              bossSpawned = false;
-              boss = null;
-              enemyBullets = [];
-              level++;
-
-              if (level > 10 && !moonMode) {
-                triggerMoonTransition();
-              } else {
-                // 보스 격파 직후 상점 자동 오픈 (끊김 현상 방지)
-                openShop();
-              }
+              checkBossDefeat();
             }
           }
         });
@@ -921,7 +935,13 @@
     function triggerMissileExplosion(x, y, power) {
       playSound('explosion');
       explosions.push({
-        x: x, y: y, radius: 10, maxRadius: 80, power: power
+        x: x,
+        y: y,
+        radius: 10,
+        maxRadius: 80,
+        power: power,
+        hitEnemies: new Set(),
+        hitBoss: false
       });
     }
 
@@ -934,7 +954,7 @@
         moonMode = true;
         initCraters();
         fadeScreen.style.opacity = '0';
-        openShop(); // 달 기지 진입 직후에도 상점 표시
+        openShop();
       }, 1600);
     }
 
@@ -994,7 +1014,6 @@
       document.getElementById('shop-points').innerText = shopPoints;
       document.getElementById('shop-max-hp').innerText = player.maxHp;
 
-      // 화력 강화
       document.getElementById('atk-lv').innerText = shopUpgrades.atkLv;
       const btnAtk = document.getElementById('btn-atk');
       if (shopUpgrades.atkLv >= shopUpgrades.maxAtkLv) {
@@ -1005,7 +1024,6 @@
         btnAtk.disabled = false;
       }
 
-      // 포인트 증폭
       document.getElementById('luck-lv').innerText = shopUpgrades.luckLv;
       const btnLuck = document.getElementById('btn-luck');
       if (shopUpgrades.luckLv >= shopUpgrades.maxLuckLv) {
@@ -1016,7 +1034,6 @@
         btnLuck.disabled = false;
       }
 
-      // 실드 용량 확장
       document.getElementById('shield-lv').innerText = shopUpgrades.shieldLv;
       const btnShield = document.getElementById('btn-shield');
       if (shopUpgrades.shieldLv >= shopUpgrades.maxShieldLv) {
@@ -1043,8 +1060,8 @@
         shopPoints -= shopUpgrades.shieldCost;
         shopUpgrades.shieldLv++;
         shopUpgrades.shieldCost = Math.floor(shopUpgrades.shieldCost * 1.6);
-        player.maxHp += 2; // 최대 용량 확충
-        player.hp = player.maxHp; // 완충
+        player.maxHp += 2;
+        player.hp = player.maxHp;
         playSound('powerup');
       } else if (type === 'repair' && shopPoints >= 80) {
         if (player.hp < player.maxHp) {
