@@ -1,331 +1,635 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <title>미니지 - RTS</title>
-    <style>
-        :root {
-            --bg: #f8f9fa; --text: #333;
-            --canvas-bg: #05070a; --border: #e9ecef;
-            --btn-bg: #fff;
-        }
-        [data-theme="dark"] {
-            --bg: #0d1117; --text: #c9d1d9;
-            --canvas-bg: #020305; --border: #30363d;
-            --btn-bg: #21262d;
-        }
-        [data-theme="beige"] {
-            --bg: #f5ebe0; --text: #4e3d30;
-            --canvas-bg: #14100c; --border: #ddcbbb;
-            --btn-bg: #eddfd0;
-        }
-        body {
-            background-color: var(--bg) !important;
-            color: var(--text) !important;
-            text-align: center; font-family: sans-serif;
-            padding-top: 15px; margin: 0; transition: 0.3s;
-            overflow-x: hidden;
-        }
-        canvas {
-            background-color: var(--canvas-bg);
-            display: block; margin: 10px auto;
-            border: 4px solid var(--border); border-radius: 12px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
-        }
-        button {
-            background-color: var(--btn-bg) !important;
-            color: var(--text) !important;
-            border: 1px solid var(--border) !important;
-            padding: 8px 16px; font-size: 0.9rem;
-            border-radius: 8px; cursor: pointer; margin: 4px;
-            font-weight: bold;
-        }
-        #rts-panel {
-            font-size: 1.2rem; font-weight: bold;
-            color: #fcc419; margin-bottom: 4px;
-        }
-        .build-bar { margin: 8px 0; }
-        #guide-txt { font-size: 0.85rem; color: #8b949e; margin-bottom: 5px; }
-        .active-mode { border: 2px solid #4dadf7 !important; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>미니지 - RTS</title>
+  <style>
+    :root { --bg: #f8f9fa; --text: #333; --canvas-bg: #05070a; --border: #e9ecef; --btn-bg: #fff; }
+    [data-theme="dark"] { --bg: #0d1117; --text: #c9d1d9; --canvas-bg: #020305; --border: #30363d; --btn-bg: #21262d; }
+    [data-theme="beige"] { --bg: #f5ebe0; --text: #4e3d30; --canvas-bg: #14100c; --border: #ddcbbb; --btn-bg: #eddfd0; }
+    body { background-color: var(--bg) !important; color: var(--text) !important; text-align: center; font-family: sans-serif; padding-top: 15px; margin: 0; transition: 0.3s; overflow-x: hidden; }
+    button { background-color: var(--btn-bg) !important; color: var(--text) !important; border: 1px solid var(--border) !important; padding: 8px 16px; font-size: 0.9rem; border-radius: 8px; cursor: pointer; margin: 4px; font-weight: bold; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    #rts-panel { font-size: 1.2rem; font-weight: bold; color: #fcc419; margin-bottom: 4px; }
+    .build-bar { margin: 8px 0; }
+    .active-mode { border: 2px solid #4dadf7 !important; }
+    #game-canvas { background: var(--canvas-bg); border: 2px solid var(--border); border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); cursor: crosshair; }
+    .help-text { font-size: 0.85rem; opacity: 0.8; margin-top: 4px; }
+  </style>
 </head>
 <body>
-    <h1>⚔️ 우주 전쟁: 미니 RTS 완전판</h1>
-    <div id="rts-panel">💎 광물: 50 | 🌋 가스: 0 | 🚀 아군: 4대 | 🌊 웨이브: 1</div>
-    <div id="guide-txt">⌨️ WASD/방향키: 지도 스크롤 | 🏭 건물 건설 버튼 클릭 후 캔버스 땅을 누르세요!</div>
-    
-    <div class="build-bar">
-        <button id="btn-scv" onclick="produceUnit('scv')">🛸 수집선 생산 (💎20)</button>
-        <button id="btn-barracks" onclick="toggleBuildMode()">🏭 전술 병영 건설 (💎40)</button>
-        <button id="btn-fighter" onclick="produceUnit('fighter')">🚀 전투기 생산 (💎30) [병영 필요]</button>
-        <button id="btn-cruiser" onclick="produceUnit('cruiser')">🛩️ 중순양함 생산 (💎50 🌋15) [병영 필요]</button>
-        <button onclick="location.href='../'">🏠 오락실 메인</button>
-    </div>
-    <canvas id="rtsCanvas" width="600" height="440"></canvas>
-    <script>
-        const savedTheme = localStorage.getItem('minig-theme');
-        if (savedTheme && savedTheme !== 'white') document.documentElement.setAttribute('data-theme', savedTheme);
+  <h1>⚔️ 우주 전쟁: 미니 RTS 완전판</h1>
+  
+  <div id="rts-panel">
+    💎 광물: <span id="res-min">50</span> | 🌋 가스: <span id="res-gas">0</span> | 🌊 웨이브: <span id="wave-num">1</span> | 🏰 아군HQ: <span id="hp-player">500</span> | 🏯 적군HQ: <span id="hp-enemy">500</span>
+  </div>
 
-        let audioCtx = null;
-        function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
-        function playSound(type) {
-            initAudio(); try {
-                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-                osc.connect(gain); gain.connect(audioCtx.destination); const now = audioCtx.currentTime;
-                if (type === 'produce') { osc.type = 'sine'; osc.frequency.setValueAtTime(300, now); osc.frequency.linearRampToValueAtTime(550, now+0.12); gain.gain.setValueAtTime(0.02, now); gain.gain.linearRampToValueAtTime(0, now+0.12); osc.start(now); osc.stop(now+0.12); }
-                else if (type === 'laser') { osc.type = 'square'; osc.frequency.setValueAtTime(800, now); osc.frequency.exponentialRampToValueAtTime(350, now+0.04); gain.gain.setValueAtTime(0.005, now); gain.gain.linearRampToValueAtTime(0, now+0.04); osc.start(now); osc.stop(now+0.04); }
-                else if (type === 'explode') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(160, now); gain.gain.setValueAtTime(0.04, now); gain.gain.linearRampToValueAtTime(0, now+0.15); osc.start(now); osc.stop(now+0.15); }
-            } catch(e) {}
+  <div class="build-bar">
+    <button id="btn-barracks" onclick="toggleBuildBarracks()">🏭 전술 병영 (💎40)</button>
+    <button id="btn-scv" onclick="produceSCV()">🛸 SCV (💎20)</button>
+    <button id="btn-fighter" onclick="produceFighter()" disabled>🚀 전투기 (💎30)</button>
+    <button id="btn-cruiser" onclick="produceCruiser()" disabled>🛩️ 중순양함 (💎50/🌋15)</button>
+  </div>
+
+  <canvas id="game-canvas" width="600" height="440"></canvas>
+  <div class="help-text">방향키 또는 WASD로 지도 스크롤 | 병영 건설 선택 후 캔버스 땅을 클릭하여 배치</div>
+
+  <script>
+    const savedTheme = localStorage.getItem('minig-theme');
+    if (savedTheme && savedTheme !== 'white') { document.documentElement.setAttribute('data-theme', savedTheme); }
+
+    // World & Viewport Configuration
+    const WORLD_W = 1500;
+    const WORLD_H = 1100;
+    const VIEW_W = 600;
+    const VIEW_H = 440;
+
+    let camX = 0;
+    let camY = WORLD_H - VIEW_H; // Initial camera focused at bottom-left
+
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+
+    // Game Resources & Tech State
+    let resources = { min: 50, gas: 0, enemyMin: 50, enemyGas: 0 };
+    let wave = 1;
+    let waveTimer = 0;
+    let buildMode = null; // 'barracks' or null
+    let hasBarracks = false;
+    let gameOver = false;
+
+    // Entities Arrays
+    let entities = [];
+    let bullets = [];
+    let particles = [];
+    let keys = {};
+
+    // Web Audio Synthesizer
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new AudioCtx();
+      }
+    }
+
+    function playSound(type) {
+      if (!audioCtx) return;
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        const now = audioCtx.currentTime;
+
+        if (type === 'produce') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(440, now);
+          osc.frequency.exponentialRampToValueAtTime(880, now + 0.15);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+          osc.start(now);
+          osc.stop(now + 0.15);
+        } else if (type === 'laser') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(800, now);
+          osc.frequency.exponentialRampToValueAtTime(200, now + 0.1);
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+          osc.start(now);
+          osc.stop(now + 0.1);
+        } else if (type === 'explode') {
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(150, now);
+          osc.frequency.exponentialRampToValueAtTime(30, now + 0.25);
+          gain.gain.setValueAtTime(0.25, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+          osc.start(now);
+          osc.stop(now + 0.25);
         }
+      } catch (e) {}
+    }
 
-        const canvas = document.getElementById('rtsCanvas'); const ctx = canvas.getContext('2d');
-        const MAP_W = 1500, MAP_H = 1100;
-        let camX = 0, camY = 330; let keys = {};
+    // Input Listeners
+    window.addEventListener('keydown', (e) => { keys[e.code] = true; });
+    window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
-        let minerals = 50, gas = 0, enemyMinerals = 50, enemyGas = 0;
-        let units = [], enemies = [], bullets = [], explosions = [], playerBuildings = [], enemyBuildings = [];
-        let isGameOver = false, frameCount = 0, isBuildMode = false;
+    canvas.addEventListener('click', (e) => {
+      initAudio();
+      const rect = canvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left + camX;
+      const clickY = e.clientY - rect.top + camY;
 
-        const playerCC = { x: 150, y: 900, emoji: "🏰", hp: 500, maxHp: 500, type: 'cc' };
-        const playerM = { x: 80, y: 750, emoji: "💎" };
-        const playerG = { x: 260, y: 1000, emoji: "🌋" };
-
-        const enemyCC = { x: 1300, y: 200, emoji: "🏯", hp: 500, maxHp: 500, type: 'cc' };
-        const enemyM = { x: 1400, y: 350, emoji: "💎" };
-        const enemyG = { x: 1200, y: 80, emoji: "🌋" };
-
-        playerBuildings.push(playerCC);
-        enemyBuildings.push(enemyCC);
-
-        for(let i=0; i<4; i++) {
-            units.push({ x: playerCC.x + (i*25-30), y: playerCC.y - 60, type: 'scv', state: 'mine', target: i%2===0?playerM:playerG, res: null, hp: 30, maxHp: 30, spd: 1.5 });
-            enemies.push({ x: enemyCC.x + (i*25-30), y: enemyCC.y + 70, type: 'scv', state: 'mine', target: i%2===0?enemyM:enemyG, res: null, hp: 30, maxHp: 30, spd: 1.5 });
+      if (buildMode === 'barracks') {
+        if (resources.min >= 40) {
+          resources.min -= 40;
+          spawnEntity('barracks', 'player', clickX, clickY);
+          hasBarracks = true;
+          playSound('produce');
+          buildMode = null;
+          document.getElementById('btn-barracks').classList.remove('active-mode');
+          updateUI();
         }
+      }
+    });
 
-        document.addEventListener('keydown', e => keys[e.key] = true);
-        document.addEventListener('keyup', e => keys[e.key] = false);
+    function toggleBuildBarracks() {
+      initAudio();
+      if (resources.min < 40) return;
+      if (buildMode === 'barracks') {
+        buildMode = null;
+        document.getElementById('btn-barracks').classList.remove('active-mode');
+      } else {
+        buildMode = 'barracks';
+        document.getElementById('btn-barracks').classList.add('active-mode');
+      }
+    }
 
-        function toggleBuildMode() {
-            isBuildMode = !isBuildMode;
-            document.getElementById('btn-barracks').classList.toggle('active-mode', isBuildMode);
+    function produceSCV() {
+      initAudio();
+      if (resources.min >= 20) {
+        const playerHQ = entities.find(e => e.type === 'hq' && e.faction === 'player');
+        if (playerHQ) {
+          resources.min -= 20;
+          spawnEntity('scv', 'player', playerHQ.x + (Math.random() * 60 - 30), playerHQ.y + (Math.random() * 60 - 30));
+          playSound('produce');
+          updateUI();
         }
+      }
+    }
 
-        canvas.addEventListener('click', e => {
-            if (!isBuildMode || isGameOver) return;
-            const rect = canvas.getBoundingClientRect();
-            const mouseWorldX = e.clientX - rect.left + camX;
-            const mouseWorldY = e.clientY - rect.top + camY;
+    function produceFighter() {
+      initAudio();
+      if (!hasBarracks || resources.min < 30) return;
+      const playerHQ = entities.find(e => e.type === 'hq' && e.faction === 'player');
+      if (playerHQ) {
+        resources.min -= 30;
+        spawnEntity('fighter', 'player', playerHQ.x + (Math.random() * 60 - 30), playerHQ.y + (Math.random() * 60 - 30));
+        playSound('produce');
+        updateUI();
+      }
+    }
 
-            if (minerals >= 40) {
-                minerals -= 40;
-                playerBuildings.push({ x: mouseWorldX, y: mouseWorldY, emoji: "🏭", hp: 300, maxHp: 300, type: 'barracks' });
-                playSound('produce'); toggleBuildMode(); updateHUD();
-            }
-        });
+    function produceCruiser() {
+      initAudio();
+      if (!hasBarracks || resources.min < 50 || resources.gas < 15) return;
+      const playerHQ = entities.find(e => e.type === 'hq' && e.faction === 'player');
+      if (playerHQ) {
+        resources.min -= 50;
+        resources.gas -= 15;
+        spawnEntity('cruiser', 'player', playerHQ.x + (Math.random() * 60 - 30), playerHQ.y + (Math.random() * 60 - 30));
+        playSound('produce');
+        updateUI();
+      }
+    }
 
-        function produceUnit(type) {
-            if (isGameOver) return;
-            let hasBarracks = playerBuildings.some(b => b.type === 'barracks');
-            if (type === 'scv' && minerals >= 20) { minerals -= 20; let nd = Math.random()<0.5?playerM:playerG; units.push({ x: playerCC.x+40, y: playerCC.y-40, type: 'scv', state: 'mine', target: nd, res: null, hp: 30, maxHp: 30, spd: 1.5 }); playSound('produce'); }
-            else if (type === 'fighter') {
-                if (!hasBarracks) { alert("🏭 아군 전투기를 생산하려면 먼저 '전술 병영' 건물을 지어야 합니다!"); return; }
-                if (minerals >= 30) { minerals -= 30; units.push({ x: playerCC.x+40, y: playerCC.y-40, type: 'fighter', state: 'patrol', hp: 45, maxHp: 45, cool: 0, spd: 2.3 }); playSound('produce'); }
-            }
-            else if (type === 'cruiser') {
-                if (!hasBarracks) { alert("🏭 중순양함을 생산하려면 먼저 '전술 병영' 건물을 지어야 합니다!"); return; }
-                if (minerals >= 50 && gas >= 15) { minerals -= 50; gas -= 15; units.push({ x: playerCC.x+40, y: playerCC.y-40, type: 'cruiser', state: 'patrol', hp: 120, maxHp: 120, cool: 0, spd: 1.2 }); playSound('produce'); }
-            }
-            updateHUD();
+    function updateUI() {
+      document.getElementById('res-min').innerText = resources.min;
+      document.getElementById('res-gas').innerText = resources.gas;
+      document.getElementById('wave-num').innerText = wave;
+
+      const playerHQ = entities.find(e => e.type === 'hq' && e.faction === 'player');
+      const enemyHQ = entities.find(e => e.type === 'hq' && e.faction === 'enemy');
+
+      document.getElementById('hp-player').innerText = playerHQ ? Math.max(0, playerHQ.hp) : 0;
+      document.getElementById('hp-enemy').innerText = enemyHQ ? Math.max(0, enemyHQ.hp) : 0;
+
+      document.getElementById('btn-fighter').disabled = !hasBarracks || resources.min < 30;
+      document.getElementById('btn-cruiser').disabled = !hasBarracks || resources.min < 50 || resources.gas < 15;
+    }
+
+    // Entity Factory
+    function spawnEntity(type, faction, x, y) {
+      let e = {
+        id: Math.random().toString(),
+        type: type,
+        faction: faction,
+        x: x,
+        y: y,
+        hp: 100,
+        maxHp: 100,
+        speed: 0,
+        radius: 15,
+        emoji: '🛸',
+        cooldown: 0,
+        cooldownMax: 40,
+        attackRange: 0,
+        cargo: null,
+        target: null
+      };
+
+      if (type === 'hq') {
+        e.hp = e.maxHp = 500;
+        e.radius = 32;
+        e.emoji = (faction === 'player') ? '🏰' : '🏯';
+      } else if (type === 'barracks') {
+        e.hp = e.maxHp = 300;
+        e.radius = 26;
+        e.emoji = '🏭';
+      } else if (type === 'resource_min') {
+        e.radius = 20;
+        e.emoji = '💎';
+        e.resType = 'min';
+      } else if (type === 'resource_gas') {
+        e.radius = 20;
+        e.emoji = '🌋';
+        e.resType = 'gas';
+      } else if (type === 'scv') {
+        e.hp = e.maxHp = 60;
+        e.speed = 2.0;
+        e.radius = 12;
+        e.emoji = '🛸';
+      } else if (type === 'fighter') {
+        e.hp = e.maxHp = 100;
+        e.speed = 2.4;
+        e.radius = 14;
+        e.emoji = '🚀';
+        e.attackRange = 130;
+        e.cooldownMax = 35;
+      } else if (type === 'cruiser') {
+        e.hp = e.maxHp = 250;
+        e.speed = 1.1;
+        e.radius = 20;
+        e.emoji = '🛩️';
+        e.attackRange = 170;
+        e.cooldownMax = 65;
+      } else if (type === 'boss') {
+        e.hp = e.maxHp = 380;
+        e.speed = 0.9;
+        e.radius = 22;
+        e.emoji = '🪐';
+        e.attackRange = 190;
+        e.cooldownMax = 50;
+      }
+
+      entities.push(e);
+      return e;
+    }
+
+    // Game Initialization
+    function initGame() {
+      entities = [];
+      bullets = [];
+      particles = [];
+      resources = { min: 50, gas: 0, enemyMin: 50, enemyGas: 0 };
+      wave = 1;
+      waveTimer = 0;
+      hasBarracks = false;
+      gameOver = false;
+
+      // Player Base Setup (Bottom-Left)
+      spawnEntity('hq', 'player', 160, 940);
+      spawnEntity('resource_min', 'neutral', 90, 1010);
+      spawnEntity('resource_gas', 'neutral', 260, 1010);
+      for (let i = 0; i < 4; i++) {
+        spawnEntity('scv', 'player', 150 + (i * 20), 880);
+      }
+
+      // Enemy Base Setup (Top-Right)
+      spawnEntity('hq', 'enemy', 1340, 160);
+      spawnEntity('resource_min', 'neutral', 1410, 90);
+      spawnEntity('resource_gas', 'neutral', 1240, 90);
+      for (let i = 0; i < 4; i++) {
+        spawnEntity('scv', 'enemy', 1300 + (i * 20), 220);
+      }
+
+      updateUI();
+    }
+
+    // Camera Handler
+    function updateCamera() {
+      const speed = 8;
+      if (keys['ArrowLeft'] || keys['KeyA']) camX -= speed;
+      if (keys['ArrowRight'] || keys['KeyD']) camX += speed;
+      if (keys['ArrowUp'] || keys['KeyW']) camY -= speed;
+      if (keys['ArrowDown'] || keys['KeyS']) camY += speed;
+
+      camX = Math.max(0, Math.min(WORLD_W - VIEW_W, camX));
+      camY = Math.max(0, Math.min(WORLD_H - VIEW_H, camY));
+    }
+
+    // AI Logic & Wave Management
+    let aiTimer = 0;
+    function updateAI() {
+      aiTimer++;
+      if (aiTimer % 60 !== 0) return;
+
+      const enemyHQ = entities.find(e => e.type === 'hq' && e.faction === 'enemy');
+      if (!enemyHQ) return;
+
+      const enemyBarracks = entities.find(e => e.type === 'barracks' && e.faction === 'enemy');
+      const enemySCVs = entities.filter(e => e.type === 'scv' && e.faction === 'enemy');
+
+      // AI Construction Logic
+      if (!enemyBarracks && resources.enemyMin >= 40) {
+        resources.enemyMin -= 40;
+        spawnEntity('barracks', 'enemy', enemyHQ.x - 80, enemyHQ.y + 60);
+      } else if (enemySCVs.length < 4 && resources.enemyMin >= 20) {
+        resources.enemyMin -= 20;
+        spawnEntity('scv', 'enemy', enemyHQ.x - 30, enemyHQ.y + 30);
+      } else if (enemyBarracks) {
+        if (wave < 6) {
+          // Low waves: produce Fighters only
+          if (resources.enemyMin >= 30) {
+            resources.enemyMin -= 30;
+            spawnEntity('fighter', 'enemy', enemyBarracks.x + (Math.random() * 40 - 20), enemyBarracks.y + 40);
+          }
+        } else {
+          // Wave >= 6: Produce Heavy Units
+          if (resources.enemyMin >= 50 && resources.enemyGas >= 15) {
+            resources.enemyMin -= 50;
+            resources.enemyGas -= 15;
+            spawnEntity('cruiser', 'enemy', enemyBarracks.x + (Math.random() * 40 - 20), enemyBarracks.y + 40);
+          } else if (resources.enemyMin >= 40 && Math.random() < 0.4) {
+            resources.enemyMin -= 40;
+            spawnEntity('boss', 'enemy', enemyBarracks.x + (Math.random() * 40 - 20), enemyBarracks.y + 40);
+          } else if (resources.enemyMin >= 30) {
+            resources.enemyMin -= 30;
+            spawnEntity('fighter', 'enemy', enemyBarracks.x + (Math.random() * 40 - 20), enemyBarracks.y + 40);
+          }
         }
+      }
+    }
 
-        function updateHUD() {
-            let uCount = units.filter(u=>u.type!=='scv').length; let eCount = enemies.filter(e=>e.type!=='scv').length;
-            document.getElementById('rts-panel').innerText = `💎 광물: ${minerals} | 🌋 가스: ${gas} | 🚀 아군군대: ${uCount}대 | 🌊 웨이브: ${wave}`;
-        }
-        function loop() {
-            if (isGameOver) return; requestAnimationFrame(loop);
-            if (keys['ArrowLeft'] || keys['a']) camX = Math.max(0, camX - 5);
-            if (keys['ArrowRight'] || keys['d']) camX = Math.min(MAP_W - canvas.width, camX + 5);
-            if (keys['ArrowUp'] || keys['w']) camY = Math.max(0, camY - 5);
-            if (keys['ArrowDown'] || keys['s']) camY = Math.min(MAP_H - canvas.height, camY + 5);
+    // Update Entities Engine
+    function updateEntities() {
+      waveTimer++;
+      if (waveTimer % 1000 === 0) {
+        wave++;
+        updateUI();
+      }
 
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.save(); ctx.translate(-camX, -camY);
-
-            ctx.font = "50px sans-serif";
-            ctx.fillText(playerM.emoji, playerM.x-20, playerM.y+20); ctx.fillText(playerG.emoji, playerG.x-20, playerG.y+20);
-            ctx.fillText(enemyM.emoji, enemyM.x-20, enemyM.y+20); ctx.fillText(enemyG.emoji, enemyG.x-20, enemyG.y+20);
-
-            playerBuildings.forEach(b => {
-                ctx.font = "50px sans-serif"; ctx.fillText(b.emoji, b.x-20, b.y+20);
-                ctx.fillStyle = "#ff6b6b"; ctx.fillRect(b.x-30, b.y-30, 80, 5);
-                ctx.fillStyle = "#51cf66"; ctx.fillRect(b.x-30, b.y-30, (b.hp/b.maxHp)*80, 5);
+      for (let i = entities.length - 1; i >= 0; i--) {
+        let e = entities[i];
+        if (e.hp <= 0) {
+          // Spawn explosion particles on death
+          for (let p = 0; p < 5; p++) {
+            particles.push({
+              x: e.x,
+              y: e.y,
+              vx: (Math.random() - 0.5) * 4,
+              vy: (Math.random() - 0.5) * 4,
+              life: 20,
+              text: '💥'
             });
-            enemyBuildings.forEach(b => {
-                ctx.font = "50px sans-serif"; ctx.fillText(b.emoji, b.x-20, b.y+20);
-                ctx.fillStyle = "#ff6b6b"; ctx.fillRect(b.x-30, b.y-30, 80, 5);
-                ctx.fillStyle = "#51cf66"; ctx.fillRect(b.x-30, b.y-30, (b.hp/b.maxHp)*80, 5);
+          }
+          playSound('explode');
+          entities.splice(i, 1);
+          updateUI();
+
+          // Victory / Loss Check
+          if (e.type === 'hq') {
+            gameOver = true;
+            setTimeout(() => {
+              if (e.faction === 'enemy') {
+                alert("🎉 우주 대승리! 적 사령부를 완전히 파괴했습니다!");
+              } else {
+                alert("💥 아군 사령부가 파괴되었습니다! 게임 오버!");
+              }
+              initGame();
+            }, 100);
+          }
+          continue;
+        }
+
+        // SCV Resource Gathering Cycle
+        if (e.type === 'scv') {
+          const hq = entities.find(h => h.type === 'hq' && h.faction === e.faction);
+          if (!e.cargo) {
+            // Find Resource Node
+            let nodes = entities.filter(n => n.type === 'resource_min' || n.type === 'resource_gas');
+            let closestNode = null;
+            let minDist = 999999;
+            nodes.forEach(n => {
+              let d = Math.hypot(n.x - e.x, n.y - e.y);
+              if (d < minDist) { minDist = d; closestNode = n; }
             });
 
-            if(frameCount % 100 === 0) { enemyMinerals += 15; enemyGas += 5; }
-            if(frameCount % 320 === 0) {
-                let enemyHasBarracks = enemyBuildings.some(b => b.type === 'barracks');
-                if (!enemyHasBarracks && enemyMinerals >= 40) {
-                    enemyMinerals -= 40; enemyBuildings.push({ x: enemyCC.x-70, y: enemyCC.y+80, emoji: "🏭", hp: 300, maxHp: 300, type: 'barracks' });
-                }
-                if (enemyHasBarracks) {
-                    if (wave >= 6 && enemyMinerals >= 50 && enemyGas >= 15 && Math.random() < 0.4) {
-                        enemyMinerals -= 50; enemyGas -= 15; enemies.push({ x: enemyCC.x-40, y: enemyCC.y+40, type: 'cruiser', state: 'attack', hp: 120, maxHp: 120, cool: 0, spd: 1.2 });
-                    } else if (enemyMinerals >= 30) {
-                        enemyMinerals -= 30; enemies.push({ x: enemyCC.x-40, y: enemyCC.y+40, type: 'fighter', state: 'attack', hp: 45, maxHp: 45, cool: 0, spd: 2.3 });
-                    }
-                }
+            if (closestNode) {
+              if (minDist > 15) {
+                let angle = Math.atan2(closestNode.y - e.y, closestNode.x - e.x);
+                e.x += Math.cos(angle) * e.speed;
+                e.y += Math.sin(angle) * e.speed;
+              } else {
+                e.cargo = closestNode.resType;
+              }
             }
-
-            units.forEach((u, idx) => {
-                let fEnemies = enemies.filter(e=>e.type!=='scv');
-                if (u.type === 'scv') {
-                    let dx = u.target.x - u.x; let dy = u.target.y - u.y; let d = Math.sqrt(dx*dx + dy*dy);
-                    if (d > 25) { u.x += (dx/d)*u.spd; u.y += (dy/d)*u.spd; }
-                    else {
-                        if (u.target === playerM) { u.res = 'm'; u.target = playerCC; }
-                        else if (u.target === playerG) { u.res = 'g'; u.target = playerCC; }
-                        else if (u.target === playerCC) { if(u.res==='m') minerals+=8; else if(u.res==='g') gas+=4; u.res=null; u.target=Math.random()<0.6?playerM:playerG; updateHUD(); }
-                    }
-                    ctx.save(); ctx.font = "16px sans-serif"; ctx.fillText(u.res?"📦":"🛸", u.x-8, u.y+6); ctx.restore();
+          } else {
+            // Return to HQ
+            if (hq) {
+              let dist = Math.hypot(hq.x - e.x, hq.y - e.y);
+              if (dist > 25) {
+                let angle = Math.atan2(hq.y - e.y, hq.x - e.x);
+                e.x += Math.cos(angle) * e.speed;
+                e.y += Math.sin(angle) * e.speed;
+              } else {
+                if (e.faction === 'player') {
+                  if (e.cargo === 'min') resources.min += 10;
+                  if (e.cargo === 'gas') resources.gas += 5;
                 } else {
-                    let aliveEnemyB = enemyBuildings.filter(b => b.hp > 0);
-                    let target = fEnemies.length > 0 ? fEnemies : (aliveEnemyB.length > 0 ? aliveEnemyB : enemyCC);
-                    let dx = target.x - u.x; let dy = target.y - u.y; let d = Math.sqrt(dx*dx + dy*dy);
-                    if (d > 140) { u.x += (dx/d)*u.spd; u.y += (dy/d)*u.spd; }
-                    else if (u.cool <= 0) { bullets.push({ x: u.x, y: u.y, target: target, isEnemy: false, dmg: u.type==='cruiser'?15:7, type: u.type }); u.cool = u.type==='cruiser'?35:18; playSound('laser'); }
-                    if (u.cool > 0) u.cool--;
-                    ctx.save(); ctx.font = u.type==='cruiser'?"24px sans-serif":"18px sans-serif"; ctx.fillText(u.type==='cruiser'?"🛩️":"🚀", u.x-8, u.y+6);
-                    ctx.fillStyle = "#ff6b6b"; ctx.fillRect(u.x-10, u.y-14, 20, 3); ctx.fillStyle = "#51cf66"; ctx.fillRect(u.x-10, u.y-14, (u.hp/u.maxHp)*20, 3); ctx.restore();
+                  if (e.cargo === 'min') resources.enemyMin += 10;
+                  if (e.cargo === 'gas') resources.enemyGas += 5;
                 }
-            });
-        function loop() {
-            if (isGameOver) return; requestAnimationFrame(loop);
-            if (keys['ArrowLeft'] || keys['a']) camX = Math.max(0, camX - 5);
-            if (keys['ArrowRight'] || keys['d']) camX = Math.min(MAP_W - canvas.width, camX + 5);
-            if (keys['ArrowUp'] || keys['w']) camY = Math.max(0, camY - 5);
-            if (keys['ArrowDown'] || keys['s']) camY = Math.min(MAP_H - canvas.height, camY + 5);
-
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.save(); ctx.translate(-camX, -camY);
-
-            ctx.font = "50px sans-serif";
-            ctx.fillText(playerM.emoji, playerM.x-20, playerM.y+20); ctx.fillText(playerG.emoji, playerG.x-20, playerG.y+20);
-            ctx.fillText(enemyM.emoji, enemyM.x-20, enemyM.y+20); ctx.fillText(enemyG.emoji, enemyG.x-20, enemyG.y+20);
-
-            playerBuildings.forEach(b => {
-                ctx.font = "50px sans-serif"; ctx.fillText(b.emoji, b.x-20, b.y+20);
-                ctx.fillStyle = "#ff6b6b"; ctx.fillRect(b.x-30, b.y-30, 80, 5);
-                ctx.fillStyle = "#51cf66"; ctx.fillRect(b.x-30, b.y-30, (b.hp/b.maxHp)*80, 5);
-            });
-            enemyBuildings.forEach(b => {
-                ctx.font = "50px sans-serif"; ctx.fillText(b.emoji, b.x-20, b.y+20);
-                ctx.fillStyle = "#ff6b6b"; ctx.fillRect(b.x-30, b.y-30, 80, 5);
-                ctx.fillStyle = "#51cf66"; ctx.fillRect(b.x-30, b.y-30, (b.hp/b.maxHp)*80, 5);
-            });
-
-            if(frameCount % 100 === 0) { enemyMinerals += 15; enemyGas += 5; }
-            if(frameCount % 320 === 0) {
-                let enemyHasBarracks = enemyBuildings.some(b => b.type === 'barracks');
-                if (!enemyHasBarracks && enemyMinerals >= 40) {
-                    enemyMinerals -= 40; enemyBuildings.push({ x: enemyCC.x-70, y: enemyCC.y+80, emoji: "🏭", hp: 300, maxHp: 300, type: 'barracks' });
-                }
-                if (enemyHasBarracks) {
-                    if (wave >= 6 && enemyMinerals >= 50 && enemyGas >= 15 && Math.random() < 0.4) {
-                        enemyMinerals -= 50; enemyGas -= 15; enemies.push({ x: enemyCC.x-40, y: enemyCC.y+40, type: 'cruiser', state: 'attack', hp: 120, maxHp: 120, cool: 0, spd: 1.2 });
-                    } else if (enemyMinerals >= 30) {
-                        enemyMinerals -= 30; enemies.push({ x: enemyCC.x-40, y: enemyCC.y+40, type: 'fighter', state: 'attack', hp: 45, maxHp: 45, cool: 0, spd: 2.3 });
-                    }
-                }
+                e.cargo = null;
+                updateUI();
+              }
             }
-
-            units.forEach((u, idx) => {
-                let fEnemies = enemies.filter(e=>e.type!=='scv');
-                if (u.type === 'scv') {
-                    let dx = u.target.x - u.x; let dy = u.target.y - u.y; let d = Math.sqrt(dx*dx + dy*dy);
-                    if (d > 25) { u.x += (dx/d)*u.spd; u.y += (dy/d)*u.spd; }
-                    else {
-                        if (u.target === playerM) { u.res = 'm'; u.target = playerCC; }
-                        else if (u.target === playerG) { u.res = 'g'; u.target = playerCC; }
-                        else if (u.target === playerCC) { if(u.res==='m') minerals+=8; else if(u.res==='g') gas+=4; u.res=null; u.target=Math.random()<0.6?playerM:playerG; updateHUD(); }
-                    }
-                    ctx.save(); ctx.font = "16px sans-serif"; ctx.fillText(u.res?"📦":"🛸", u.x-8, u.y+6); ctx.restore();
-                } else {
-                    let aliveEnemyB = enemyBuildings.filter(b => b.hp > 0);
-                    let target = fEnemies.length > 0 ? fEnemies : (aliveEnemyB.length > 0 ? aliveEnemyB : enemyCC);
-                    let dx = target.x - u.x; let dy = target.y - u.y; let d = Math.sqrt(dx*dx + dy*dy);
-                    if (d > 140) { u.x += (dx/d)*u.spd; u.y += (dy/d)*u.spd; }
-                    else if (u.cool <= 0) { bullets.push({ x: u.x, y: u.y, target: target, isEnemy: false, dmg: u.type==='cruiser'?15:7, type: u.type }); u.cool = u.type==='cruiser'?35:18; playSound('laser'); }
-                    if (u.cool > 0) u.cool--;
-                    ctx.save(); ctx.font = u.type==='cruiser'?"24px sans-serif":"18px sans-serif"; ctx.fillText(u.type==='cruiser'?"🛩️":"🚀", u.x-8, u.y+6);
-                    ctx.fillStyle = "#ff6b6b"; ctx.fillRect(u.x-10, u.y-14, 20, 3); ctx.fillStyle = "#51cf66"; ctx.fillRect(u.x-10, u.y-14, (u.hp/u.maxHp)*20, 3); ctx.restore();
-                }
-            });
-            for (let i = enemies.length - 1; i >= 0; i--) {
-                let en = enemies[i]; let fUnits = units.filter(u=>u.type!=='scv');
-                if (en.type === 'scv') {
-                    let dx = en.target.x - en.x; let dy = en.target.y - en.y; let d = Math.sqrt(dx*dx + dy*dy);
-                    if (d > 25) { en.x += (dx/d)*en.spd; en.y += (dy/d)*en.spd; }
-                    else {
-                        if (en.target === enemyM) { en.res = 'm'; en.target = enemyCC; }
-                        else if (en.target === enemyG) { en.res = 'g'; en.target = enemyCC; }
-                        else if (en.target === enemyCC) { if(en.res==='m') enemyMinerals+=8; else if(en.res==='g') enemyGas+=4; en.res=null; en.target=Math.random()<0.6?enemyM:enemyG; }
-                    }
-                    ctx.save(); ctx.font = "16px sans-serif"; ctx.fillText(en.res?"📦":"🛸", en.x-8, en.y+6); ctx.restore();
-                } else {
-                    let alivePlayerB = playerBuildings.filter(b => b.hp > 0);
-                    let target = fUnits.length > 0 ? fUnits : (alivePlayerB.length > 0 ? alivePlayerB : playerCC);
-                    let dx = target.x - en.x; let dy = target.y - en.y; let d = Math.sqrt(dx*dx + dy*dy);
-                    if (d > 140) { en.x += (dx/d)*en.spd; en.y += (dy/d)*en.spd; }
-                    else if (en.cool <= 0) { bullets.push({ x: en.x, y: en.y, target: target, isEnemy: true, dmg: en.type==='cruiser'?15:7, type: en.type }); en.cool = en.type==='cruiser'?35:18; playSound('laser'); }
-                    if (en.cool > 0) en.cool--;
-                    ctx.save(); ctx.font = en.type==='cruiser'?"24px sans-serif":"18px sans-serif"; ctx.fillText(en.type==='cruiser'?"🛩️":"🛸", en.x-8, en.y+6);
-                    ctx.fillStyle = "#ff6b6b"; ctx.fillRect(en.x-10, en.y-14, 20, 3); ctx.fillStyle = "#fa5252"; ctx.fillRect(en.x-10, en.y-14, (en.hp/en.maxHp)*20, 3); ctx.restore();
-                }
-            }
-
-            for (let i = bullets.length - 1; i >= 0; i--) {
-                let b = bullets[i];
-                let isBuilding = b.target.type === 'cc' || b.target.type === 'barracks';
-                if (!isBuilding && !units.includes(b.target) && !enemies.includes(b.target) && !playerBuildings.includes(b.target) && !enemyBuildings.includes(b.target)) { bullets.splice(i, 1); continue; }
-                let dx = b.target.x - b.x; let dy = b.target.y - b.y; let d = Math.sqrt(dx*dx + dy*dy);
-
-                if (d < 12) {
-                    b.target.hp -= b.dmg;
-                    if (b.target === playerCC && playerCC.hp <= 0) { isGameOver = true; playSound('explode'); alert("💥 아군 사령부가 함락되었습니다! 패배"); location.reload(); return; }
-                    if (b.target === enemyCC && enemyCC.hp <= 0) { isGameOver = true; playSound('explode'); alert("🏆 외계인 기지를 완전히 소멸시켰습니다! 우주 대승리!"); location.reload(); return; }
-                    
-                    if (b.target.hp <= 0) {
-                        explosions.push({ x: b.target.x, y: b.target.y, rad: 5 }); playSound('explode');
-                        if (isBuilding) {
-                            let bList = b.isEnemy ? playerBuildings : enemyBuildings; let bIdx = bList.indexOf(b.target); if(bIdx > -1) bList.splice(bIdx, 1);
-                        } else {
-                            let tList = b.isEnemy ? units : enemies; let idx = tList.indexOf(b.target); if (idx > -1) tList.splice(idx, 1);
-                        }
-                        updateHUD();
-                    }
-                    bullets.splice(i, 1);
-                } else { b.x += (dx/d)*6; b.y += (dy/d)*6; ctx.fillStyle = b.isEnemy?'#ff4d4d':'#00ffcc'; ctx.beginPath(); ctx.arc(b.x, b.y, b.type==='cruiser'?3.5:2, 0, Math.PI * 2); ctx.fill(); }
-            }
-
-            for (let i = explosions.length - 1; i >= 0; i--) { let exp = explosions[i]; exp.rad += 2; ctx.save(); ctx.font = "20px sans-serif"; ctx.fillText("💥", exp.x-10, exp.y+8); ctx.restore(); if (exp.rad >= 20) explosions.splice(i, 1); }
-            ctx.restore();
-
-            ctx.save(); ctx.fillStyle = "rgba(0, 0, 0, 0.85)"; ctx.fillRect(10, canvas.height - 90, 110, 80); ctx.strokeStyle = "var(--border)"; ctx.lineWidth = 1; ctx.strokeRect(10, canvas.height - 90, 110, 80);
-            ctx.fillStyle = "#51cf66"; playerBuildings.forEach(b => ctx.fillRect(10 + (b.x/MAP_W)*110, (canvas.height - 90) + (b.y/MAP_H)*80, 4, 4)); units.forEach(u => ctx.fillRect(10 + (u.x/MAP_W)*110, (canvas.height - 90) + (u.y/MAP_H)*80, 2, 2));
-            ctx.fillStyle = "#fa5252"; enemyBuildings.forEach(b => ctx.fillRect(10 + (b.x/MAP_W)*110, (canvas.height - 90) + (b.y/MAP_H)*80, 4, 4)); enemies.forEach(e => ctx.fillRect(10 + (e.x/MAP_W)*110, (canvas.height - 90) + (e.y/MAP_H)*80, 2, 2));
-            ctx.strokeStyle = "#fff"; ctx.strokeRect(10 + (camX/MAP_W)*110, (canvas.height - 90) + (camY/MAP_H)*80, (canvas.width/MAP_W)*110, (canvas.height/MAP_H)*80); ctx.restore();
-
-            waveTimer++; if (waveTimer >= 900) { wave++; waveTimer = 0; updateHUD(); }
-            frameCount++;
+          }
         }
 
-        updateHUD(); loop();
-    </script>
+        // Tactical Attack Units Logic
+        if (e.type === 'fighter' || e.type === 'cruiser' || e.type === 'boss') {
+          if (e.cooldown > 0) e.cooldown--;
+
+          // Find target
+          let targets = entities.filter(t => t.faction !== 'neutral' && t.faction !== e.faction);
+          let closestTarget = null;
+          let minDist = 999999;
+          targets.forEach(t => {
+            let d = Math.hypot(t.x - e.x, t.y - e.y);
+            if (d < minDist) { minDist = d; closestTarget = t; }
+          });
+
+          if (closestTarget) {
+            if (minDist > e.attackRange) {
+              let angle = Math.atan2(closestTarget.y - e.y, closestTarget.x - e.x);
+              e.x += Math.cos(angle) * e.speed;
+              e.y += Math.sin(angle) * e.speed;
+            } else if (e.cooldown <= 0) {
+              // Fire Weapon
+              bullets.push({
+                x: e.x,
+                y: e.y,
+                targetX: closestTarget.x,
+                targetY: closestTarget.y,
+                targetId: closestTarget.id,
+                faction: e.faction,
+                speed: 7,
+                damage: e.type === 'cruiser' ? 30 : (e.type === 'boss' ? 25 : 12),
+                splash: (e.type === 'cruiser' || e.type === 'boss')
+              });
+              playSound('laser');
+              e.cooldown = e.cooldownMax;
+            }
+          }
+        }
+      }
+
+      // Update Bullets
+      for (let i = bullets.length - 1; i >= 0; i--) {
+        let b = bullets[i];
+        let angle = Math.atan2(b.targetY - b.y, b.targetX - b.x);
+        b.x += Math.cos(angle) * b.speed;
+        b.y += Math.sin(angle) * b.speed;
+
+        if (Math.hypot(b.targetX - b.x, b.targetY - b.y) < 8) {
+          // Impact Event
+          if (b.splash) {
+            playSound('explode');
+            particles.push({ x: b.x, y: b.y, vx: 0, vy: 0, life: 12, text: '💥' });
+            entities.forEach(t => {
+              if (t.faction !== 'neutral' && t.faction !== b.faction) {
+                if (Math.hypot(t.x - b.x, t.y - b.y) <= 45) {
+                  t.hp -= b.damage;
+                }
+              }
+            });
+          } else {
+            let target = entities.find(e => e.id === b.targetId);
+            if (target) {
+              target.hp -= b.damage;
+            }
+          }
+          bullets.splice(i, 1);
+          updateUI();
+        }
+      }
+
+      // Update Particles
+      for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life--;
+        if (p.life <= 0) particles.splice(i, 1);
+      }
+    }
+
+    // Main Canvas Render Engine
+    function render() {
+      ctx.clearRect(0, 0, VIEW_W, VIEW_H);
+
+      ctx.save();
+      ctx.translate(-camX, -camY);
+
+      // Render Grid Lines & Stars
+      ctx.strokeStyle = '#111827';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < WORLD_W; x += 100) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, WORLD_H); ctx.stroke();
+      }
+      for (let y = 0; y < WORLD_H; y += 100) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(WORLD_W, y); ctx.stroke();
+      }
+
+      // Render Bullets
+      bullets.forEach(b => {
+        ctx.fillStyle = b.faction === 'player' ? '#4dadf7' : '#ff6b6b';
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.splash ? 4 : 3, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // Render Entities & Emojis
+      entities.forEach(e => {
+        ctx.font = `${e.radius * 1.5}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(e.emoji, e.x, e.y);
+
+        // Draw Cargo for SCV
+        if (e.cargo) {
+          ctx.font = '12px sans-serif';
+          ctx.fillText('📦', e.x + 10, e.y - 10);
+        }
+
+        // Draw HP Bars for Units/Buildings
+        if (e.type !== 'resource_min' && e.type !== 'resource_gas') {
+          const barW = e.radius * 1.8;
+          const barH = 4;
+          const barX = e.x - barW / 2;
+          const barY = e.y - e.radius - 8;
+          const hpRatio = Math.max(0, e.hp / e.maxHp);
+
+          ctx.fillStyle = 'rgba(0,0,0,0.6)';
+          ctx.fillRect(barX, barY, barW, barH);
+          ctx.fillStyle = e.faction === 'player' ? '#51cf66' : '#ff6b6b';
+          ctx.fillRect(barX, barY, barW * hpRatio, barH);
+        }
+      });
+
+      // Render Explosions / Particles
+      particles.forEach(p => {
+        ctx.font = '16px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(p.text, p.x, p.y);
+      });
+
+      ctx.restore();
+
+      // Render Minimap Overlay (Fixed Screen Space)
+      const miniW = 110;
+      const miniH = 80;
+      const miniX = 10;
+      const miniY = VIEW_H - miniH - 10;
+
+      ctx.fillStyle = 'rgba(5, 7, 10, 0.85)';
+      ctx.fillRect(miniX, miniY, miniW, miniH);
+      ctx.strokeStyle = '#30363d';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(miniX, miniY, miniW, miniH);
+
+      const scaleX = miniW / WORLD_W;
+      const scaleY = miniH / WORLD_H;
+
+      // Radar Dots
+      entities.forEach(e => {
+        if (e.type === 'resource_min' || e.type === 'resource_gas') {
+          ctx.fillStyle = '#fcc419';
+        } else {
+          ctx.fillStyle = e.faction === 'player' ? '#51cf66' : '#ff6b6b';
+        }
+        ctx.fillRect(miniX + e.x * scaleX, miniY + e.y * scaleY, 2, 2);
+      });
+
+      // Camera Box Guide
+      ctx.strokeStyle = '#4dadf7';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(
+        miniX + camX * scaleX,
+        miniY + camY * scaleY,
+        VIEW_W * scaleX,
+        VIEW_H * scaleY
+      );
+    }
+
+    // Main Loop
+    function gameLoop() {
+      if (!gameOver) {
+        updateCamera();
+        updateAI();
+        updateEntities();
+      }
+      render();
+      requestAnimationFrame(gameLoop);
+    }
+
+    // Start Game Engine
+    initGame();
+    requestAnimationFrame(gameLoop);
+  </script>
 </body>
 </html>
