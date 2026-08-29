@@ -12,7 +12,6 @@
       --border: #e9ecef;
       --btn-bg: #fff;
     }
-    /* 상위 사이트 CSS 테마 동기화 */
     [data-theme="dark"] {
       --bg: #0d1117;
       --text: #c9d1d9;
@@ -65,7 +64,6 @@
       background-color: var(--canvas-bg);
     }
 
-    /* 상단 정보창 레이아웃 (#board) */
     .hud {
       position: absolute;
       top: 8px;
@@ -99,7 +97,6 @@
       border-radius: 3px;
     }
 
-    /* 보스 체력바 */
     .boss-bar-container {
       position: absolute;
       top: 42px;
@@ -119,7 +116,6 @@
       background: #ff0055;
     }
 
-    /* 오버레이 화면 */
     .overlay-screen {
       position: absolute;
       top: 0;
@@ -147,10 +143,10 @@
       line-height: 1.4;
     }
     button {
-      margin-top: 10px;
-      padding: 8px 18px;
+      margin-top: 6px;
+      padding: 6px 14px;
       font-weight: bold;
-      font-size: 12px;
+      font-size: 11px;
       cursor: pointer;
       border-radius: 4px;
       transition: transform 0.1s ease;
@@ -158,8 +154,11 @@
     button:active {
       transform: scale(0.96);
     }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
 
-    /* 프롤로그 타이핑 박스 */
     #intro-box {
       width: 90%;
       height: 130px;
@@ -176,28 +175,27 @@
       line-height: 1.5;
     }
 
-    /* 모달 팝업 */
     .modal {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background-color: rgba(0, 0, 0, 0.7);
+      background-color: rgba(0, 0, 0, 0.75);
       display: none;
       justify-content: center;
       align-items: center;
       z-index: 30;
-      padding: 15px;
+      padding: 12px;
     }
     .modal-content {
-      width: 90%;
+      width: 92%;
       border-radius: 6px;
-      padding: 16px;
+      padding: 14px;
       text-align: center;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 8px;
     }
     .shop-item {
       display: flex;
@@ -213,8 +211,12 @@
       padding: 4px 8px;
       font-size: 10px;
     }
+    .sub-desc {
+      font-size: 9px;
+      opacity: 0.75;
+      margin-top: 2px;
+    }
 
-    /* 암전 페이드 트랜지션 레이어 */
     #fade-screen {
       position: absolute;
       top: 0;
@@ -238,7 +240,6 @@
 <body>
 
   <div id="game-container">
-    <!-- 상단 계기판 (#board: 🛡️ 실드 적용) -->
     <div class="hud" id="board">
       <div class="hud-item">🛡️ 실드: <span id="hp-val">10</span>/<span id="max-hp-val">10</span></div>
       <div class="hud-item">🏆 <span id="score-val">0</span></div>
@@ -248,76 +249,79 @@
       <button class="hud-btn" onclick="openShop()">🛒연구소</button>
     </div>
 
-    <!-- 보스 체력바 -->
     <div id="boss-bar-container" class="boss-bar-container">
       <div id="boss-bar" class="boss-bar"></div>
     </div>
 
-    <!-- 프롤로그 시네마틱 오버레이 -->
     <div id="start-screen" class="overlay-screen">
       <h1>📡 우주 상황실 긴급 전언</h1>
       <div id="intro-box"></div>
       <button id="start-btn" style="display:none;" onclick="startGame()">🚀 출격 (Spacebar)</button>
     </div>
 
-    <!-- 게임 오버 화면 -->
     <div id="game-over-screen" class="overlay-screen" style="display: none;">
       <h1 id="game-over-title">💥 GAME OVER</h1>
       <p id="game-over-desc">함선이 파괴되었습니다.</p>
       <button onclick="startGame()">🔄 다시 출격</button>
     </div>
 
-    <!-- 무기 획득 팝업 모달 (#weaponModal) -->
     <div id="weaponModal" class="modal">
       <div class="modal-content">
         <h3>🎁 특수 무기 보급품 획득!</h3>
         <p>전술 무기 가챠 룰렛 가동 중...</p>
-        <div id="gacha-roulette" style="font-size: 36px; margin: 10px 0;">🎰</div>
-        <div id="gacha-result" style="font-size: 13px; font-weight: bold; min-height: 20px;"></div>
+        <div id="gacha-roulette" style="font-size: 36px; margin: 8px 0;">🎰</div>
+        <div id="gacha-result" style="font-size: 12px; font-weight: bold; min-height: 18px;"></div>
         <button id="gacha-claim-btn" style="display:none;" onclick="claimWeapon()">⚔️ 승인 및 장착</button>
       </div>
     </div>
 
-    <!-- 전술 연구소 상점 모달 -->
     <div id="shopModal" class="modal">
       <div class="modal-content">
         <h3>🛒 전술 강화 연구소</h3>
-        <div>보유 포인트: 💰 <span id="shop-points">0</span> P</div>
+        <div style="font-size:12px;">보유 포인트: 💰 <span id="shop-points">0</span> P</div>
         
         <div class="shop-item">
           <div style="text-align:left;">
-            <b>⚔️ 화력 강화</b> (LV <span id="atk-lv">1</span>)
+            <b>⚔️ 화력 강화</b> (LV <span id="atk-lv">1</span>/10)
+            <div class="sub-desc">주포 공격력 +30% 증폭</div>
           </div>
-          <button onclick="buyUpgrade('atk')"><span id="atk-cost">100</span>P</button>
+          <button id="btn-atk" onclick="buyUpgrade('atk')"><span id="atk-cost">100</span>P</button>
         </div>
 
         <div class="shop-item">
           <div style="text-align:left;">
-            <b>🍀 획득 포인트 증폭</b> (LV <span id="luck-lv">1</span>)
+            <b>🍀 포인트 증폭</b> (LV <span id="luck-lv">1</span>/10)
+            <div class="sub-desc">획득 포인트 +20% 추가 증가</div>
           </div>
-          <button onclick="buyUpgrade('luck')"><span id="luck-cost">150</span>P</button>
+          <button id="btn-luck" onclick="buyUpgrade('luck')"><span id="luck-cost">150</span>P</button>
         </div>
 
         <div class="shop-item">
           <div style="text-align:left;">
-            <b>🛡️ 실드 용량 확장</b> (LV <span id="shield-lv">1</span>)
+            <b>🛡️ 실드 용량 확장</b> (LV <span id="shield-lv">1</span>/10)
+            <div class="sub-desc">최대 실드 +2 확장 (현재 MAX: <span id="shop-max-hp">10</span>)</div>
           </div>
-          <button onclick="buyUpgrade('shield')"><span id="shield-cost">200</span>P</button>
+          <button id="btn-shield" onclick="buyUpgrade('shield')"><span id="shield-cost">200</span>P</button>
         </div>
 
-        <button onclick="closeShop()">🚀 전투 복귀</button>
+        <div class="shop-item">
+          <div style="text-align:left;">
+            <b>🔧 실드 긴급 수리</b>
+            <div class="sub-desc">실드 4 내구도 수리 (최대치 초과 불가)</div>
+          </div>
+          <button id="btn-repair" onclick="buyUpgrade('repair')">80P</button>
+        </div>
+
+        <button onclick="closeShop()" style="margin-top:10px;">🚀 전투 복귀</button>
       </div>
     </div>
 
-    <!-- 달 기지 전환 페이드 레이어 -->
     <div id="fade-screen">🌕 달 표면 기지 돌파 진입 중...</div>
 
-    <!-- 캔버스 (360x500 종스크롤) -->
     <canvas id="gameCanvas" width="360" height="500"></canvas>
   </div>
 
   <script>
-    // 1. 테마 동기화 (최상단)
     const savedTheme = localStorage.getItem('minig-theme');
     if (savedTheme && savedTheme !== 'white') {
       document.documentElement.setAttribute('data-theme', savedTheme);
@@ -328,7 +332,6 @@
     const CANVAS_WIDTH = 360;
     const CANVAS_HEIGHT = 500;
 
-    // Web Audio API 사운드 시스템
     let audioCtx = null;
     function initAudio() {
       if (!audioCtx) {
@@ -402,7 +405,6 @@
       }
     }
 
-    // 2. 프롤로그 시네마틱 텍스트 (5줄)
     const introLines = [
       "서기 2026년...",
       "지구 방위대 최후의 함선 '미니지호'...",
@@ -424,7 +426,6 @@
       }
     }
 
-    // 게임 상태 제어 변수
     let gameState = 'INTRO';
     let previousState = 'INTRO';
     let score = 0;
@@ -436,7 +437,6 @@
     let flashEffect = 0;
     const keys = {};
 
-    // 7대 특수 주포 + 전설 주포 정의
     const WEAPONS = [
       { name: '기본 레이저', emoji: '🔫', type: 'NORMAL' },
       { name: '범위 미사일', emoji: '🚀', type: 'MISSILE' },
@@ -450,14 +450,12 @@
     let currentWeapon = WEAPONS[0];
     let pendingGachaWeapon = null;
 
-    // 상점 강화 데이터
     const shopUpgrades = {
-      atkLv: 1, atkCost: 100,
-      luckLv: 1, luckCost: 150,
-      shieldLv: 1, shieldCost: 200
+      atkLv: 1, atkCost: 100, maxAtkLv: 10,
+      luckLv: 1, luckCost: 150, maxLuckLv: 10,
+      shieldLv: 1, shieldCost: 200, maxShieldLv: 10
     };
 
-    // 플레이어 기체
     const player = {
       x: 180,
       y: 420,
@@ -475,15 +473,14 @@
     function resetPlayer() {
       player.x = 180;
       player.y = 420;
-      player.hp = 10 + (shopUpgrades.shieldLv - 1) * 2;
-      player.maxHp = player.hp;
+      player.maxHp = 10 + (shopUpgrades.shieldLv - 1) * 2;
+      player.hp = player.maxHp;
       player.superMode = false;
       player.superTimer = 0;
       player.lastShot = 0;
       currentWeapon = WEAPONS[0];
     }
 
-    // 배경: 25개 우주 성단 입자
     const stars = Array.from({ length: 25 }, () => ({
       x: Math.random() * CANVAS_WIDTH,
       y: Math.random() * CANVAS_HEIGHT,
@@ -491,7 +488,6 @@
       speed: Math.random() * 1.5 + 1.0
     }));
 
-    // 달 표면 크레이터 배경 입자
     const craterList = [];
     function initCraters() {
       craterList.length = 0;
@@ -505,7 +501,6 @@
       }
     }
 
-    // 엔티티 관리 배열
     let bullets = [];
     let enemyBullets = [];
     let enemies = [];
@@ -520,7 +515,6 @@
     const ENEMY_EMOJIS = ['🛸', '👾', '👽', '🤖', '🛸'];
     const AI_PATTERNS = ['sine', 'rush', 'track', 'diamond', 'loop'];
 
-    // 3. 적군(Enemies) 5종 스폰
     function spawnEnemy() {
       if (boss || bossSpawned) return;
       const typeIdx = Math.floor(Math.random() * 5);
@@ -543,7 +537,6 @@
       });
     }
 
-    // 4. 진화형 보스 스폰 (hp = 15 * bossLevel)
     function spawnBoss() {
       bossSpawned = true;
       const bossLevel = level;
@@ -562,7 +555,6 @@
       };
     }
 
-    // 5. 달 표면 외계인 전술 격납고 건물 스폰
     function spawnBuilding() {
       buildings.push({
         x: Math.random() * (CANVAS_WIDTH - 60) + 30,
@@ -576,13 +568,11 @@
       });
     }
 
-    // 메인 연산 업데이트
     function update() {
       if (gameState !== 'PLAYING') return;
 
       if (flashEffect > 0) flashEffect--;
 
-      // 슈퍼 [S] 버스트 무적 타이머
       if (player.superTimer > 0) {
         player.superTimer--;
         if (player.superTimer <= 0) {
@@ -590,7 +580,6 @@
         }
       }
 
-      // 성단 하강 스크롤링
       stars.forEach(s => {
         s.y += s.speed;
         if (s.y > CANVAS_HEIGHT) {
@@ -599,7 +588,6 @@
         }
       });
 
-      // 달 표면 크레이터 수직 스크롤
       if (moonMode) {
         craterList.forEach(c => {
           c.y += c.speed;
@@ -610,7 +598,6 @@
         });
       }
 
-      // 키보드 조정
       if (keys['ArrowLeft'] || keys['KeyA']) player.x -= player.speed;
       if (keys['ArrowRight'] || keys['KeyD']) player.x += player.speed;
       if (keys['ArrowUp'] || keys['KeyW']) player.y -= player.speed;
@@ -619,7 +606,6 @@
       player.x = Math.max(player.w / 2, Math.min(CANVAS_WIDTH - player.w / 2, player.x));
       player.y = Math.max(player.h / 2, Math.min(CANVAS_HEIGHT - player.h / 2, player.y));
 
-      // 주포 사격 메커니즘
       const now = Date.now();
       const atkMult = (1 + (shopUpgrades.atkLv - 1) * 0.3) * (player.superMode ? 2.0 : 1.0);
       const delay = player.superMode ? player.shootDelay * 0.5 : player.shootDelay;
@@ -627,7 +613,6 @@
       if ((keys['Space'] || keys['KeyZ']) && now - player.lastShot > delay) {
         player.lastShot = now;
 
-        // 8. 전설 특수 주포: 💥 핵융합 폭탄
         if (currentWeapon.type === 'NUKE') {
           playSound('nuke');
           flashEffect = 12;
@@ -638,7 +623,7 @@
             boss.hp -= 35 * atkMult;
             createExplosion(boss.x, boss.y, 40);
           }
-          currentWeapon = WEAPONS[0]; // 발사 즉시 기본 레이저로 자동 롤백
+          currentWeapon = WEAPONS[0];
         } else {
           playSound('shoot');
 
@@ -663,7 +648,6 @@
         }
       }
 
-      // CNG 블랙홀 🌀 중력장 연산 (100px 이내 잡몹 강제 끌어당김)
       bullets.forEach(b => {
         if (b.type === 'BLACKHOLE') {
           enemies.forEach(e => {
@@ -676,7 +660,6 @@
         }
       });
 
-      // 아군 투사체 처리
       bullets.forEach((b, bIdx) => {
         if (b.type === 'DRONE_SHOT') {
           let target = boss || (enemies.length > 0 ? enemies[0] : null);
@@ -690,7 +673,6 @@
         b.x += b.vx;
         b.y += b.vy;
 
-        // 범위 미사일 🚀 상단 도달 시 거대 원형 폭발 💥
         if (b.type === 'MISSILE' && b.y <= 0) {
           triggerMissileExplosion(b.x, b.y, b.power);
           bullets.splice(bIdx, 1);
@@ -702,7 +684,6 @@
         }
       });
 
-      // 거대 미사일 범위 폭발 💥 판정 처리
       explosions.forEach((exp, expIdx) => {
         exp.radius += 3;
         enemies.forEach((e, eIdx) => {
@@ -724,7 +705,6 @@
         }
       });
 
-      // 적 탄막 이동 및 피격
       enemyBullets.forEach((eb, index) => {
         eb.x += eb.vx;
         eb.y += eb.vy;
@@ -748,19 +728,16 @@
         }
       });
 
-      // 적 스폰
       enemySpawnTimer++;
       if (enemySpawnTimer > Math.max(20, 50 - level * 3) && !boss && !bossSpawned) {
         spawnEnemy();
         enemySpawnTimer = 0;
       }
 
-      // 잡몹 15마리 처치 시 보스 등장
       if (enemiesKilled >= 15 && !bossSpawned && !boss && gameState === 'PLAYING') {
         spawnBoss();
       }
 
-      // 적군 5종 AI 이동 물리 패턴
       enemies.forEach((e, eIdx) => {
         e.time += 0.05;
         if (e.pType === 'sine') {
@@ -785,7 +762,6 @@
           }
         }
 
-        // 적 사격
         e.shootTimer++;
         if (e.shootTimer > 90 && e.y > 20 && e.y < CANVAS_HEIGHT - 100) {
           e.shootTimer = 0;
@@ -799,7 +775,6 @@
           }
         }
 
-        // 잡몹 피격 (관통 레이저 다단 피격 및 범위 미사일 지원)
         bullets.forEach((b, bIdx) => {
           if (Math.hypot(b.x - e.x, b.y - e.y) < e.w / 2 + 10) {
             if (b.type === 'MISSILE') {
@@ -830,7 +805,6 @@
         if (e.y > CANVAS_HEIGHT + 40) enemies.splice(eIdx, 1);
       });
 
-      // 보스 루프 및 사망 처리 (100% 버그 완치 규격 적용)
       if (boss) {
         if (boss.y < boss.targetY) boss.y += 1.2;
         else {
@@ -863,34 +837,32 @@
               createExplosion(b.x, b.y, 10);
             }
 
-            // [⚠️ 보스 무한 루프 해결 핵심 구문]
+            // 보스 격파 시 처리
             if (boss.hp <= 0) {
               createExplosion(boss.x, boss.y, 50);
               playSound('explosion');
               score += 3000;
               shopPoints += Math.floor(200 * (1 + (shopUpgrades.luckLv - 1) * 0.2));
 
-              // 보스 파괴 위치에서만 확정적으로 무기 가챠 상자(🎁) 드롭
               items.push({ x: boss.x, y: boss.y, w: 22, h: 22, speed: 1.2, type: 'WEAPON_BOX', emoji: '🎁' });
 
-              // 4대 무한 루프 완치 동기화 구문 실행
               enemiesKilled = 0;
               bossSpawned = false;
               boss = null;
               enemyBullets = [];
-
               level++;
 
-              // 10레벨 달 기지 전환 모드 발동
               if (level > 10 && !moonMode) {
                 triggerMoonTransition();
+              } else {
+                // 보스 격파 직후 상점 자동 오픈 (끊김 현상 방지)
+                openShop();
               }
             }
           }
         });
       }
 
-      // 달 표면 기지 모드 스폰 및 처리
       if (moonMode) {
         buildingSpawnTimer++;
         if (buildingSpawnTimer > 180 && buildings.length < 2) {
@@ -910,7 +882,6 @@
               if (bldg.hp <= 0) {
                 createExplosion(bldg.x, bldg.y, 35);
                 playSound('explosion');
-                // 달 기지 건물 파괴 시 슈퍼 [S] 캡슐 드롭
                 items.push({ x: bldg.x, y: bldg.y, w: 22, h: 22, speed: 1.2, type: 'SUPER_CAPSULE', emoji: '🟡' });
                 buildings.splice(bIdx, 1);
               }
@@ -921,7 +892,6 @@
         });
       }
 
-      // 아이템 습득 처리
       items.forEach((item, index) => {
         item.y += item.speed;
 
@@ -930,7 +900,6 @@
           if (item.type === 'WEAPON_BOX') {
             triggerGachaModal();
           } else if (item.type === 'SUPER_CAPSULE') {
-            // 🔥 변신, 무적, 공격력 2배 가동
             player.superMode = true;
             player.superTimer = 400;
           }
@@ -940,7 +909,6 @@
         }
       });
 
-      // 폭발 가시 효과
       particles.forEach((p, index) => {
         p.x += p.vx;
         p.y += p.vy;
@@ -950,7 +918,6 @@
       });
     }
 
-    // 범위 미사일 원형 폭발 발동
     function triggerMissileExplosion(x, y, power) {
       playSound('explosion');
       explosions.push({
@@ -958,7 +925,6 @@
       });
     }
 
-    // 5. 달 표면 기지 시네마틱 페이드 트랜지션
     function triggerMoonTransition() {
       gameState = 'TRANSITION';
       const fadeScreen = document.getElementById('fade-screen');
@@ -968,12 +934,10 @@
         moonMode = true;
         initCraters();
         fadeScreen.style.opacity = '0';
-        gameState = 'PLAYING';
-        requestAnimationFrame(gameLoop);
+        openShop(); // 달 기지 진입 직후에도 상점 표시
       }, 1600);
     }
 
-    // 무기 가챠 모달 (#weaponModal)
     function triggerGachaModal() {
       gameState = 'GACHA';
       const modal = document.getElementById('weaponModal');
@@ -992,7 +956,7 @@
         playSound('talk');
         count++;
 
-        if (count > 14) {
+        if (count > 12) {
           clearInterval(interval);
           pendingGachaWeapon = WEAPONS[Math.floor(Math.random() * WEAPONS.length)];
           roulette.innerText = pendingGachaWeapon.emoji;
@@ -1011,70 +975,97 @@
       requestAnimationFrame(gameLoop);
     }
 
-    // 상점 조작
     function openShop() {
       if (gameState === 'PLAYING') {
         previousState = 'PLAYING';
-        gameState = 'PAUSED';
       }
+      gameState = 'PAUSED';
       updateShopUI();
       document.getElementById('shopModal').style.display = 'flex';
     }
 
     function closeShop() {
       document.getElementById('shopModal').style.display = 'none';
-      if (previousState === 'PLAYING') {
-        gameState = 'PLAYING';
-        requestAnimationFrame(gameLoop);
-      }
+      gameState = 'PLAYING';
+      requestAnimationFrame(gameLoop);
     }
 
     function updateShopUI() {
       document.getElementById('shop-points').innerText = shopPoints;
+      document.getElementById('shop-max-hp').innerText = player.maxHp;
+
+      // 화력 강화
       document.getElementById('atk-lv').innerText = shopUpgrades.atkLv;
-      document.getElementById('atk-cost').innerText = shopUpgrades.atkCost;
+      const btnAtk = document.getElementById('btn-atk');
+      if (shopUpgrades.atkLv >= shopUpgrades.maxAtkLv) {
+        btnAtk.innerText = 'MAX';
+        btnAtk.disabled = true;
+      } else {
+        btnAtk.innerText = `${shopUpgrades.atkCost}P`;
+        btnAtk.disabled = false;
+      }
+
+      // 포인트 증폭
       document.getElementById('luck-lv').innerText = shopUpgrades.luckLv;
-      document.getElementById('luck-cost').innerText = shopUpgrades.luckCost;
+      const btnLuck = document.getElementById('btn-luck');
+      if (shopUpgrades.luckLv >= shopUpgrades.maxLuckLv) {
+        btnLuck.innerText = 'MAX';
+        btnLuck.disabled = true;
+      } else {
+        btnLuck.innerText = `${shopUpgrades.luckCost}P`;
+        btnLuck.disabled = false;
+      }
+
+      // 실드 용량 확장
       document.getElementById('shield-lv').innerText = shopUpgrades.shieldLv;
-      document.getElementById('shield-cost').innerText = shopUpgrades.shieldCost;
+      const btnShield = document.getElementById('btn-shield');
+      if (shopUpgrades.shieldLv >= shopUpgrades.maxShieldLv) {
+        btnShield.innerText = 'MAX';
+        btnShield.disabled = true;
+      } else {
+        btnShield.innerText = `${shopUpgrades.shieldCost}P`;
+        btnShield.disabled = false;
+      }
     }
 
     function buyUpgrade(type) {
-      if (type === 'atk' && shopPoints >= shopUpgrades.atkCost) {
+      if (type === 'atk' && shopUpgrades.atkLv < shopUpgrades.maxAtkLv && shopPoints >= shopUpgrades.atkCost) {
         shopPoints -= shopUpgrades.atkCost;
         shopUpgrades.atkLv++;
         shopUpgrades.atkCost = Math.floor(shopUpgrades.atkCost * 1.6);
         playSound('powerup');
-      } else if (type === 'luck' && shopPoints >= shopUpgrades.luckCost) {
+      } else if (type === 'luck' && shopUpgrades.luckLv < shopUpgrades.maxLuckLv && shopPoints >= shopUpgrades.luckCost) {
         shopPoints -= shopUpgrades.luckCost;
         shopUpgrades.luckLv++;
         shopUpgrades.luckCost = Math.floor(shopUpgrades.luckCost * 1.6);
         playSound('powerup');
-      } else if (type === 'shield' && shopPoints >= shopUpgrades.shieldCost) {
+      } else if (type === 'shield' && shopUpgrades.shieldLv < shopUpgrades.maxShieldLv && shopPoints >= shopUpgrades.shieldCost) {
         shopPoints -= shopUpgrades.shieldCost;
         shopUpgrades.shieldLv++;
         shopUpgrades.shieldCost = Math.floor(shopUpgrades.shieldCost * 1.6);
-        player.hp += 2;
-        player.maxHp += 2;
+        player.maxHp += 2; // 최대 용량 확충
+        player.hp = player.maxHp; // 완충
         playSound('powerup');
+      } else if (type === 'repair' && shopPoints >= 80) {
+        if (player.hp < player.maxHp) {
+          shopPoints -= 80;
+          player.hp = Math.min(player.maxHp, player.hp + 4);
+          playSound('powerup');
+        }
       }
       updateShopUI();
     }
 
-    // 캔버스 렌더링
     function render() {
-      // 달 표면 배경(#2b2d31) vs 깊은 우주색(#05070a)
       ctx.fillStyle = moonMode ? '#2b2d31' : '#05070a';
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-      // 성단 입자 렌더링
       if (!moonMode) {
         stars.forEach(s => {
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(s.x, s.y, s.size, s.size);
         });
       } else {
-        // 달 크레이터 렌더링
         ctx.fillStyle = 'rgba(180, 180, 200, 0.15)';
         craterList.forEach(c => {
           ctx.beginPath();
@@ -1083,13 +1074,11 @@
         });
       }
 
-      // 핵폭발 플래시 연출
       if (flashEffect > 0) {
         ctx.fillStyle = `rgba(255, 255, 255, ${flashEffect / 12})`;
         ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       }
 
-      // 달 기지 건물 🏬
       buildings.forEach(b => {
         ctx.font = '30px sans-serif';
         ctx.textAlign = 'center';
@@ -1097,7 +1086,6 @@
         ctx.fillText(b.emoji, b.x, b.y);
       });
 
-      // 미사일 범위 폭발 💥 이펙트
       explosions.forEach(exp => {
         ctx.save();
         ctx.fillStyle = 'rgba(255, 100, 0, 0.4)';
@@ -1111,7 +1099,6 @@
         ctx.restore();
       });
 
-      // 아군 함선 드로잉 (슈퍼 모드 시 🔥, 일반 시 🚀)
       ctx.save();
       ctx.translate(player.x, player.y);
       if (player.superMode) {
@@ -1122,7 +1109,6 @@
         ctx.stroke();
       }
 
-      // 🛡️ 유도 드론 위성 드로잉
       if (currentWeapon.type === 'DRONE') {
         ctx.font = '14px sans-serif';
         ctx.fillText('🛰️', -20, 0);
@@ -1136,10 +1122,9 @@
       ctx.fillText(shipEmoji, 0, 0);
       ctx.restore();
 
-      // 아군 투사체
       bullets.forEach(b => {
         if (b.type === 'NORMAL' || b.type === 'DRONE_SHOT') {
-          ctx.fillStyle = '#00ffcc'; // 민트색
+          ctx.fillStyle = '#00ffcc';
           ctx.fillRect(b.x - 1.5, b.y - 6, 3, 8);
         } else if (b.type === 'MISSILE') {
           ctx.font = '16px sans-serif';
@@ -1152,7 +1137,7 @@
           ctx.textBaseline = 'middle';
           ctx.fillText('💣', b.x, b.y);
         } else if (b.type === 'LASER') {
-          ctx.fillStyle = '#ff00aa'; // 관통 분홍 광선
+          ctx.fillStyle = '#ff00aa';
           ctx.fillRect(b.x - 4, 0, 8, b.y);
         } else if (b.type === 'BLACKHOLE') {
           ctx.font = '24px sans-serif';
@@ -1162,7 +1147,6 @@
         }
       });
 
-      // 적 탄막
       ctx.fillStyle = '#ff0055';
       enemyBullets.forEach(eb => {
         ctx.beginPath();
@@ -1170,7 +1154,6 @@
         ctx.fill();
       });
 
-      // 적 기체
       enemies.forEach(e => {
         ctx.font = '24px sans-serif';
         ctx.textAlign = 'center';
@@ -1178,7 +1161,6 @@
         ctx.fillText(e.emoji, e.x, e.y);
       });
 
-      // 보스 기체
       if (boss) {
         ctx.font = '54px sans-serif';
         ctx.textAlign = 'center';
@@ -1191,7 +1173,6 @@
         document.getElementById('boss-bar-container').style.display = 'none';
       }
 
-      // 드롭 아이템 (슈퍼 [S] 캡슐 시 특수 표시)
       items.forEach(item => {
         if (item.type === 'SUPER_CAPSULE') {
           ctx.save();
@@ -1209,7 +1190,6 @@
         }
       });
 
-      // 폭발 입자
       particles.forEach(p => {
         ctx.save();
         ctx.globalAlpha = Math.max(0, p.alpha);
@@ -1220,7 +1200,6 @@
         ctx.restore();
       });
 
-      // UI 계기판 동기화 (🛡️ 실드 표기)
       document.getElementById('hp-val').innerText = Math.ceil(player.hp);
       document.getElementById('max-hp-val').innerText = player.maxHp;
       document.getElementById('score-val').innerText = score;
@@ -1253,7 +1232,6 @@
       }
     }
 
-    // 키 리스너
     window.addEventListener('keydown', e => {
       keys[e.code] = true;
       if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
@@ -1268,7 +1246,6 @@
       keys[e.code] = false;
     });
 
-    // 게임 시작
     function startGame() {
       initAudio();
       score = 0;
@@ -1294,7 +1271,6 @@
       requestAnimationFrame(gameLoop);
     }
 
-    // 초기 실행
     window.onload = () => {
       typeIntro();
     };
