@@ -1,53 +1,84 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://sitemaps.org">
-  <!-- 1. 오락실 메인 대문 -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
+  <!-- 메인 페이지 -->
   <url>
-    <loc>https://github.io</loc>
-    <priority>1.0</loc>
+    <loc>https://minig.kro.kr/</loc>
+    <lastmod>2026-08-29</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
   </url>
-  <!-- 2. 지구 방위대 최후의 함선 슈팅게임 -->
+
+  <!-- 지구 방위대 최후의 함선 '미니지호' -->
   <url>
-    <loc>https://github.ioshoot/</loc>
-    <priority>0.9</loc>
+    <loc>https://minig.kro.kr/shoot/</loc>
+    <lastmod>2026-08-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
   </url>
-  <!-- 3. 벽돌깨기 -->
+
+  <!-- 벽돌깨기 -->
   <url>
-    <loc>https://github.iobrick/</loc>
-    <priority>0.8</loc>
+    <loc>https://minig.kro.kr/brick/</loc>
+    <lastmod>2026-08-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
   </url>
-  <!-- 4. 카드게임 -->
+
+  <!-- 카드 뒤집기 -->
   <url>
-    <loc>https://github.iocard/</loc>
-    <priority>0.8</loc>
+    <loc>https://minig.kro.kr/card/</loc>
+    <lastmod>2026-08-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
   </url>
-  <!-- 5. 구글 공룡게임 -->
+
+  <!-- 공룡 달리기 -->
   <url>
-    <loc>https://github.iodino/</loc>
-    <priority>0.8</loc>
+    <loc>https://minig.kro.kr/dino/</loc>
+    <lastmod>2026-08-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
   </url>
-  <!-- 6. 닷지 똥피하기 -->
+
+  <!-- 똥피하기 -->
   <url>
-    <loc>https://github.iododge/</loc>
-    <priority>0.8</loc>
+    <loc>https://minig.kro.kr/dodge/</loc>
+    <lastmod>2026-08-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
   </url>
-  <!-- 7. 가챠 장비 가동방 -->
+
+  <!-- 행운의 동전 -->
   <url>
-    <loc>https://github.iogacha/</loc>
-    <priority>0.8</loc>
+    <loc>https://minig.kro.kr/gacha/</loc>
+    <lastmod>2026-08-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
   </url>
-  <!-- 8. 점프게임 -->
+
+  <!-- 50층 대모험 -->
   <url>
-    <loc>https://github.iojump/</loc>
-    <priority>0.8</loc>
+    <loc>https://minig.kro.kr/jump/</loc>
+    <lastmod>2026-08-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
   </url>
-  <!-- 9. 스네이크 뱀꼬리 게임 -->
+
+  <!-- 스네이크 게임 -->
   <url>
-    <loc>https://github.iosnake/</loc>
-    <priority>0.8</loc>
+    <loc>https://minig.kro.kr/snake/</loc>
+    <lastmod>2026-08-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
   </url>
-  <!-- 10. 틱택토 대전방 -->
+
+  <!-- 틱택토 -->
   <url>
-    <loc>https://github.iotictactoe/</loc>
-    <priority>0.8</loc>
+    <loc>https://minig.kro.kr/tictactoe/</loc>
+    <lastmod>2026-08-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
   </url>
+
 </urlset>
