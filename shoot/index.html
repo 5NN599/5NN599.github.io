@@ -60,23 +60,31 @@
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         let bgmInterval = null, bgmStep = 0, bgmGain = null;
         
-        // 🎵 복원 완료: 8비트 신나는 복고풍 사운드 주파수 데이터 완벽 매핑!
         function startBGM() {
             if(bgmInterval) return; 
-            try { bgmGain = audioCtx.createGain(); bgmGain.gain.setValueAtTime(0.01, audioCtx.currentTime); bgmGain.connect(audioCtx.destination); } catch(e){}
+            try { 
+                bgmGain = audioCtx.createGain(); 
+                bgmGain.gain.setValueAtTime(0.01, audioCtx.currentTime); 
+                bgmGain.connect(audioCtx.destination); 
+            } catch(e){}
             bgmInterval = setInterval(() => {
                 if(gameState !== 'play' || isOver || document.getElementById("shopModal").style.display === "flex") return;
                 try {
-                    const osc = audioCtx.createOscillator(); osc.connect(bgmGain); osc.type = 'triangle';
+                    const osc = audioCtx.createOscillator(); 
+                    osc.connect(bgmGain); 
+                    osc.type = 'triangle';
                     const notes =;
                     osc.frequency.setValueAtTime(notes[bgmStep % notes.length], audioCtx.currentTime);
-                    osc.start(); osc.stop(audioCtx.currentTime + 0.12); bgmStep++;
+                    osc.start(); 
+                    osc.stop(audioCtx.currentTime + 0.12); 
+                    bgmStep++;
                 } catch(e){}
             }, 180);
         }
         function playSound(type) {
             try {
-                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.connect(gain); gain.connect(audioCtx.destination); const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); 
+                osc.connect(gain); gain.connect(audioCtx.destination); const now = audioCtx.currentTime;
                 if (type === 'laser') { osc.type = 'square'; osc.frequency.setValueAtTime(900, now); osc.frequency.exponentialRampToValueAtTime(300, now + 0.05); gain.gain.setValueAtTime(0.015, now); gain.gain.linearRampToValueAtTime(0, now + 0.05); osc.start(now); osc.stop(now + 0.05); }
                 else if (type === 'hit') { osc.type = 'triangle'; osc.frequency.setValueAtTime(220, now); gain.gain.setValueAtTime(0.05, now); gain.gain.linearRampToValueAtTime(0, now + 0.05); osc.start(now); osc.stop(now + 0.05); }
                 else if (type === 'explode') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(350, now); osc.frequency.linearRampToValueAtTime(50, now + 0.1); gain.gain.setValueAtTime(0.04, now); gain.gain.linearRampToValueAtTime(0, now + 0.1); osc.start(now); osc.stop(now + 0.1); }
@@ -112,7 +120,7 @@
         function openShop() { document.getElementById("shopModal").style.display = "flex"; updateShopUI(); }
         function closeShop() { document.getElementById("shopModal").style.display = "none"; keys[" "] = false; }
         function updateShopUI() { 
-            let c = Math.max(10, 50 - player.upgProbLv * 5); let r = 35 + player.upgProbLv * 3; let ep = 13 + player.upgProbLv * 1.5; let lg = 2 + player.upgProbLv * 0.5;
+            let lg = 2 + player.upgProbLv * 0.5;
             document.getElementById("shopPoints").innerText = `보유 포인트: ${shopPoints} P`; document.getElementById("strLv").innerText = `⚔️ 공격력 Lv.${upgLv.dmg} (+${upgLv.dmg-1})`; document.getElementById("probLv").innerText = `🍀 장비확률업 Lv.${upgLv.prob} (전설:${lg.toFixed(1)}%)`; document.getElementById("hpLv").innerText = `🛡️ 최대실드 Lv.${upgLv.hp}`; document.getElementById("dmgCostBtn").innerText = `${upgCost.dmg} P`; document.getElementById("probCostBtn").innerText = `${upgCost.prob} P`; document.getElementById("hpCostBtn").innerText = `${upgCost.hp} P`; 
         }
         function buyUpgrade(type) { if(shopPoints >= upgCost[type]) { shopPoints -= upgCost[type]; if(type === 'dmg') { upgLv.dmg++; player.dmg += 0.5; } else if(type === 'prob') { upgLv.prob++; player.upgProbLv++; } else if(type === 'hp') { upgLv.hp += 2; player.maxHp += 2; player.hp += 2; } upgCost[type] = Math.floor(upgCost[type] * 1.6); updateShopUI(); updateBoard(); playSound('start'); } }
@@ -136,7 +144,7 @@
         function askEquip(g, wp) { pendingWeapon = wp; document.getElementById("weaponDesc").innerText = `${g} ${wp}`; document.getElementById("weaponModal").style.display = "flex"; }
         function equipWeapon(yes) { if(yes && pendingWeapon) { player.currentWeapon = pendingWeapon; playSound('start'); } document.getElementById("weaponModal").style.display = "none"; pendingWeapon = null; keys[" "] = false; openShop(); }
         function initStars() { for(let i=0; i<25; i++) stars.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, size: 1+Math.random()*1.5, speed: 1+Math.random()*2 }); }
-        function restart() { document.getElementById("overModal").style.display="none"; document.getElementById("weaponModal").style.display="none"; document.getElementById("shopModal").style.display="none"; player.x = 180; player.y = 380; player.hp = 10; player.maxHp = 10; player.currentWeapon = '기본 레이저'; player.dmg = 1; player.upgProbLv = 0; upgCost={dmg:5,prob:5,hp:5}; upgLv={dmg:1,prob:1,hp:10}; bullets = []; enemyBullets = []; enemies = []; items = []; explosions = []; boss = null; bossSpawned = false; score = 0; enemiesKilled = 0; bossLevel = 1; shopPoints = 0; isOver = false; gameState = 'story'; storyIndex = 0; textProgress = 0; updateBoard(); loop(); }
+        function restart() { document.getElementById("overModal").style.display="none"; document.getElementById("weaponModal").style.display="none"; document.getElementById("shopModal").style.display="none"; player.x = 180; player.y = 380; player.hp = 10; player.maxHp = 10; player.currentWeapon = '기본 레이저'; player.dmg = 1; player.upgProbLv = 0; bullets = []; enemyBullets = []; enemies = []; items = []; explosions = []; boss = null; bossSpawned = false; score = 0; enemiesKilled = 0; bossLevel = 1; shopPoints = 0; isOver = false; gameState = 'story'; storyIndex = 0; textProgress = 0; updateBoard(); loop(); }
         function updateBoard() { const b = document.getElementById("board"); if(gameState==='story') b.innerText = "🌌 우주 상황실"; else if(bossSpawned && boss && boss.hp > 0) b.innerText = `🛡️ 실드: ${player.hp}/${player.maxHp} | 🏆 점수: ${score} | 👾 BOSS Lv.${bossLevel}: ${Math.ceil(boss.hp)} / ${bossLevel * 30}`; else b.innerText = `🛡️ 실드: ${player.hp}/${player.maxHp} | 🏆 점수: ${score} | 다음 습격까지 잡몹: ${Math.max(0, 15 - enemiesKilled)}마리`; }
         let frameCount = 0;
         function loop() {
@@ -207,7 +215,7 @@
                 ctx.save(); ctx.font = "36px sans-serif"; ctx.fillText("🛸", enemies[i].x, enemies[i].y + 30); ctx.restore(); if(enemies[i].y > canvas.height) { enemies.splice(i,1); continue; }
                 explosions.forEach(exp => { if(enemies[i]) { let d=Math.sqrt((enemies[i].x+18-exp.x)**2+(enemies[i].y+16-exp.y)**2); if(d <= exp.rad + 16) { enemies.splice(i,1); score += 10; enemiesKilled++; updateBoard(); playSound('explode'); } } }); if(!enemies[i]) continue;
                 if(player.invuln == 0 && enemies[i].x < player.x+player.w && enemies[i].x+enemies[i].w > player.x && enemies[i].y < player.y+player.h && enemies[i].y+enemies[i].h > player.y) { enemies.splice(i, 1); player.hp--; player.invuln = 60; updateBoard(); playSound('hit'); if(player.hp <= 0) { triggerGameOver(); return; } continue; }
-                for(let j=bullets.length-1; j>=0; j--) { if(bullets[j].x < enemies[i].x+enemies[i].w && bullets[j].x+bullets[j].w > enemies[i].x && bullets[j].y < enemies[i].y+enemies[i].h && bullets[j].y+bullets[j].h > enemies[i].y) { if(bullets[j].type === 'missile') explosions.push({ x: bullets[j].x, y: bullets[j].y, rad: 10 }); enemies.splice(i,1); if(bullets[j].type !== 'pierce') bullets.splice(j,1); score += 10; enemiesKilled++; updateBoard(); playSound('explode'); break; } }
+                for(let j=bullets.length-1; j>=0; j--) { if(bullets[j].x < enemies[i].x+enemies[i].w && bullets[j].x+bullets[j].w > enemies[i].x && bullets[j].y < enemies[i].y+enemies[i].h && bullets[j].y+bullets[j].h > enemies[i].y) { if(bullets[j].type === 'missile') explosions.push({ x: bullets[j].x, y: bullets[j].y, rad: 10 }); enemies.splice(i,1); if(bullets[j].type !== 'piece') bullets.splice(j,1); score += 10; enemiesKilled++; updateBoard(); playSound('explode'); break; } }
             }
         }
         function triggerGameOver() { isOver = true; cancelAnimationFrame(gameId); playSound('over'); document.getElementById("modalTitle").innerText = "💥 GAME OVER"; document.getElementById("finalScore").innerText = `최종 점수: ${score}점\n처치한 보스: ${bossLevel-1}기`; document.getElementById("overModal").style.display = "flex"; }
