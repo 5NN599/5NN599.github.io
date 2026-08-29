@@ -3,23 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>미니지- 미니 RTS 우주전쟁</title>
+  <title>미니지 - RTS</title></title>
   <style>
     :root { --bg: #f8f9fa; --text: #333; --canvas-bg: #05070a; --border: #e9ecef; --btn-bg: #fff; }
     [data-theme="dark"] { --bg: #0d1117; --text: #c9d1d9; --canvas-bg: #020305; --border: #30363d; --btn-bg: #21262d; }
     [data-theme="beige"] { --bg: #f5ebe0; --text: #4e3d30; --canvas-bg: #14100c; --border: #ddcbbb; --btn-bg: #eddfd0; }
-    body { background-color: var(--bg) !important; color: var(--text) !important; text-align: center; font-family: sans-serif; padding-top: 10px; margin: 0; transition: 0.3s; user-select: none; overflow: hidden; }
+    body { background-color: var(--bg) !important; color: var(--text) !important; text-align: center; font-family: sans-serif; padding-top: 8px; margin: 0; transition: 0.3s; user-select: none; overflow: hidden; }
     button { background-color: var(--btn-bg) !important; color: var(--text) !important; border: 1px solid var(--border) !important; padding: 5px 10px; font-size: 0.8rem; border-radius: 6px; cursor: pointer; margin: 2px; font-weight: bold; }
     button:disabled { opacity: 0.35; cursor: not-allowed; }
     #rts-panel { font-size: 1.05rem; font-weight: bold; color: #fcc419; margin-bottom: 4px; }
-    .build-row { margin: 4px 0; display: flex; justify-content: center; flex-wrap: wrap; gap: 2px; }
+    .build-row { margin: 3px 0; display: flex; justify-content: center; flex-wrap: wrap; gap: 2px; }
     .active-mode { border: 2px solid #4dadf7 !important; background-color: #183153 !important; color: #fff !important; }
     #game-canvas { background: var(--canvas-bg); border: 2px solid var(--border); border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); cursor: default; }
     .help-text { font-size: 0.78rem; opacity: 0.85; margin-top: 3px; }
   </style>
 </head>
 <body>
-  <h1>⚔️ 우주 전쟁: 클래식 리얼타임 RTS</h1>
+  <h1>⚔️ 우주 전쟁: 클래식 RTS (적응형 AI & 수리)</h1>
   
   <div id="rts-panel">
     💎 <span id="res-min">50</span> | 🌋 <span id="res-gas">0</span> | 🌊 웨이브: <span id="wave-num">1</span> | 🏰 <span id="hp-player">500</span> | 🏯 <span id="hp-enemy">500</span> | ⚔️ 적 부대: <span id="ai-squad">0</span> (<span id="ai-state-text">방어 모드</span>)
@@ -43,7 +43,7 @@
   </div>
 
   <canvas id="game-canvas" width="600" height="440"></canvas>
-  <div class="help-text">WASD/방향키 또는 미니맵 클릭: 시점 이동 | 좌클릭: 선택/건설지정 | 우클릭: 이동/전투</div>
+  <div class="help-text">WASD/방향키: 이동 | 미니맵 클릭: 시점이동 | SCV를 손상된 건물 근처로 이동시키면 1대가 수리(🔧) 수행</div>
 
   <script>
     window.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -82,6 +82,7 @@
     let isMinimapDragging = false;
 
     let aiStateMode = 'defend';
+    let aiPaceRating = 'normal'; // 'slow', 'normal', 'fast'
 
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
@@ -100,25 +101,16 @@
         const now = audioCtx.currentTime;
 
         if (type === 'produce') {
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(440, now);
-          osc.frequency.exponentialRampToValueAtTime(880, now + 0.12);
-          gain.gain.setValueAtTime(0.15, now);
-          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+          osc.type = 'sine'; osc.frequency.setValueAtTime(440, now); osc.frequency.exponentialRampToValueAtTime(880, now + 0.12);
+          gain.gain.setValueAtTime(0.15, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
           osc.start(now); osc.stop(now + 0.12);
         } else if (type === 'laser') {
-          osc.type = 'sawtooth';
-          osc.frequency.setValueAtTime(700, now);
-          osc.frequency.exponentialRampToValueAtTime(180, now + 0.08);
-          gain.gain.setValueAtTime(0.08, now);
-          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+          osc.type = 'sawtooth'; osc.frequency.setValueAtTime(700, now); osc.frequency.exponentialRampToValueAtTime(180, now + 0.08);
+          gain.gain.setValueAtTime(0.08, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
           osc.start(now); osc.stop(now + 0.08);
         } else if (type === 'explode') {
-          osc.type = 'square';
-          osc.frequency.setValueAtTime(140, now);
-          osc.frequency.exponentialRampToValueAtTime(30, now + 0.2);
-          gain.gain.setValueAtTime(0.2, now);
-          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+          osc.type = 'square'; osc.frequency.setValueAtTime(140, now); osc.frequency.exponentialRampToValueAtTime(30, now + 0.2);
+          gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
           osc.start(now); osc.stop(now + 0.2);
         }
       } catch (e) {}
@@ -127,7 +119,6 @@
     window.addEventListener('keydown', (e) => { keys[e.code] = true; });
     window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
-    // 미니맵 좌표 판정 및 카메라이동
     function handleMinimapClick(mx, my) {
       const mmW = 140, mmH = 100;
       const mmX = VIEW_W - mmW - 10;
@@ -328,7 +319,9 @@
 
       const enemySquad = entities.filter(e => e.faction === 'enemy' && ['fighter','scout','tank','mech','cruiser','carrier'].includes(e.type));
       document.getElementById('ai-squad').innerText = enemySquad.length;
-      document.getElementById('ai-state-text').innerText = aiStateMode === 'attack' ? '💥 총공격' : (aiStateMode === 'defend' ? '🛡️ 요새화' : '🚨 긴급 방어');
+      
+      const paceText = aiPaceRating === 'fast' ? '🔥 급성장 대응' : (aiPaceRating === 'slow' ? '🌱 여유로운 대응' : '⚖️ 표준 대응');
+      document.getElementById('ai-state-text').innerText = `${aiStateMode === 'attack' ? '💥 총공격' : (aiStateMode === 'defend' ? '🛡️ 요새화' : '🚨 긴급 방어')} [${paceText}]`;
 
       document.getElementById('btn-fighter').disabled = !tech.barracks || resources.min < 30;
       document.getElementById('btn-scout').disabled = !tech.barracks || resources.min < 25;
@@ -349,7 +342,7 @@
         damage: 10, splash: false, splashRadius: 0,
         cargo: null, moveTarget: null, forcedTarget: null,
         isUnderConstruction: false, buildProgress: 0, buildMaxTime: 0,
-        productionQueue: [], isBuildingSCV: false
+        productionQueue: [], isBuildingSCV: false, repairingTargetId: null
       };
 
       if (type === 'hq') {
@@ -401,19 +394,23 @@
       wave = 1; waveTimer = 0; gameOver = false;
       tech = { barracks: false, factory: false, starport: false };
 
-      // Player Base
+      // Player Main Base
       spawnEntity('hq', 'player', 160, 940);
       spawnEntity('resource_min', 'neutral', 90, 1010);
       spawnEntity('resource_gas', 'neutral', 260, 1010);
       for (let i = 0; i < 4; i++) spawnEntity('scv', 'player', 150 + (i * 20), 880);
 
-      // Enemy Base
+      // Enemy Main Base
       spawnEntity('hq', 'enemy', 1340, 160);
       spawnEntity('resource_min', 'neutral', 1410, 90);
       const eGas = spawnEntity('resource_gas', 'neutral', 1240, 90);
       eGas.hasRefinery = true;
       spawnEntity('refinery', 'enemy', 1240, 90);
       for (let i = 0; i < 4; i++) spawnEntity('scv', 'enemy', 1300 + (i * 20), 220);
+
+      // Expansion Neutral Resource Node (기지 확장용 지역)
+      spawnEntity('resource_min', 'neutral', 950, 250);
+      const expGas = spawnEntity('resource_gas', 'neutral', 1100, 250);
 
       updateUI();
     }
@@ -434,8 +431,7 @@
         const frontPositions = [
           { x: baseX - 180, y: baseY + 80 },
           { x: baseX - 80, y: baseY + 180 },
-          { x: baseX - 220, y: baseY + 180 },
-          { x: baseX - 120, y: baseY + 260 }
+          { x: baseX - 220, y: baseY + 180 }
         ];
         for (let pos of frontPositions) {
           if (!entities.some(e => Math.hypot(e.x - pos.x, e.y - pos.y) < e.radius + radius + 15)) {
@@ -450,7 +446,7 @@
         const testX = baseX - Math.cos(angle) * offsetDist;
         const testY = baseY + Math.sin(angle) * offsetDist;
 
-        if (testX > 900 && testX < 1450 && testY > 50 && testY < 550) {
+        if (testX > 800 && testX < 1450 && testY > 50 && testY < 650) {
           const overlap = entities.some(e => Math.hypot(e.x - testX, e.y - testY) < e.radius + radius + 20);
           if (!overlap) return { x: testX, y: testY };
         }
@@ -461,10 +457,30 @@
     let aiTimer = 0;
     function updateSmartAI() {
       aiTimer++;
-      if (aiTimer % 35 !== 0) return;
+      
+      // 1. 플레이어 성장에 연동한 AI 반응 속도 결정
+      const pUnits = entities.filter(e => e.faction === 'player' && ['fighter','scout','tank','mech','cruiser','carrier'].includes(e.type));
+      const pTechScore = (tech.barracks ? 2 : 0) + (tech.factory ? 4 : 0) + (tech.starport ? 6 : 0);
+      const playerPower = pUnits.length + pTechScore;
 
-      const enemyHQ = entities.find(e => e.type === 'hq' && e.faction === 'enemy');
-      if (!enemyHQ) return;
+      let intervalCheck = 40;
+      if (playerPower >= 14) {
+        aiPaceRating = 'fast';
+        intervalCheck = 18; // 플레이어가 가파르게 성장하면 AI도 부랴부랴 빠르게 연산
+        resources.enemyMin += 0.4; // 보너스 자원 수급
+      } else if (playerPower <= 5) {
+        aiPaceRating = 'slow';
+        intervalCheck = 55; // 플레이어가 느리면 AI도 서두르지 않음
+      } else {
+        aiPaceRating = 'normal';
+        intervalCheck = 35;
+      }
+
+      if (aiTimer % intervalCheck !== 0) return;
+
+      const enemyHQs = entities.filter(e => e.type === 'hq' && e.faction === 'enemy' && !e.isUnderConstruction);
+      if (enemyHQs.length === 0) return;
+      const mainHQ = enemyHQs[0];
 
       const eBarracks = entities.find(e => e.type === 'barracks' && e.faction === 'enemy' && !e.isUnderConstruction);
       const eFactory = entities.find(e => e.type === 'factory' && e.faction === 'enemy' && !e.isUnderConstruction);
@@ -472,8 +488,9 @@
       const eSCVs = entities.filter(e => e.type === 'scv' && e.faction === 'enemy');
       const eTurrets = entities.filter(e => e.type === 'turret' && e.faction === 'enemy' && !e.isUnderConstruction);
       const enemySquad = entities.filter(e => e.faction === 'enemy' && ['fighter','scout','tank','mech','cruiser','carrier'].includes(e.type));
-      const playerThreats = entities.filter(e => e.faction === 'player' && Math.hypot(e.x - enemyHQ.x, e.y - enemyHQ.y) < 550);
+      const playerThreats = entities.filter(e => e.faction === 'player' && Math.hypot(e.x - mainHQ.x, e.y - mainHQ.y) < 550);
 
+      // AI 위기/공격 상태 결정
       if (playerThreats.length > 0) {
         aiStateMode = 'emergency';
         enemySquad.forEach(u => {
@@ -482,40 +499,54 @@
           u.forcedTarget = closestPlayer;
           u.moveTarget = { x: closestPlayer.x, y: closestPlayer.y };
         });
-      } else if (enemySquad.length >= Math.max(5, 12 - wave * 2)) {
+      } else if (enemySquad.length >= (aiPaceRating === 'fast' ? 6 : 10)) {
         aiStateMode = 'attack';
       } else {
         aiStateMode = 'defend';
       }
 
-      if (eSCVs.length < 5 && resources.enemyMin >= 20) {
+      // 2. SCV 충원
+      if (eSCVs.length < (enemyHQs.length * 4) && resources.enemyMin >= 20) {
         resources.enemyMin -= 20;
-        spawnEntity('scv', 'enemy', enemyHQ.x - 30, enemyHQ.y + 30);
+        spawnEntity('scv', 'enemy', mainHQ.x - 30, mainHQ.y + 30);
       }
 
       const freeAISCV = eSCVs.find(s => !s.isBuildingSCV);
+
+      // 3. AI 확장(멀티) 기지 건설 로직
+      if (freeAISCV && enemyHQs.length < 2 && resources.enemyMin >= 150 && eBarracks) {
+        const expNode = entities.find(e => e.type === 'resource_min' && e.x === 950 && e.y === 250);
+        if (expNode) {
+          resources.enemyMin -= 100;
+          startBuildingConstruction('hq', 'enemy', 1020, 200, freeAISCV, 450);
+        }
+      }
+
+      // 4. 테크 및 건물 건설
       if (freeAISCV) {
         if (!eBarracks && resources.enemyMin >= 40) {
-          let pos = findAIBuildPos(enemyHQ.x, enemyHQ.y, 26, 'barracks');
+          let pos = findAIBuildPos(mainHQ.x, mainHQ.y, 26, 'barracks');
           if (pos) { resources.enemyMin -= 40; startBuildingConstruction('barracks', 'enemy', pos.x, pos.y, freeAISCV, 250); }
-        } else if (eBarracks && !eFactory && resources.enemyMin >= 60 && resources.enemyGas >= 20) {
-          let pos = findAIBuildPos(enemyHQ.x, enemyHQ.y, 28, 'factory');
+        } else if (eBarracks && !eFactory && (aiPaceRating === 'fast' || Math.random() < 0.7) && resources.enemyMin >= 60 && resources.enemyGas >= 20) {
+          let pos = findAIBuildPos(mainHQ.x, mainHQ.y, 28, 'factory');
           if (pos) { resources.enemyMin -= 60; resources.enemyGas -= 20; startBuildingConstruction('factory', 'enemy', pos.x, pos.y, freeAISCV, 320); }
-        } else if (eFactory && !eStarport && wave >= 3 && resources.enemyMin >= 80 && resources.enemyGas >= 40) {
-          let pos = findAIBuildPos(enemyHQ.x, enemyHQ.y, 30, 'starport');
+        } else if (eFactory && !eStarport && (aiPaceRating === 'fast' || wave >= 3) && resources.enemyMin >= 80 && resources.enemyGas >= 40) {
+          let pos = findAIBuildPos(mainHQ.x, mainHQ.y, 30, 'starport');
           if (pos) { resources.enemyMin -= 80; resources.enemyGas -= 40; startBuildingConstruction('starport', 'enemy', pos.x, pos.y, freeAISCV, 400); }
-        } else if (eTurrets.length < 3 && resources.enemyMin >= 35 && Math.random() < 0.4) {
-          let pos = findAIBuildPos(enemyHQ.x, enemyHQ.y, 18, 'turret');
+        } else if (eTurrets.length < 3 && resources.enemyMin >= 35) {
+          let pos = findAIBuildPos(mainHQ.x, mainHQ.y, 18, 'turret');
           if (pos) { resources.enemyMin -= 35; startBuildingConstruction('turret', 'enemy', pos.x, pos.y, freeAISCV, 200); }
         }
       }
 
+      // 5. 유닛 생산 (플레이어 속도에 따라 고티어 비중 확대)
       if (eBarracks) {
-        let prodPoint = eStarport || eFactory || eBarracks;
-        if (eStarport && resources.enemyMin >= 100 && resources.enemyGas >= 60 && Math.random() < 0.4) {
+        let prodPoint = (aiPaceRating === 'fast' && eStarport) ? eStarport : (eFactory || eBarracks);
+        
+        if (aiPaceRating === 'fast' && eStarport && resources.enemyMin >= 100 && resources.enemyGas >= 60) {
           resources.enemyMin -= 100; resources.enemyGas -= 60;
           spawnEntity('carrier', 'enemy', prodPoint.x - 30, prodPoint.y + 30);
-        } else if (eFactory && resources.enemyMin >= 60 && resources.enemyGas >= 10 && Math.random() < 0.6) {
+        } else if (eFactory && resources.enemyMin >= 60 && resources.enemyGas >= 10 && Math.random() < (aiPaceRating === 'fast' ? 0.8 : 0.4)) {
           resources.enemyMin -= 60; resources.enemyGas -= 10;
           spawnEntity('tank', 'enemy', prodPoint.x - 30, prodPoint.y + 30);
         } else if (resources.enemyMin >= 30) {
@@ -525,11 +556,12 @@
         }
       }
 
+      // 6. 공격/방어 이동
       if (aiStateMode === 'attack') {
         const playerHQ = entities.find(e => e.type === 'hq' && e.faction === 'player');
         if (playerHQ) {
           enemySquad.forEach((unit, idx) => {
-            if (!unit.moveTarget || Math.random() < 0.2) {
+            if (!unit.moveTarget || Math.random() < 0.25) {
               const offsetX = (idx % 5 - 2) * 25;
               const offsetY = (Math.floor(idx / 5) - 2) * 25;
               unit.moveTarget = { x: playerHQ.x + offsetX, y: playerHQ.y + offsetY };
@@ -539,8 +571,8 @@
       } else if (aiStateMode === 'defend') {
         enemySquad.forEach((unit, idx) => {
           if (!unit.moveTarget) {
-            const rallyX = enemyHQ.x - 180 + (idx % 4) * 35;
-            const rallyY = enemyHQ.y + 120 + Math.floor(idx / 4) * 35;
+            const rallyX = mainHQ.x - 180 + (idx % 4) * 35;
+            const rallyY = mainHQ.y + 120 + Math.floor(idx / 4) * 35;
             unit.moveTarget = { x: rallyX, y: rallyY };
           }
         });
@@ -576,30 +608,25 @@
           entities.splice(i, 1);
           updateUI();
 
-          if (e.type === 'hq') {
+          if (e.type === 'hq' && !entities.some(h => h.type === 'hq' && h.faction === e.faction)) {
             gameOver = true;
             setTimeout(() => {
-              if (e.faction === 'enemy') {
-                alert("🎉 우주 대승리! 적 사령부를 함락했습니다!");
-              } else {
-                alert("💥 아군 사령부가 파괴되었습니다! 게임 오버!");
-              }
+              if (e.faction === 'enemy') alert("🎉 우주 대승리! 적의 모든 사령부를 함락했습니다!");
+              else alert("💥 아군 사령부가 파괴되었습니다! 게임 오버!");
               initGame();
             }, 100);
           }
           continue;
         }
 
-        // 1. 건물 건설 진행 및 SCV 현장 도착 판정
+        // 1. 건물 건설 진행
         if (e.isUnderConstruction) {
           const builder = entities.find(scv => scv.id === e.builderSCVId);
           if (builder) {
             let distToSite = Math.hypot(builder.x - e.x, builder.y - e.y);
             if (distToSite > e.radius + 12) {
-              // SCV가 현장을 향해 걸어감
               builder.moveTarget = { x: e.x, y: e.y };
             } else {
-              // 현장 도착 후 건설 시작 (망치 이펙트 렌더링)
               builder.moveTarget = null;
               e.buildProgress++;
               
@@ -625,7 +652,6 @@
               }
             }
           } else {
-            // 건설 SCV가 사라지면 서서히 완성
             e.buildProgress += 0.5;
             if (e.buildProgress >= e.buildMaxTime) {
               e.isUnderConstruction = false;
@@ -640,7 +666,7 @@
           continue;
         }
 
-        // 2. 유닛 생산 대기열 (Queue)
+        // 2. 대기열 생산
         if (e.productionQueue && e.productionQueue.length > 0) {
           let item = e.productionQueue[0];
           item.progress++;
@@ -654,7 +680,7 @@
           }
         }
 
-        // 3. 터렛 방어
+        // 3. 터렛 공격
         if (e.type === 'turret') {
           if (e.cooldown > 0) e.cooldown--;
           let targets = entities.filter(t => t.faction !== 'neutral' && t.faction !== e.faction && !t.isUnderConstruction);
@@ -675,8 +701,38 @@
           }
         }
 
-        // 4. SCV 일반 자원 채취
+        // 4. SCV 수리 및 채취 스마트 로직 (손상된 건물 1대만 수리)
         if (e.type === 'scv' && !e.isBuildingSCV) {
+          const damagedBuilding = entities.find(b => 
+            b.faction === e.faction && 
+            ['hq','barracks','factory','starport','refinery','turret'].includes(b.type) &&
+            !b.isUnderConstruction && b.hp < b.maxHp &&
+            Math.hypot(b.x - e.x, b.y - e.y) <= b.radius + 40
+          );
+
+          if (damagedBuilding) {
+            // 해당 건물을 이미 수리 중인 다른 SCV가 있는지 확인 (최대 1대)
+            const otherRepairer = entities.find(s => s.type === 'scv' && s.id !== e.id && s.repairingTargetId === damagedBuilding.id);
+            if (!otherRepairer) {
+              e.repairingTargetId = damagedBuilding.id;
+              e.moveTarget = null;
+              damagedBuilding.hp = Math.min(damagedBuilding.maxHp, damagedBuilding.hp + 0.35);
+
+              if (Math.random() < 0.2) {
+                particles.push({
+                  x: damagedBuilding.x + (Math.random() - 0.5) * damagedBuilding.radius,
+                  y: damagedBuilding.y + (Math.random() - 0.5) * damagedBuilding.radius,
+                  vx: (Math.random() - 0.5) * 1.5, vy: (Math.random() - 0.5) * 1.5,
+                  life: 10, text: '🔧'
+                });
+              }
+              continue; // 수리 중일 땐 채취 안 함
+            }
+          } else {
+            e.repairingTargetId = null;
+          }
+
+          // 일반 채취 로직
           const hq = entities.find(h => h.type === 'hq' && h.faction === e.faction && !h.isUnderConstruction);
           if (!e.moveTarget) {
             if (!e.cargo) {
@@ -720,7 +776,7 @@
           }
         }
 
-        // 5. 유닛 이동 연산 (SCV 포함 완료)
+        // 5. 유닛 이동 연산
         if (['scv','fighter','scout','tank','mech','cruiser','carrier'].includes(e.type)) {
           if (e.cooldown > 0) e.cooldown--;
 
@@ -736,7 +792,6 @@
 
           let activeTarget = e.forcedTarget && entities.includes(e.forcedTarget) ? e.forcedTarget : closestTarget;
 
-          // 수동/건설 이동 목표 처리
           if (e.moveTarget) {
             let distToMove = Math.hypot(e.moveTarget.x - e.x, e.moveTarget.y - e.y);
             if (distToMove > 6) {
@@ -760,7 +815,7 @@
         }
       }
 
-      // 탄환 처리
+      // 탄환 연산
       for (let i = bullets.length - 1; i >= 0; i--) {
         let b = bullets[i];
         let angle = Math.atan2(b.targetY - b.y, b.targetX - b.x);
@@ -799,14 +854,12 @@
       const mmX = VIEW_W - mmW - 10;
       const mmY = VIEW_H - mmH - 10;
 
-      // 미니맵 배경
       ctx.fillStyle = 'rgba(10, 16, 26, 0.88)';
       ctx.fillRect(mmX, mmY, mmW, mmH);
       ctx.strokeStyle = '#4dadf7';
       ctx.lineWidth = 1.5;
       ctx.strokeRect(mmX, mmY, mmW, mmH);
 
-      // 객체 도트 렌더링
       entities.forEach(ent => {
         const mx = mmX + (ent.x / WORLD_W) * mmW;
         const my = mmY + (ent.y / WORLD_H) * mmH;
@@ -819,7 +872,6 @@
         ctx.fillRect(mx - dotSize/2, my - dotSize/2, dotSize, dotSize);
       });
 
-      // 현재 시점 카메라 테두리
       const vx = mmX + (camX / WORLD_W) * mmW;
       const vy = mmY + (camY / WORLD_H) * mmH;
       const vw = (VIEW_W / WORLD_W) * mmW;
@@ -836,7 +888,6 @@
       ctx.save();
       ctx.translate(-camX, -camY);
 
-      // 격자 배경
       ctx.strokeStyle = '#111827'; ctx.lineWidth = 1;
       for (let x = 0; x < WORLD_W; x += 100) {
         ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, WORLD_H); ctx.stroke();
@@ -845,15 +896,11 @@
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(WORLD_W, y); ctx.stroke();
       }
 
-      // 탄환
       bullets.forEach(b => {
         ctx.fillStyle = b.faction === 'player' ? '#4dadf7' : '#ff6b6b';
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, b.splash ? 4 : 3, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(b.x, b.y, b.splash ? 4 : 3, 0, Math.PI * 2); ctx.fill();
       });
 
-      // 엔티티
       entities.forEach(e => {
         if (selectedUnits.includes(e)) {
           ctx.beginPath();
@@ -870,7 +917,6 @@
           ctx.fillText('📦', e.x + 10, e.y - 10);
         }
 
-        // 건설 중 진행바
         if (e.isUnderConstruction) {
           const barW = e.radius * 2;
           const barH = 5;
@@ -882,9 +928,7 @@
           ctx.fillRect(barX, barY, barW, barH);
           ctx.fillStyle = '#fcc419';
           ctx.fillRect(barX, barY, barW * progressRatio, barH);
-        } 
-        // 생산 중 진행바
-        else if (e.productionQueue && e.productionQueue.length > 0) {
+        } else if (e.productionQueue && e.productionQueue.length > 0) {
           const barW = e.radius * 2;
           const barH = 4;
           const barX = e.x - barW / 2;
@@ -898,7 +942,6 @@
           ctx.fillRect(barX, barY, barW * prodRatio, barH);
         }
 
-        // HP 바
         if (e.type !== 'resource_min' && e.type !== 'resource_gas') {
           const barW = e.radius * 1.8;
           const barH = 4;
@@ -913,7 +956,6 @@
         }
       });
 
-      // 파티클
       particles.forEach(p => {
         ctx.font = '15px sans-serif';
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -922,10 +964,8 @@
 
       ctx.restore();
 
-      // 드래그 박스
       if (isDragging) {
-        ctx.strokeStyle = '#51cf66';
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#51cf66'; ctx.lineWidth = 1;
         const w = dragEndScreen.x - dragStartScreen.x;
         const h = dragEndScreen.y - dragStartScreen.y;
         ctx.strokeRect(dragStartScreen.x, dragStartScreen.y, w, h);
@@ -933,7 +973,6 @@
         ctx.fillRect(dragStartScreen.x, dragStartScreen.y, w, h);
       }
 
-      // UI 미니맵 그리기
       renderMinimap();
     }
 
