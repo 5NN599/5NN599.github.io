@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>지구 방위대 최후의 함선 '미니지호' 오락실 - 타워디펜스</title>
+    <style>
+        :root {
+            --bg: #f8f9fa; --text: #333;
+            --canvas-bg: #05070a; --border: #e9ecef;
+            --btn-bg: #fff;
+        }
+        [data-theme="dark"] {
+            --bg: #0d1117; --text: #c9d1d9;
+            --canvas-bg: #020305; --border: #30363d;
+            --btn-bg: #21262d;
+        }
+        [data-theme="beige"] {
+            --bg: #f5ebe0; --text: #4e3d30;
+            --canvas-bg: #14100c; --border: #ddcbbb;
+            --btn-bg: #eddfd0;
+        }
+        body {
+            background-color: var(--bg) !important;
+            color: var(--text) !important;
+            text-align: center; font-family: sans-serif;
+            padding-top: 15px; margin: 0; transition: 0.3s;
+        }
+        canvas {
+            background-color: var(--canvas-bg);
+            display: block; margin: 10px auto;
+            border: 4px solid var(--border); border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+            cursor: pointer;
+        }
+        button {
+            background-color: var(--btn-bg) !important;
+            color: var(--text) !important;
+            border: 1px solid var(--border) !important;
+            padding: 8px 16px; font-size: 0.95rem;
+            border-radius: 8px; cursor: pointer; margin: 4px;
+            font-weight: bold;
+        }
+        #hud-panel {
+            font-size: 1.25rem; font-weight: bold;
+            color: #fcc419; margin-bottom: 4px;
+        }
+        .build-menu { margin: 10px 0; }
+        .active-btn {
+            border: 2px solid #4dadf7 !important;
+            box-shadow: 0 0 8px rgba(77, 173, 247, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <h1>🛡️ 스페이스 타워디펜스</h1>
+    <div id="hud-panel">❤️ 라이프: 10 / 10 | 💰 자금: 100G | 🌊 웨이브: 1</div>
+    
+    <div class="build-menu">
+        <button id="btn-arrow" class="active-btn" onclick="selectTower('arrow')">🏹 기본 타워 (15G)</button>
+        <button id="btn-cannon" onclick="selectTower('cannon')">💥 폭발 타워 (30G)</button>
+        <button id="btn-laser" onclick="selectTower('laser')">⚡ 관통 레이저 (50G)</button>
+    </div>
+
+    <canvas id="defenseCanvas" width="480" height="360"></canvas>
+    
+    <div>
+        <button onclick="location.href='../'">🏠 오락실 메인</button>
+    </div>
+    <script>
+        const savedTheme = localStorage.getItem('minig-theme');
+        if (savedTheme && savedTheme !== 'white') {
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        }
+
+        const canvas = document.getElementById('defenseCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const path = [
+            { x: -20, y: 180 }, { x: 120, y: 180 }, { x: 120, y: 60 },
+            { x: 260, y: 60 }, { x: 260, y: 280 }, { x: 400, y: 280 },
+            { x: 400, y: 180 }, { x: 500, y: 180 }
+        ];
+
+        let gold = 100, life = 10, wave = 1, isGameOver = false, waveTimer = 0, score = 0;
+        let enemies = [], towers = [], bullets = [], explosions = [];
+        let selectedTowerType = 'arrow';
+
+        const TOWER_INFO = {
+            arrow: { cost: 15, range: 90, cooldown: 30, emoji: "🏹" },
+            cannon: { cost: 30, range: 75, cooldown: 60, emoji: "💥" },
+            laser: { cost: 50, range: 120, cooldown: 15, emoji: "⚡" }
+        };
+
+        function selectTower(type) {
+            selectedTowerType = type;
+            document.querySelectorAll('.build-menu button').forEach(btn => btn.classList.remove('active-btn'));
+            document.getElementById(`btn-${type}`).classList.add('active-btn');
+        }
+
+        canvas.addEventListener('click', e => {
+            if (isGameOver) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left; const y = e.clientY - rect.top;
+            if (isOnPath(x, y)) return;
+
+            let tooClose = towers.some(t => Math.sqrt((t.x - x)**2 + (t.y - y)**2) < 25);
+            if (tooClose) return;
+
+            const cost = TOWER_INFO[selectedTowerType].cost;
+            if (gold >= cost) {
+                gold -= cost;
+                towers.push({ x: x, y: y, type: selectedTowerType, cooldown: 0, info: TOWER_INFO[selectedTowerType] });
+                updateHUD();
+            }
+        });
+
+        function isOnPath(x, y) {
+            for (let i = 0; i < path.length - 1; i++) {
+                let p1 = path[i], p2 = path[i+1];
+                if (p1.x === p2.x) {
+                    if (Math.abs(x - p1.x) < 25 && y >= Math.min(p1.y, p2.y) - 25 && y <= Math.max(p1.y, p2.y) + 25) return true;
+                } else if (p1.y === p2.y) {
+                    if (Math.abs(y - p1.y) < 25 && x >= Math.min(p1.x, p2.x) - 25 && x <= Math.max(p1.x, p2.x) + 25) return true;
+                }
+            }
+            return false;
+        }
+
+        function spawnWave() {
+            let enemyCount = 5 + wave * 3; let speedFactor = 1 + wave * 0.1; let hpFactor = 10 + wave * 15;
+            for (let i = 0; i < enemyCount; i++) {
+                let emoji = (i % 3 === 0) ? "👾" : (i % 3 === 1) ? "🛸" : "👽";
+                enemies.push({ x: path[0].x - i * 35, y: path[0].y, pathIndex: 0, speed: (1.2 + Math.random() * 0.5) * speedFactor, hp: hpFactor, maxHp: hpFactor, emoji: emoji, reward: 5 + Math.floor(wave * 0.5) });
+            }
+        }
+
+        function updateHUD() {
+            document.getElementById('hud-panel').innerText = `❤️ 라이프: ${life} / 10 | 💰 자금: ${gold}G | 🌊 웨이브: ${wave}`;
+        }
+
+        function loop() {
+            if (isGameOver) return; requestAnimationFrame(loop);
+            ctx.fillStyle = '#05070a'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = '#212529'; ctx.lineWidth = 32; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+            ctx.beginPath(); ctx.moveTo(path[0].x, path[0].y);
+            for(let i=1; i<path.length; i++) ctx.lineTo(path[i].x, path[i].y); ctx.stroke();
+
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                let en = enemies[i]; let target = path[en.pathIndex + 1];
+                let dx = target.x - en.x; let dy = target.y - en.y; let dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < en.speed) {
+                    en.pathIndex++;
+                    if (en.pathIndex >= path.length - 1) {
+                        life--; enemies.splice(i, 1); updateHUD();
+                        if (life <= 0) { isGameOver = true; alert("💥 기지가 함락되었습니다! GAME OVER"); location.reload(); }
+                        continue;
+                    }
+                } else { en.x += (dx / dist) * en.speed; en.y += (dy / dist) * en.speed; }
+                ctx.save(); ctx.font = "20px sans-serif"; ctx.fillText(en.emoji, en.x - 10, en.y + 8);
+                ctx.fillStyle = "#ff6b6b"; ctx.fillRect(en.x - 12, en.y - 16, 24, 4);
+                ctx.fillStyle = "#51cf66"; ctx.fillRect(en.x - 12, en.y - 16, (en.hp / en.maxHp) * 24, 4); ctx.restore();
+            }
+
+            towers.forEach(t => {
+                ctx.save(); ctx.font = "24px sans-serif"; ctx.fillText(t.info.emoji, t.x - 12, t.y + 10); ctx.restore();
+                if (t.cooldown > 0) { t.cooldown--; return; }
+                let targetEnemy = null; let maxDist = t.info.range;
+                for (let en of enemies) {
+                    if (en.x < 0) continue;
+                    let d = Math.sqrt((t.x - en.x)**2 + (t.y - en.y)**2);
+                    if (d < maxDist) { targetEnemy = en; break; }
+                }
+                if (targetEnemy) {
+                    bullets.push({ x: t.x, y: t.y, target: targetEnemy, speed: 7, type: t.type, dmg: t.type === 'laser' ? 4 : t.type === 'cannon' ? 12 : 8 });
+                    t.cooldown = t.info.cooldown;
+                }
+            });
+
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                let b = bullets[i]; if (!enemies.includes(b.target)) { bullets.splice(i, 1); continue; }
+                let dx = b.target.x - b.x; let dy = b.target.y - b.y; let dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < b.speed) {
+                    if (b.type === 'cannon') {
+                        explosions.push({ x: b.x, y: b.y, rad: 8, maxRad: 40 });
+                        enemies.forEach(en => { if (Math.sqrt((b.x - en.x)**2 + (b.y - en.y)**2) < 40) en.hp -= b.dmg; });
+                    } else { b.target.hp -= b.dmg; }
+                    if (b.target.hp <= 0) {
+                        let idx = enemies.indexOf(b.target);
+                        if (idx > -1) { gold += b.target.reward; score += 20; enemies.splice(idx, 1); updateHUD(); }
+                    }
+                    bullets.splice(i, 1);
+                } else {
+                    b.x += (dx / dist) * b.speed; b.y += (dy / dist) * b.speed;
+                    ctx.fillStyle = b.type === 'laser' ? '#ff00ff' : b.type === 'cannon' ? '#ff922b' : '#00ffcc';
+                    ctx.beginPath(); ctx.arc(b.x, b.y, b.type === 'laser' ? 3 : 4, 0, Math.PI * 2); ctx.fill();
+                }
+            }
+
+            for (let i = explosions.length - 1; i >= 0; i--) {
+                let exp = explosions[i]; exp.rad += 3;
+                ctx.save(); ctx.beginPath(); ctx.arc(exp.x, exp.y, exp.rad, 0, Math.PI*2);
+                ctx.fillStyle = `rgba(255, 107, 107, ${1 - exp.rad / exp.maxRad})`; ctx.fill(); ctx.closePath(); ctx.restore();
+                if (exp.rad >= exp.maxRad) explosions.splice(i, 1);
+            }
+
+            if (enemies.length === 0) {
+                waveTimer++;
+                ctx.save(); ctx.fillStyle = '#fff'; ctx.font = '16px sans-serif'; ctx.textAlign = 'center';
+                ctx.fillText(`⚔️ 다음 침공 웨이브 대기중... (${Math.ceil((120 - waveTimer)/60)}초)`, 240, 40); ctx.restore();
+                if (waveTimer >= 120) { wave++; waveTimer = 0; spawnWave(); updateHUD(); }
+            }
+        }
+
+        spawnWave(); updateHUD(); loop();
+    </script>
+</body>
+</html>
