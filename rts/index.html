@@ -35,34 +35,35 @@
             background-color: var(--btn-bg) !important;
             color: var(--text) !important;
             border: 1px solid var(--border) !important;
-            padding: 8px 16px; font-size: 0.95rem;
+            padding: 8px 16px; font-size: 0.9rem;
             border-radius: 8px; cursor: pointer; margin: 4px;
             font-weight: bold;
         }
         #rts-panel {
-            font-size: 1.25rem; font-weight: bold;
+            font-size: 1.2rem; font-weight: bold;
             color: #fcc419; margin-bottom: 4px;
         }
+        .build-bar { margin: 8px 0; }
     </style>
 </head>
 <body>
     <h1>⚔️ 미니 RTS 우주전쟁</h1>
-    <div id="rts-panel">💎 광물: 50 | 🚀 전투기: 0대 | 🛸 외계적선: 0기</div>
+    <div id="rts-panel">💎 광물: 50 | 🌋 가스: 0 | 🚀 군대: 0대 | 🌊 웨이브: 1</div>
     
-    <div style="margin: 10px 0;">
-        <button onclick="produceUnit()">🏭 아군 함선 생산 (비용: 💎20)</button>
+    <div class="build-bar">
+        <button onclick="produceUnit('scv')">🛸 수집선 생산 (💎20)</button>
+        <button onclick="produceUnit('fighter')">🚀 전투기 생산 (💎30)</button>
+        <button onclick="produceUnit('cruiser')">🛩️ 중순양함 생산 (💎50 🌋15)</button>
         <button onclick="location.href='../'">🏠 오락실 메인</button>
     </div>
-
-    <canvas id="rtsCanvas" width="480" height="340"></canvas>
+    <canvas id="rtsCanvas" width="500" height="340"></canvas>
     <script>
-        // 1. 최상단 실시간 메인 오락실 CSS 변수 테마 완벽 연동
         const savedTheme = localStorage.getItem('minig-theme');
         if (savedTheme && savedTheme !== 'white') {
             document.documentElement.setAttribute('data-theme', savedTheme);
         }
 
-        // 🎵 실적적 오디오 믹서 엔진 결합
+        // 🎵 주파수 오디오 이펙터 탑재
         let audioCtx = null;
         function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
         function playSound(type) {
@@ -70,145 +71,126 @@
             try {
                 const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
                 osc.connect(gain); gain.connect(audioCtx.destination); const now = audioCtx.currentTime;
-                if (type === 'produce') { osc.type = 'sine'; osc.frequency.setValueAtTime(300, now); osc.frequency.linearRampToValueAtTime(500, now + 0.15); gain.gain.setValueAtTime(0.02, now); gain.gain.linearRampToValueAtTime(0, now + 0.15); osc.start(now); osc.stop(now + 0.15); }
-                else if (type === 'laser') { osc.type = 'square'; osc.frequency.setValueAtTime(800, now); osc.frequency.exponentialRampToValueAtTime(300, now + 0.04); gain.gain.setValueAtTime(0.008, now); gain.gain.linearRampToValueAtTime(0, now + 0.04); osc.start(now); osc.stop(now + 0.04); }
-                else if (type === 'explode') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(200, now); osc.frequency.linearRampToValueAtTime(40, now + 0.1); gain.gain.setValueAtTime(0.03, now); gain.gain.linearRampToValueAtTime(0, now + 0.1); osc.start(now); osc.stop(now + 0.1); }
+                if (type === 'produce') { osc.type = 'sine'; osc.frequency.setValueAtTime(300, now); osc.frequency.linearRampToValueAtTime(550, now + 0.12); gain.gain.setValueAtTime(0.02, now); gain.gain.linearRampToValueAtTime(0, now + 0.12); osc.start(now); osc.stop(now + 0.12); }
+                else if (type === 'laser') { osc.type = 'square'; osc.frequency.setValueAtTime(800, now); osc.frequency.exponentialRampToValueAtTime(350, now + 0.04); gain.gain.setValueAtTime(0.006, now); gain.gain.linearRampToValueAtTime(0, now + 0.04); osc.start(now); osc.stop(now + 0.04); }
+                else if (type === 'cannon') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(200, now); osc.frequency.linearRampToValueAtTime(60, now + 0.1); gain.gain.setValueAtTime(0.025, now); gain.gain.linearRampToValueAtTime(0, now + 0.1); osc.start(now); osc.stop(now + 0.1); }
+                else if (type === 'explode') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(160, now); gain.gain.setValueAtTime(0.04, now); gain.gain.linearRampToValueAtTime(0, now + 0.15); osc.start(now); osc.stop(now + 0.15); }
             } catch (e) {}
         }
 
         const canvas = document.getElementById('rtsCanvas'); const ctx = canvas.getContext('2d');
-        let minerals = 50, score = 0, isGameOver = false, spawnTimer = 0;
-        let myUnits = [], enemies = [], crystals = [], bullets = [], explosions = [];
+        let minerals = 60, gas = 0, wave = 1, isGameOver = false, spawnTimer = 0, waveTimer = 0;
+        let units = [], enemies = [], bullets = [], explosions = [];
 
-        // 아군 사령부(CC) 및 전술 제련소 좌표 고정 기지 건설
-        const commandCenter = { x: 40, y: 150, emoji: "🏰" };
-        const mineralNode = { x: 420, y: 150, emoji: "💎" };
+        const CC = { x: 45, y: 150, emoji: "🏰" };
+        const M_NODE = { x: 440, y: 80, emoji: "💎", type: 'm' };
+        const G_NODE = { x: 440, y: 230, emoji: "🌋", type: 'g' };
 
-        function produceUnit() {
-            if (minerals >= 20 && !isGameOver) {
-                minerals -= 20; playSound('produce');
-                myUnits.push({
-                    x: commandCenter.x + 30, y: commandCenter.y + (Math.random() * 60 - 30),
-                    state: 'mine', target: mineralNode, hasMineral: false, hp: 30, maxHp: 30, cool: 0
-                });
-                updateHUD();
-            }
+        // 최초 1분 공급용 기본 일꾼 2기 배치
+        units.push({ x: 80, y: 130, type: 'scv', state: 'mine', target: M_NODE, res: null, hp: 20, maxHp: 20, cool: 0, spd: 1.6 });
+        units.push({ x: 80, y: 170, type: 'scv', state: 'mine', target: G_NODE, res: null, hp: 20, maxHp: 20, cool: 0, spd: 1.6 });
+
+        function produceUnit(type) {
+            if (isGameOver) return;
+            if (type === 'scv' && minerals >= 20) { minerals -= 20; let nd = Math.random() < 0.5 ? M_NODE : G_NODE; units.push({ x: CC.x+30, y: CC.y+(Math.random()*40-20), type: 'scv', state: 'mine', target: nd, res: null, hp: 20, maxHp: 20, cool: 0, spd: 1.6 }); playSound('produce'); }
+            else if (type === 'fighter' && minerals >= 30) { minerals -= 30; units.push({ x: CC.x+30, y: CC.y+(Math.random()*40-20), type: 'fighter', state: 'patrol', hp: 35, maxHp: 35, cool: 0, spd: 2.2 }); playSound('produce'); }
+            else if (type === 'cruiser' && minerals >= 50 && gas >= 15) { minerals -= 50; gas -= 15; units.push({ x: CC.x+30, y: CC.y+(Math.random()*40-20), type: 'cruiser', state: 'patrol', hp: 100, maxHp: 100, cool: 0, spd: 1.0 }); playSound('produce'); }
+            updateHUD();
         }
 
         function updateHUD() {
-            document.getElementById('rts-panel').innerText = `💎 광물: ${minerals} | 🚀 전투기: ${myUnits.length}대 | 🛸 외계적선: ${enemies.length}기`;
+            document.getElementById('rts-panel').innerText = `💎 광물: ${minerals} | 🌋 가스: ${gas} | 🚀 군대: ${units.length}대 | 🌊 웨이브: ${wave}`;
         }
 
         function loop() {
-            if (isGameOver) return; requestAnimationFrame(loop);
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (isGameOver) return; requestAnimationFrame(loop); ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.font = "38px sans-serif"; ctx.fillText(CC.emoji, CC.x-15, CC.y+15); ctx.fillText(M_NODE.emoji, M_NODE.x-15, M_NODE.y+15); ctx.fillText(G_NODE.emoji, G_NODE.x-15, G_NODE.y+15);
 
-            // 기지 거점 오브젝트 및 광산 드로잉
-            ctx.font = "36px sans-serif"; ctx.fillText(commandCenter.emoji, commandCenter.x - 10, commandCenter.y + 15);
-            ctx.fillText(mineralNode.emoji, mineralNode.x - 10, mineralNode.y + 15);
-
-            // 적 UFO 강하 습격 타이머 자동 조율
+            // 외계 함대 웨이브 연산 물량 공세 가동
             spawnTimer++;
-            if (spawnTimer % 220 === 0) {
-                enemies.push({ x: canvas.width + 20, y: 50 + Math.random() * 240, hp: 25, maxHp: 25, speed: 0.8 });
-                updateHUD();
+            if (spawnTimer % Math.max(60, 240 - wave * 15) === 0) {
+                let eType = Math.random(); let hpBox = 15 + wave * 5; let em = "🛸";
+                if (eType < 0.3) em = "👾"; else if (eType < 0.6) em = "👽"; else if (eType > 0.9) { em = "🪐"; hpBox = 50 + wave * 10; }
+                enemies.push({ x: canvas.width + 20, y: 40 + Math.random() * 240, hp: hpBox, maxHp: hpBox, speed: 0.7 + wave * 0.05, emoji: em }); updateHUD();
             }
 
-            // 1. 아군 전투기 AI 및 자원 채취 자동 기동 물리 연산
-            myUnits.forEach((u, idx) => {
-                let currentTarget = u.state === 'combat' ? u.combatTarget : u.target;
-                
-                // 만약 전장에 적이 나타나면 자원 채치 조를 즉시 전투조('combat')로 전술 전환
-                if (enemies.length > 0 && u.state !== 'combat') {
-                    u.state = 'combat';
-                    u.combatTarget = enemies[Math.floor(Math.random() * enemies.length)];
-                    currentTarget = u.combatTarget;
-                }
-                // 적이 소멸하면 다시 자원 채취('mine') 상태로 평화 복귀 복구 공식
-                if (u.state === 'combat' && !enemies.includes(u.combatTarget)) {
-                    u.state = 'mine'; u.target = u.hasMineral ? commandCenter : mineralNode;
-                    currentTarget = u.target;
-                }
-
-                let dx = currentTarget.x - u.x; let dy = currentTarget.y - u.y; let dist = Math.sqrt(dx*dx + dy*dy);
-
-                if (dist > 30) {
-                    u.x += (dx / dist) * 1.8; u.y += (dy / dist) * 1.8;
-                } else {
-                    if (u.state === 'mine') { // 채취 완료 및 사령부 하차 시스템
-                        if (u.target === mineralNode && !u.hasMineral) { u.hasMineral = true; u.target = commandCenter; }
-                        else if (u.target === commandCenter && u.hasMineral) { u.hasMineral = false; minerals += 8; u.target = mineralNode; updateHUD(); }
-                    } else if (u.state === 'combat' && u.cool <= 0) { // 적군 오토 요격 격발 사격
-                        bullets.push({ x: u.x, y: u.y, tx: currentTarget.x, ty: currentTarget.y, target: currentTarget, isEnemy: false });
-                        u.cool = 25; playSound('laser');
+            // 1. 아군 유닛 부대 실시간 오토 연산 루프
+            units.forEach((u, idx) => {
+                if (u.type === 'scv') { // 자원 수집형 AI 기동
+                    let dx = u.target.x - u.x; let dy = u.target.y - u.y; let dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist > 25) { u.x += (dx / dist) * u.spd; u.y += (dy / dist) * u.spd; }
+                    else {
+                        if (u.target === M_NODE) { u.res = 'm'; u.target = CC; }
+                        else if (u.target === G_NODE) { u.res = 'g'; u.target = CC; }
+                        else if (u.target === CC) { if (u.res === 'm') minerals += 8; else if (u.res === 'g') gas += 4; u.res = null; u.target = Math.random() < 0.6 ? M_NODE : G_NODE; updateHUD(); }
                     }
+                    ctx.save(); ctx.font = "16px sans-serif"; ctx.fillText(u.res ? "📦" : "🛸", u.x-8, u.y+6); ctx.restore();
+                } else { // 전투조형 Interceptor & Battlecruiser 오토 타깃팅
+                    if (enemies.length > 0) {
+                        let target = enemies[0]; let dx = target.x - u.x; let dy = target.y - u.y; let dist = Math.sqrt(dx*dx + dy*dy);
+                        if (dist > 120) { u.x += (dx / dist) * u.spd; u.y += (dy / dist) * u.spd; }
+                        else if (u.cool <= 0) {
+                            bullets.push({ x: u.x, y: u.y, tx: target.x, ty: target.y, target: target, isEnemy: false, dmg: u.type === 'cruiser' ? 12 : 6, type: u.type });
+                            u.cool = u.type === 'cruiser' ? 40 : 20; playSound(u.type === 'cruiser' ? 'cannon' : 'laser');
+                        }
+                    } else { u.x += (CC.x + 80 - u.x) * 0.02; u.y += (CC.y + (idx * 20 - 40) - u.y) * 0.02; }
+                    if (u.cool > 0) u.cool--;
+                    ctx.save(); ctx.font = u.type === 'cruiser' ? "24px sans-serif" : "18px sans-serif"; ctx.fillText(u.type === 'cruiser' ? "🛩️" : "🚀", u.x-8, u.y+6);
+                    ctx.fillStyle = "#ff6b6b"; ctx.fillRect(u.x-10, u.y-14, 20, 3); ctx.fillStyle = "#51cf66"; ctx.fillRect(u.x-10, u.y-14, (u.hp / u.maxHp) * 20, 3); ctx.restore();
                 }
-                if (u.cool > 0) u.cool--;
-
-                ctx.save(); ctx.font = "18px sans-serif"; ctx.fillText(u.hasMineral ? "📦" : "🚀", u.x - 8, u.y + 6);
-                ctx.fillStyle = "#ff6b6b"; ctx.fillRect(u.x - 10, u.y - 14, 20, 3);
-                ctx.fillStyle = "#51cf66"; ctx.fillRect(u.x - 10, u.y - 14, (u.hp / u.maxHp) * 20, 3); ctx.restore();
             });
 
-            // 2. 적 침공 UFO 군단 사령부 돌격 기동 물리 연산
+            // 2. 외계 적선 사령부 돌격 및 요격 탄막 사격
             for (let i = enemies.length - 1; i >= 0; i--) {
-                let en = enemies[i];
-                let tx = commandCenter.x, ty = en.y; // 아군 본진을 향해 수평 전진 기동
-                let dx = tx - en.x; let dy = ty - en.y; let dist = Math.sqrt(dx*dx + dy*dy);
+                let en = enemies[i]; let dx = CC.x - en.x; let dy = en.y - en.y; let dist = Math.abs(dx);
+                if (dist > 35) { en.x -= en.speed; }
+                else { isGameOver = true; playSound('explode'); alert("💥 아군 사령부가 침략당했습니다! GAME OVER"); location.reload(); return; }
 
-                if (dist > 40) {
-                    en.x += (dx / dist) * en.speed;
-                } else { // 본진 도착 시 자폭 테러 기지 체력 갉아먹기 함수
-                    isGameOver = true; playSound('explode');
-                    alert("💥 아군 사령부가 파괴되었습니다! 방어 실패"); location.reload(); return;
+                if (frameCount % 50 === 0 && units.length > 0) {
+                    let randU = units[Math.floor(Math.random() * units.length)];
+                    bullets.push({ x: en.x, y: en.y, tx: randU.x, ty: randU.y, target: randU, isEnemy: true, dmg: en.emoji === "🪐" ? 8 : 4 }); playSound('laser');
                 }
-
-                // 적군 기체 자동 사격 쿨타임 트리거
-                if (frameCount % 45 === 0 && myUnits.length > 0) {
-                    let randUnit = myUnits[Math.floor(Math.random() * myUnits.length)];
-                    bullets.push({ x: en.x, y: en.y, tx: randUnit.x, ty: randUnit.y, target: randUnit, isEnemy: true });
-                    playSound('laser');
-                }
-
-                ctx.save(); ctx.font = "22px sans-serif"; ctx.fillText("🛸", en.x - 10, en.y + 8);
-                ctx.fillStyle = "#ff6b6b"; ctx.fillRect(en.x - 12, en.y - 14, 24, 3);
-                ctx.fillStyle = "#fa5252"; ctx.fillRect(en.x - 12, en.y - 14, (en.hp / en.maxHp) * 24, 3); ctx.restore();
+                ctx.save(); ctx.font = en.emoji === "🪐" ? "28px sans-serif" : "20px sans-serif"; ctx.fillText(en.emoji, en.x-10, en.y+8);
+                ctx.fillStyle = "#ff6b6b"; ctx.fillRect(en.x-12, en.y-14, 24, 3); ctx.fillStyle = "#fa5252"; ctx.fillRect(en.x-12, en.y-14, (en.hp / en.maxHp) * 24, 3); ctx.restore();
             }
 
-            // 3. 실시간 요격 레이저 빔 투사체 추적 연산
+            // 3. 투사체 실시간 요격 및 중순양함 미사일 범위 스플래시 연산
             for (let i = bullets.length - 1; i >= 0; i--) {
-                let b = bullets[i];
-                let targetList = b.isEnemy ? myUnits : enemies;
+                let b = bullets[i]; let targetList = b.isEnemy ? units : enemies;
                 if (!targetList.includes(b.target)) { bullets.splice(i, 1); continue; }
-
                 let dx = b.target.x - b.x; let dy = b.target.y - b.y; let dist = Math.sqrt(dx*dx + dy*dy);
 
-                if (dist < 8) { // 투사체 타격 대미지 정산 분기점
-                    b.target.hp -= b.isEnemy ? 5 : 6;
+                if (dist < 8) {
+                    if (b.type === 'cruiser') { // 배틀크루저 미사일 적중 스플래시 가동
+                        explosions.push({ x: b.x, y: b.y, rad: 6 });
+                        enemies.forEach(en => { if (Math.sqrt((b.x - en.x)**2 + (b.y - en.y)**2) < 35) en.hp -= b.dmg; });
+                    } else { b.target.hp -= b.dmg; }
+
                     if (b.target.hp <= 0) {
                         explosions.push({ x: b.target.x, y: b.target.y, rad: 5 }); playSound('explode');
-                        let idx = targetList.indexOf(b.target); if (idx > -1) targetList.splice(idx, 1);
-                        updateHUD();
+                        let idx = targetList.indexOf(b.target); if (idx > -1) targetList.splice(idx, 1); updateHUD();
                     }
                     bullets.splice(i, 1);
                 } else {
-                    b.x += (dx / dist) * 6; b.y += (dy / dist) * 6;
-                    ctx.fillStyle = b.isEnemy ? '#ff4d4d' : '#00ffcc';
-                    ctx.beginPath(); ctx.arc(b.x, b.y, 2.5, 0, Math.PI * 2); ctx.fill();
+                    b.x += (dx / dist) * 5.5; b.y += (dy / dist) * 5.5;
+                    ctx.fillStyle = b.isEnemy ? '#ff4d4d' : b.type === 'cruiser' ? '#ff922b' : '#00ffcc';
+                    ctx.beginPath(); ctx.arc(b.x, b.y, b.type === 'cruiser' ? 3.5 : 2, 0, Math.PI * 2); ctx.fill();
                 }
             }
 
-            // 4. 폭발 파편 애니메이션 그리기
+            // 4. 폭발 파편 드로잉
             for (let i = explosions.length - 1; i >= 0; i--) {
-                let exp = explosions[i]; exp.rad += 2;
-                ctx.save(); ctx.font = "20px sans-serif"; ctx.fillText("💥", exp.x - 10, exp.y + 10); ctx.restore();
-                if (exp.rad >= 20) explosions.splice(i, 1);
+                let exp = explosions[i]; exp.rad += 2; ctx.save(); ctx.font = "18px sans-serif"; ctx.fillText("💥", exp.x-10, exp.y+8); ctx.restore();
+                if (exp.rad >= 18) explosions.splice(i, 1);
             }
+
+            // 5. 웨이브 무한 성장 타이머 작동
+            waveTimer++;
+            if (waveTimer >= 900) { wave++; waveTimer = 0; updateHUD(); }
             frameCount++;
         }
 
-        let frameCount = 0;
-        updateHUD(); loop();
+        let frameCount = 0; updateHUD(); loop();
     </script>
 </body>
 </html>
