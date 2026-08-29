@@ -72,9 +72,23 @@
             document.documentElement.setAttribute('data-theme', savedTheme);
         }
 
-        const canvas = document.getElementById('defenseCanvas');
-        const ctx = canvas.getContext('2d');
+        // 🎵 전술 디펜스 오디오 믹서 주입
+        let audioCtx = null;
+        function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+        function playSound(type) {
+            initAudio();
+            try {
+                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                osc.connect(gain); gain.connect(audioCtx.destination); const now = audioCtx.currentTime;
+                if (type === 'build') { osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); osc.frequency.setValueAtTime(600, now+0.05); gain.gain.setValueAtTime(0.02, now); gain.gain.linearRampToValueAtTime(0, now + 0.1); osc.start(now); osc.stop(now + 0.1); }
+                else if (type === 'shoot_arrow') { osc.type = 'square'; osc.frequency.setValueAtTime(700, now); osc.frequency.exponentialRampToValueAtTime(400, now+0.04); gain.gain.setValueAtTime(0.01, now); gain.gain.linearRampToValueAtTime(0, now + 0.04); osc.start(now); osc.stop(now + 0.04); }
+                else if (type === 'shoot_cannon') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(250, now); osc.frequency.linearRampToValueAtTime(80, now+0.08); gain.gain.setValueAtTime(0.03, now); gain.gain.linearRampToValueAtTime(0, now + 0.08); osc.start(now); osc.stop(now + 0.08); }
+                else if (type === 'shoot_laser') { osc.type = 'sine'; osc.frequency.setValueAtTime(900, now); osc.frequency.exponentialRampToValueAtTime(1200, now+0.03); gain.gain.setValueAtTime(0.012, now); gain.gain.linearRampToValueAtTime(0, now + 0.03); osc.start(now); osc.stop(now + 0.03); }
+                else if (type === 'damage') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(120, now); gain.gain.setValueAtTime(0.05, now); gain.gain.linearRampToValueAtTime(0, now + 0.06); osc.start(now); osc.stop(now + 0.06); }
+            } catch (e) {}
+        }
 
+        const canvas = document.getElementById('defenseCanvas'); const ctx = canvas.getContext('2d');
         const path = [
             { x: -20, y: 180 }, { x: 120, y: 180 }, { x: 120, y: 60 },
             { x: 260, y: 60 }, { x: 260, y: 280 }, { x: 400, y: 280 },
@@ -99,16 +113,13 @@
 
         canvas.addEventListener('click', e => {
             if (isGameOver) return;
-            const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left; const y = e.clientY - rect.top;
+            const rect = canvas.getBoundingClientRect(); const x = e.clientX - rect.left; const y = e.clientY - rect.top;
             if (isOnPath(x, y)) return;
-
-            let tooClose = towers.some(t => Math.sqrt((t.x - x)**2 + (t.y - y)**2) < 25);
-            if (tooClose) return;
+            let tooClose = towers.some(t => Math.sqrt((t.x - x)**2 + (t.y - y)**2) < 25); if (tooClose) return;
 
             const cost = TOWER_INFO[selectedTowerType].cost;
             if (gold >= cost) {
-                gold -= cost;
+                gold -= cost; playSound('build');
                 towers.push({ x: x, y: y, type: selectedTowerType, cooldown: 0, info: TOWER_INFO[selectedTowerType] });
                 updateHUD();
             }
@@ -117,11 +128,8 @@
         function isOnPath(x, y) {
             for (let i = 0; i < path.length - 1; i++) {
                 let p1 = path[i], p2 = path[i+1];
-                if (p1.x === p2.x) {
-                    if (Math.abs(x - p1.x) < 25 && y >= Math.min(p1.y, p2.y) - 25 && y <= Math.max(p1.y, p2.y) + 25) return true;
-                } else if (p1.y === p2.y) {
-                    if (Math.abs(y - p1.y) < 25 && x >= Math.min(p1.x, p2.x) - 25 && x <= Math.max(p1.x, p2.x) + 25) return true;
-                }
+                if (p1.x === p2.x) { if (Math.abs(x - p1.x) < 25 && y >= Math.min(p1.y, p2.y) - 25 && y <= Math.max(p1.y, p2.y) + 25) return true; }
+                else if (p1.y === p2.y) { if (Math.abs(y - p1.y) < 25 && x >= Math.min(p1.x, p2.x) - 25 && x <= Math.max(p1.x, p2.x) + 25) return true; }
             }
             return false;
         }
@@ -134,9 +142,7 @@
             }
         }
 
-        function updateHUD() {
-            document.getElementById('hud-panel').innerText = `❤️ 라이프: ${life} / 10 | 💰 자금: ${gold}G | 🌊 웨이브: ${wave}`;
-        }
+        function updateHUD() { document.getElementById('hud-panel').innerText = `❤️ 라이프: ${life} / 10 | 💰 자금: ${gold}G | 🌊 웨이브: ${wave}`; }
 
         function loop() {
             if (isGameOver) return; requestAnimationFrame(loop);
@@ -151,7 +157,7 @@
                 if (dist < en.speed) {
                     en.pathIndex++;
                     if (en.pathIndex >= path.length - 1) {
-                        life--; enemies.splice(i, 1); updateHUD();
+                        life--; enemies.splice(i, 1); updateHUD(); playSound('damage');
                         if (life <= 0) { isGameOver = true; alert("💥 기지가 함락되었습니다! GAME OVER"); location.reload(); }
                         continue;
                     }
@@ -167,12 +173,11 @@
                 let targetEnemy = null; let maxDist = t.info.range;
                 for (let en of enemies) {
                     if (en.x < 0) continue;
-                    let d = Math.sqrt((t.x - en.x)**2 + (t.y - en.y)**2);
-                    if (d < maxDist) { targetEnemy = en; break; }
+                    let d = Math.sqrt((t.x - en.x)**2 + (t.y - en.y)**2); if (d < maxDist) { targetEnemy = en; break; }
                 }
                 if (targetEnemy) {
                     bullets.push({ x: t.x, y: t.y, target: targetEnemy, speed: 7, type: t.type, dmg: t.type === 'laser' ? 4 : t.type === 'cannon' ? 12 : 8 });
-                    t.cooldown = t.info.cooldown;
+                    t.cooldown = t.info.cooldown; playSound('shoot_' + t.type);
                 }
             });
 
