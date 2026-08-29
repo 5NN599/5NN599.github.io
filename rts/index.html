@@ -8,34 +8,43 @@
     :root { --bg: #f8f9fa; --text: #333; --canvas-bg: #05070a; --border: #e9ecef; --btn-bg: #fff; }
     [data-theme="dark"] { --bg: #0d1117; --text: #c9d1d9; --canvas-bg: #020305; --border: #30363d; --btn-bg: #21262d; }
     [data-theme="beige"] { --bg: #f5ebe0; --text: #4e3d30; --canvas-bg: #14100c; --border: #ddcbbb; --btn-bg: #eddfd0; }
-    body { background-color: var(--bg) !important; color: var(--text) !important; text-align: center; font-family: sans-serif; padding-top: 10px; margin: 0; transition: 0.3s; overflow-x: hidden; user-select: none; }
-    button { background-color: var(--btn-bg) !important; color: var(--text) !important; border: 1px solid var(--border) !important; padding: 6px 12px; font-size: 0.85rem; border-radius: 8px; cursor: pointer; margin: 3px; font-weight: bold; }
-    button:disabled { opacity: 0.4; cursor: not-allowed; }
-    #rts-panel { font-size: 1.1rem; font-weight: bold; color: #fcc419; margin-bottom: 4px; }
-    .build-bar { margin: 6px 0; }
+    body { background-color: var(--bg) !important; color: var(--text) !important; text-align: center; font-family: sans-serif; padding-top: 10px; margin: 0; transition: 0.3s; user-select: none; overflow-x: hidden; }
+    button { background-color: var(--btn-bg) !important; color: var(--text) !important; border: 1px solid var(--border) !important; padding: 5px 10px; font-size: 0.8rem; border-radius: 6px; cursor: pointer; margin: 2px; font-weight: bold; }
+    button:disabled { opacity: 0.35; cursor: not-allowed; }
+    #rts-panel { font-size: 1.05rem; font-weight: bold; color: #fcc419; margin-bottom: 4px; }
+    .build-row { margin: 4px 0; display: flex; justify-content: center; flex-wrap: wrap; gap: 2px; }
     .active-mode { border: 2px solid #4dadf7 !important; background-color: #183153 !important; color: #fff !important; }
     #game-canvas { background: var(--canvas-bg); border: 2px solid var(--border); border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); cursor: default; }
-    .help-text { font-size: 0.8rem; opacity: 0.8; margin-top: 3px; }
+    .help-text { font-size: 0.78rem; opacity: 0.85; margin-top: 3px; }
   </style>
 </head>
 <body>
   <h1>⚔️ 우주 전쟁: 미니 RTS 완전판</h1>
   
   <div id="rts-panel">
-    💎 광물: <span id="res-min">50</span> | 🌋 가스: <span id="res-gas">0</span> | 🌊 웨이브: <span id="wave-num">1</span> | 🏰 아군HQ: <span id="hp-player">500</span> | 🏯 적군HQ: <span id="hp-enemy">500</span>
+    💎 <span id="res-min">50</span> | 🌋 <span id="res-gas">0</span> | 🌊 웨이브: <span id="wave-num">1</span> | 🏰 <span id="hp-player">500</span> | 🏯 <span id="hp-enemy">500</span> | ⚔️ 적 부대: <span id="ai-squad">0</span>
   </div>
 
-  <div class="build-bar">
-    <button id="btn-barracks" onclick="toggleBuild('barracks')">🏭 병영 (💎40)</button>
-    <button id="btn-refinery" onclick="toggleBuild('refinery')">🌋 제련소 (💎30)</button>
-    <button id="btn-turret" onclick="toggleBuild('turret')">📡 터렛 (💎35)</button>
-    <button id="btn-scv" onclick="produceSCV()">🛸 SCV (💎20)</button>
-    <button id="btn-fighter" onclick="produceFighter()" disabled>🚀 전투기 (💎30)</button>
-    <button id="btn-cruiser" onclick="produceCruiser()" disabled>🛩️ 중순양함 (💎50/🌋15)</button>
+  <!-- 건상 & 유닛 테크트리 패널 -->
+  <div class="build-row">
+    <button id="btn-barracks" onclick="toggleBuild('barracks')">🏭 병영(💎40)</button>
+    <button id="btn-refinery" onclick="toggleBuild('refinery')">🌋 제련소(💎30)</button>
+    <button id="btn-factory" onclick="toggleBuild('factory')">⚙️ 공장(💎60/🌋20)</button>
+    <button id="btn-starport" onclick="toggleBuild('starport')">🛫 우주항(💎80/🌋40)</button>
+    <button id="btn-turret" onclick="toggleBuild('turret')">📡 터렛(💎35)</button>
+  </div>
+  <div class="build-row">
+    <button id="btn-scv" onclick="produce('scv')">🛸 SCV(💎20)</button>
+    <button id="btn-fighter" onclick="produce('fighter')" disabled>🚀 전투기(💎30)</button>
+    <button id="btn-scout" onclick="produce('scout')" disabled>🥷 정찰기(💎25)</button>
+    <button id="btn-tank" onclick="produce('tank')" disabled>🚜 전차(💎60/🌋10)</button>
+    <button id="btn-mech" onclick="produce('mech')" disabled>🤖 메카(💎50/🌋15)</button>
+    <button id="btn-cruiser" onclick="produce('cruiser')" disabled>🛩️ 중순양함(💎70/🌋30)</button>
+    <button id="btn-carrier" onclick="produce('carrier')" disabled>🛸 항공모함(💎100/🌋60)</button>
   </div>
 
   <canvas id="game-canvas" width="600" height="440"></canvas>
-  <div class="help-text">WASD/방향키: 이동 | 좌클릭 드래그: 유닛 다중 선택 | 우클릭: 이동/어택 명령</div>
+  <div class="help-text">WASD/방향키: 스크롤 | 좌클릭 드래그: 유닛 다중선택 | 우클릭: 이동/전투 명령</div>
 
   <script>
     const savedTheme = localStorage.getItem('minig-theme');
@@ -56,8 +65,13 @@
     let wave = 1;
     let waveTimer = 0;
     let buildMode = null;
-    let hasBarracks = false;
     let gameOver = false;
+
+    let tech = {
+      barracks: false,
+      factory: false,
+      starport: false
+    };
 
     let entities = [];
     let bullets = [];
@@ -68,6 +82,10 @@
     let isDragging = false;
     let dragStartScreen = { x: 0, y: 0 };
     let dragEndScreen = { x: 0, y: 0 };
+
+    // AI 전술 집결지 및 상태 관리 변수
+    let aiRallyPoint = { x: 1200, y: 350 };
+    let aiState = { state: 'build', attackTimer: 0 };
 
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
@@ -89,23 +107,23 @@
           osc.type = 'sine';
           osc.frequency.setValueAtTime(440, now);
           osc.frequency.exponentialRampToValueAtTime(880, now + 0.12);
-          gain.gain.setValueAtTime(0.18, now);
+          gain.gain.setValueAtTime(0.15, now);
           gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
           osc.start(now); osc.stop(now + 0.12);
         } else if (type === 'laser') {
           osc.type = 'sawtooth';
-          osc.frequency.setValueAtTime(750, now);
+          osc.frequency.setValueAtTime(700, now);
           osc.frequency.exponentialRampToValueAtTime(180, now + 0.08);
-          gain.gain.setValueAtTime(0.1, now);
+          gain.gain.setValueAtTime(0.08, now);
           gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
           osc.start(now); osc.stop(now + 0.08);
         } else if (type === 'explode') {
           osc.type = 'square';
           osc.frequency.setValueAtTime(140, now);
-          osc.frequency.exponentialRampToValueAtTime(25, now + 0.22);
+          osc.frequency.exponentialRampToValueAtTime(30, now + 0.2);
           gain.gain.setValueAtTime(0.2, now);
-          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
-          osc.start(now); osc.stop(now + 0.22);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+          osc.start(now); osc.stop(now + 0.2);
         }
       } catch (e) {}
     }
@@ -124,10 +142,16 @@
 
       if (e.button === 2) {
         if (selectedUnits.length > 0) {
+          const targetEnemy = entities.find(ent => 
+            ent.faction === 'enemy' && 
+            Math.hypot(ent.x - worldX, ent.y - worldY) <= ent.radius + 10
+          );
+
           selectedUnits.forEach((unit, idx) => {
-            const offsetX = (idx % 3 - 1) * 20;
-            const offsetY = (Math.floor(idx / 3) - 1) * 20;
+            const offsetX = (idx % 4 - 1.5) * 18;
+            const offsetY = (Math.floor(idx / 4) - 1.5) * 18;
             unit.moveTarget = { x: worldX + offsetX, y: worldY + offsetY };
+            if (targetEnemy) unit.forcedTarget = targetEnemy;
           });
         }
         return;
@@ -147,10 +171,7 @@
     canvas.addEventListener('mousemove', (e) => {
       if (isDragging) {
         const rect = canvas.getBoundingClientRect();
-        dragEndScreen = {
-          x: e.clientX - rect.left,
-          y: e.clientY - rect.top
-        };
+        dragEndScreen = { x: e.clientX - rect.left, y: e.clientY - rect.top };
       }
     });
 
@@ -164,16 +185,16 @@
 
         const dragDist = Math.hypot(dragEndScreen.x - dragStartScreen.x, dragEndScreen.y - dragStartScreen.y);
 
+        const isCombatUnit = (type) => ['fighter','scout','tank','mech','cruiser','carrier'].includes(type);
+
         if (dragDist > 10) {
           selectedUnits = entities.filter(ent => 
-            ent.faction === 'player' && 
-            (ent.type === 'fighter' || ent.type === 'cruiser') &&
+            ent.faction === 'player' && isCombatUnit(ent.type) &&
             ent.x >= x1 && ent.x <= x2 && ent.y >= y1 && ent.y <= y2
           );
         } else {
           const clickedUnit = entities.find(ent => 
-            ent.faction === 'player' && 
-            (ent.type === 'fighter' || ent.type === 'cruiser') &&
+            ent.faction === 'player' && isCombatUnit(ent.type) &&
             Math.hypot(ent.x - (dragStartScreen.x + camX), ent.y - (dragStartScreen.y + camY)) <= ent.radius + 6
           );
           selectedUnits = clickedUnit ? [clickedUnit] : [];
@@ -193,72 +214,66 @@
     }
 
     function resetBuildButtons() {
-      ['barracks', 'refinery', 'turret'].forEach(t => {
-        document.getElementById(`btn-${t}`).classList.remove('active-mode');
+      ['barracks', 'refinery', 'factory', 'starport', 'turret'].forEach(t => {
+        const btn = document.getElementById(`btn-${t}`);
+        if (btn) btn.classList.remove('active-mode');
       });
     }
 
     function handleBuild(wx, wy) {
-      if (buildMode === 'barracks') {
-        if (resources.min >= 40) {
-          resources.min -= 40;
-          spawnEntity('barracks', 'player', wx, wy);
-          hasBarracks = true;
-          playSound('produce');
-        }
-      } else if (buildMode === 'refinery') {
+      if (buildMode === 'barracks' && resources.min >= 40) {
+        resources.min -= 40;
+        spawnEntity('barracks', 'player', wx, wy);
+        tech.barracks = true;
+        playSound('produce');
+      } else if (buildMode === 'refinery' && resources.min >= 30) {
         const gasNode = entities.find(e => e.type === 'resource_gas' && Math.hypot(e.x - wx, e.y - wy) < 45);
-        if (gasNode && resources.min >= 30) {
+        if (gasNode && !gasNode.hasRefinery) {
           resources.min -= 30;
           gasNode.hasRefinery = true;
           spawnEntity('refinery', 'player', gasNode.x, gasNode.y);
           playSound('produce');
         }
-      } else if (buildMode === 'turret') {
-        if (resources.min >= 35) {
-          resources.min -= 35;
-          spawnEntity('turret', 'player', wx, wy);
-          playSound('produce');
-        }
+      } else if (buildMode === 'factory' && resources.min >= 60 && resources.gas >= 20) {
+        resources.min -= 60; resources.gas -= 20;
+        spawnEntity('factory', 'player', wx, wy);
+        tech.factory = true;
+        playSound('produce');
+      } else if (buildMode === 'starport' && resources.min >= 80 && resources.gas >= 40) {
+        resources.min -= 80; resources.gas -= 40;
+        spawnEntity('starport', 'player', wx, wy);
+        tech.starport = true;
+        playSound('produce');
+      } else if (buildMode === 'turret' && resources.min >= 35) {
+        resources.min -= 35;
+        spawnEntity('turret', 'player', wx, wy);
+        playSound('produce');
       }
       buildMode = null;
       resetBuildButtons();
       updateUI();
     }
 
-    function produceSCV() {
+    function produce(unitType) {
       initAudio();
-      if (resources.min >= 20) {
-        const playerHQ = entities.find(e => e.type === 'hq' && e.faction === 'player');
-        if (playerHQ) {
-          resources.min -= 20;
-          spawnEntity('scv', 'player', playerHQ.x + (Math.random() * 50 - 25), playerHQ.y + (Math.random() * 50 - 25));
-          playSound('produce');
-          updateUI();
-        }
-      }
-    }
+      const costs = {
+        scv: { min: 20, gas: 0, req: true },
+        fighter: { min: 30, gas: 0, req: tech.barracks },
+        scout: { min: 25, gas: 0, req: tech.barracks },
+        tank: { min: 60, gas: 10, req: tech.factory },
+        mech: { min: 50, gas: 15, req: tech.factory },
+        cruiser: { min: 70, gas: 30, req: tech.starport },
+        carrier: { min: 100, gas: 60, req: tech.starport }
+      };
 
-    function produceFighter() {
-      initAudio();
-      if (!hasBarracks || resources.min < 30) return;
+      const c = costs[unitType];
+      if (!c || !c.req || resources.min < c.min || resources.gas < c.gas) return;
+
       const playerHQ = entities.find(e => e.type === 'hq' && e.faction === 'player');
       if (playerHQ) {
-        resources.min -= 30;
-        spawnEntity('fighter', 'player', playerHQ.x + (Math.random() * 50 - 25), playerHQ.y + (Math.random() * 50 - 25));
-        playSound('produce');
-        updateUI();
-      }
-    }
-
-    function produceCruiser() {
-      initAudio();
-      if (!hasBarracks || resources.min < 50 || resources.gas < 15) return;
-      const playerHQ = entities.find(e => e.type === 'hq' && e.faction === 'player');
-      if (playerHQ) {
-        resources.min -= 50;
-        resources.gas -= 15;
-        spawnEntity('cruiser', 'player', playerHQ.x + (Math.random() * 50 - 25), playerHQ.y + (Math.random() * 50 - 25));
+        resources.min -= c.min;
+        resources.gas -= c.gas;
+        spawnEntity(unitType, 'player', playerHQ.x + (Math.random() * 60 - 30), playerHQ.y + (Math.random() * 60 - 30));
         playSound('produce');
         updateUI();
       }
@@ -275,82 +290,70 @@
       document.getElementById('hp-player').innerText = playerHQ ? Math.max(0, playerHQ.hp) : 0;
       document.getElementById('hp-enemy').innerText = enemyHQ ? Math.max(0, enemyHQ.hp) : 0;
 
-      document.getElementById('btn-fighter').disabled = !hasBarracks || resources.min < 30;
-      document.getElementById('btn-cruiser').disabled = !hasBarracks || resources.min < 50 || resources.gas < 15;
+      const enemySquad = entities.filter(e => e.faction === 'enemy' && ['fighter','scout','tank','mech','cruiser','carrier','boss'].includes(e.type));
+      document.getElementById('ai-squad').innerText = enemySquad.length;
+
+      document.getElementById('btn-fighter').disabled = !tech.barracks || resources.min < 30;
+      document.getElementById('btn-scout').disabled = !tech.barracks || resources.min < 25;
+      document.getElementById('btn-tank').disabled = !tech.factory || resources.min < 60 || resources.gas < 10;
+      document.getElementById('btn-mech').disabled = !tech.factory || resources.min < 50 || resources.gas < 15;
+      document.getElementById('btn-cruiser').disabled = !tech.starport || resources.min < 70 || resources.gas < 30;
+      document.getElementById('btn-carrier').disabled = !tech.starport || resources.min < 100 || resources.gas < 60;
     }
 
     function spawnEntity(type, faction, x, y) {
       let e = {
         id: Math.random().toString(),
-        type: type,
-        faction: faction,
-        x: x,
-        y: y,
-        hp: 100,
-        maxHp: 100,
-        speed: 0,
-        radius: 15,
-        emoji: '🛸',
-        cooldown: 0,
-        cooldownMax: 40,
-        attackRange: 0,
-        cargo: null,
-        moveTarget: null
+        type: type, faction: faction,
+        x: x, y: y,
+        hp: 100, maxHp: 100,
+        speed: 0, radius: 15, emoji: '🛸',
+        cooldown: 0, cooldownMax: 40, attackRange: 0,
+        damage: 10, splash: false, splashRadius: 0,
+        cargo: null, moveTarget: null, forcedTarget: null
       };
 
       if (type === 'hq') {
-        e.hp = e.maxHp = 500;
-        e.radius = 32;
+        e.hp = e.maxHp = 500; e.radius = 32;
         e.emoji = (faction === 'player') ? '🏰' : '🏯';
       } else if (type === 'barracks') {
-        e.hp = e.maxHp = 300;
-        e.radius = 26;
-        e.emoji = '🏭';
+        e.hp = e.maxHp = 300; e.radius = 26; e.emoji = '🏭';
+      } else if (type === 'factory') {
+        e.hp = e.maxHp = 350; e.radius = 28; e.emoji = '⚙️';
+      } else if (type === 'starport') {
+        e.hp = e.maxHp = 400; e.radius = 30; e.emoji = '🛫';
       } else if (type === 'refinery') {
-        e.hp = e.maxHp = 250;
-        e.radius = 22;
-        e.emoji = '🌋';
+        e.hp = e.maxHp = 250; e.radius = 22; e.emoji = '🌋';
       } else if (type === 'turret') {
-        e.hp = e.maxHp = 200;
-        e.radius = 18;
-        e.emoji = '📡';
-        e.attackRange = 160;
-        e.cooldownMax = 45;
+        e.hp = e.maxHp = 220; e.radius = 18; e.emoji = '📡';
+        e.attackRange = 170; e.cooldownMax = 40; e.damage = 18;
       } else if (type === 'resource_min') {
-        e.radius = 20;
-        e.emoji = '💎';
-        e.resType = 'min';
+        e.radius = 20; e.emoji = '💎'; e.resType = 'min';
       } else if (type === 'resource_gas') {
-        e.radius = 20;
-        e.emoji = '🌋';
-        e.resType = 'gas';
-        e.hasRefinery = false;
+        e.radius = 20; e.emoji = '🌋'; e.resType = 'gas'; e.hasRefinery = false;
       } else if (type === 'scv') {
-        e.hp = e.maxHp = 60;
-        e.speed = 2.0;
-        e.radius = 12;
-        e.emoji = '🛸';
+        e.hp = e.maxHp = 60; e.speed = 2.1; e.radius = 12; e.emoji = '🛸';
       } else if (type === 'fighter') {
-        e.hp = e.maxHp = 100;
-        e.speed = 2.4;
-        e.radius = 14;
-        e.emoji = '🚀';
-        e.attackRange = 130;
-        e.cooldownMax = 35;
+        e.hp = e.maxHp = 100; e.speed = 2.4; e.radius = 14; e.emoji = '🚀';
+        e.attackRange = 135; e.cooldownMax = 32; e.damage = 14;
+      } else if (type === 'scout') {
+        e.hp = e.maxHp = 75; e.speed = 3.0; e.radius = 11; e.emoji = '🥷';
+        e.attackRange = 110; e.cooldownMax = 22; e.damage = 9;
+      } else if (type === 'tank') {
+        e.hp = e.maxHp = 220; e.speed = 1.0; e.radius = 19; e.emoji = '🚜';
+        e.attackRange = 210; e.cooldownMax = 75; e.damage = 45; e.splash = true; e.splashRadius = 40;
+      } else if (type === 'mech') {
+        e.hp = e.maxHp = 260; e.speed = 1.4; e.radius = 18; e.emoji = '🤖';
+        e.attackRange = 140; e.cooldownMax = 36; e.damage = 22;
       } else if (type === 'cruiser') {
-        e.hp = e.maxHp = 250;
-        e.speed = 1.1;
-        e.radius = 20;
-        e.emoji = '🛩️';
-        e.attackRange = 170;
-        e.cooldownMax = 65;
+        e.hp = e.maxHp = 320; e.speed = 1.1; e.radius = 22; e.emoji = '🛩️';
+        e.attackRange = 180; e.cooldownMax = 60; e.damage = 35; e.splash = true; e.splashRadius = 35;
+      } else if (type === 'carrier') {
+        e.hp = e.maxHp = 450; e.speed = 0.85; e.radius = 25; e.emoji = '🛸';
+        e.attackRange = 230; e.cooldownMax = 50; e.damage = 50; e.splash = true; e.splashRadius = 50;
       } else if (type === 'boss') {
-        e.hp = e.maxHp = 380;
-        e.speed = 0.9;
-        e.radius = 22;
-        e.emoji = '🪐';
-        e.attackRange = 190;
-        e.cooldownMax = 50;
+        e.hp = e.maxHp = 550; e.speed = 0.9; e.radius = 26; e.emoji = '🪐';
+        e.attackRange = 200; e.cooldownMax = 45; e.damage = 38; e.splash = true; e.splashRadius = 40;
       }
 
       entities.push(e);
@@ -358,25 +361,22 @@
     }
 
     function initGame() {
-      entities = [];
-      bullets = [];
-      particles = [];
-      selectedUnits = [];
+      entities = []; bullets = []; particles = []; selectedUnits = [];
       resources = { min: 50, gas: 0, enemyMin: 50, enemyGas: 0 };
-      wave = 1;
-      waveTimer = 0;
-      hasBarracks = false;
-      gameOver = false;
+      wave = 1; waveTimer = 0; gameOver = false;
+      tech = { barracks: false, factory: false, starport: false };
 
+      // Player Base
       spawnEntity('hq', 'player', 160, 940);
       spawnEntity('resource_min', 'neutral', 90, 1010);
       spawnEntity('resource_gas', 'neutral', 260, 1010);
       for (let i = 0; i < 4; i++) spawnEntity('scv', 'player', 150 + (i * 20), 880);
 
+      // Enemy Base
       spawnEntity('hq', 'enemy', 1340, 160);
       spawnEntity('resource_min', 'neutral', 1410, 90);
-      const enemyGas = spawnEntity('resource_gas', 'neutral', 1240, 90);
-      enemyGas.hasRefinery = true;
+      const eGas = spawnEntity('resource_gas', 'neutral', 1240, 90);
+      eGas.hasRefinery = true;
       spawnEntity('refinery', 'enemy', 1240, 90);
       for (let i = 0; i < 4; i++) spawnEntity('scv', 'enemy', 1300 + (i * 20), 220);
 
@@ -394,48 +394,79 @@
       camY = Math.max(0, Math.min(WORLD_H - VIEW_H, camY));
     }
 
+    // 스마트 AI 엔진 알고리즘
     let aiTimer = 0;
-    function updateAI() {
+    function updateSmartAI() {
       aiTimer++;
-      if (aiTimer % 60 !== 0) return;
+      if (aiTimer % 50 !== 0) return;
 
       const enemyHQ = entities.find(e => e.type === 'hq' && e.faction === 'enemy');
       if (!enemyHQ) return;
 
-      const enemyBarracks = entities.find(e => e.type === 'barracks' && e.faction === 'enemy');
-      const enemySCVs = entities.filter(e => e.type === 'scv' && e.faction === 'enemy');
+      const eBarracks = entities.find(e => e.type === 'barracks' && e.faction === 'enemy');
+      const eFactory = entities.find(e => e.type === 'factory' && e.faction === 'enemy');
+      const eStarport = entities.find(e => e.type === 'starport' && e.faction === 'enemy');
+      const eSCVs = entities.filter(e => e.type === 'scv' && e.faction === 'enemy');
+      const eTurrets = entities.filter(e => e.type === 'turret' && e.faction === 'enemy');
 
-      if (!enemyBarracks && resources.enemyMin >= 40) {
-        resources.enemyMin -= 40;
-        spawnEntity('barracks', 'enemy', enemyHQ.x - 80, enemyHQ.y + 60);
-      } else if (enemySCVs.length < 4 && resources.enemyMin >= 20) {
+      // 1. 일꾼 보충 및 제련소 구축
+      if (eSCVs.length < 5 && resources.enemyMin >= 20) {
         resources.enemyMin -= 20;
         spawnEntity('scv', 'enemy', enemyHQ.x - 30, enemyHQ.y + 30);
-      } else if (enemyBarracks) {
-        if (wave < 6) {
-          if (resources.enemyMin >= 30) {
-            resources.enemyMin -= 30;
-            spawnEntity('fighter', 'enemy', enemyBarracks.x + (Math.random() * 40 - 20), enemyBarracks.y + 40);
-          }
-        } else {
-          if (resources.enemyMin >= 50 && resources.enemyGas >= 15) {
-            resources.enemyMin -= 50;
-            resources.enemyGas -= 15;
-            spawnEntity('cruiser', 'enemy', enemyBarracks.x + (Math.random() * 40 - 20), enemyBarracks.y + 40);
-          } else if (resources.enemyMin >= 40 && Math.random() < 0.35) {
-            resources.enemyMin -= 40;
-            spawnEntity('boss', 'enemy', enemyBarracks.x + (Math.random() * 40 - 20), enemyBarracks.y + 40);
-          } else if (resources.enemyMin >= 30) {
-            resources.enemyMin -= 30;
-            spawnEntity('fighter', 'enemy', enemyBarracks.x + (Math.random() * 40 - 20), enemyBarracks.y + 40);
-          }
+      }
+
+      // 2. 단계별 건물 건설 테크트리
+      if (!eBarracks && resources.enemyMin >= 40) {
+        resources.enemyMin -= 40;
+        spawnEntity('barracks', 'enemy', enemyHQ.x - 90, enemyHQ.y + 60);
+      } else if (eBarracks && !eFactory && resources.enemyMin >= 60 && resources.enemyGas >= 20) {
+        resources.enemyMin -= 60; resources.enemyGas -= 20;
+        spawnEntity('factory', 'enemy', enemyHQ.x - 140, enemyHQ.y + 120);
+      } else if (eFactory && !eStarport && wave >= 4 && resources.enemyMin >= 80 && resources.enemyGas >= 40) {
+        resources.enemyMin -= 80; resources.enemyGas -= 40;
+        spawnEntity('starport', 'enemy', enemyHQ.x - 70, enemyHQ.y + 160);
+      } else if (eTurrets.length < 2 && resources.enemyMin >= 35 && Math.random() < 0.3) {
+        resources.enemyMin -= 35;
+        spawnEntity('turret', 'enemy', enemyHQ.x - 120 + (eTurrets.length * 50), enemyHQ.y + 200);
+      }
+
+      // 3. 자원 수급별 유닛 균형 생산
+      if (eBarracks) {
+        if (eStarport && resources.enemyMin >= 100 && resources.enemyGas >= 60) {
+          resources.enemyMin -= 100; resources.enemyGas -= 60;
+          let u = spawnEntity('carrier', 'enemy', eStarport.x, eStarport.y + 30);
+          u.moveTarget = { ...aiRallyPoint };
+        } else if (eFactory && resources.enemyMin >= 60 && resources.enemyGas >= 10 && Math.random() < 0.5) {
+          resources.enemyMin -= 60; resources.enemyGas -= 10;
+          let u = spawnEntity('tank', 'enemy', eFactory.x, eFactory.y + 30);
+          u.moveTarget = { ...aiRallyPoint };
+        } else if (resources.enemyMin >= 30) {
+          resources.enemyMin -= 30;
+          let type = Math.random() < 0.5 ? 'fighter' : 'scout';
+          let u = spawnEntity(type, 'enemy', eBarracks.x, eBarracks.y + 30);
+          u.moveTarget = { ...aiRallyPoint };
+        }
+      }
+
+      // 4. 전술적 부대 집결 및 전면 공습 (Raid Squad Tactics)
+      const enemySquad = entities.filter(e => e.faction === 'enemy' && ['fighter','scout','tank','mech','cruiser','carrier','boss'].includes(e.type));
+      const targetPlayerHQ = entities.find(e => e.type === 'hq' && e.faction === 'player');
+
+      const requiredSquadSize = Math.max(4, 10 - wave);
+      if (enemySquad.length >= requiredSquadSize || wave >= 7) {
+        if (targetPlayerHQ) {
+          enemySquad.forEach(unit => {
+            const offsetX = (Math.random() - 0.5) * 80;
+            const offsetY = (Math.random() - 0.5) * 80;
+            unit.moveTarget = { x: targetPlayerHQ.x + offsetX, y: targetPlayerHQ.y + offsetY };
+          });
         }
       }
     }
 
     function updateEntities() {
       waveTimer++;
-      if (waveTimer % 1000 === 0) {
+      if (waveTimer % 900 === 0) {
         wave++;
         updateUI();
       }
@@ -443,16 +474,23 @@
       for (let i = entities.length - 1; i >= 0; i--) {
         let e = entities[i];
         if (e.hp <= 0) {
-          for (let p = 0; p < 5; p++) {
+          for (let p = 0; p < 6; p++) {
             particles.push({
               x: e.x, y: e.y,
-              vx: (Math.random() - 0.5) * 4,
-              vy: (Math.random() - 0.5) * 4,
-              life: 20, text: '💥'
+              vx: (Math.random() - 0.5) * 5,
+              vy: (Math.random() - 0.5) * 5,
+              life: 22, text: '💥'
             });
           }
           playSound('explode');
           selectedUnits = selectedUnits.filter(u => u.id !== e.id);
+          
+          if (e.faction === 'player') {
+            if (e.type === 'barracks') tech.barracks = entities.some(b => b.faction === 'player' && b.type === 'barracks' && b.id !== e.id);
+            if (e.type === 'factory') tech.factory = entities.some(b => b.faction === 'player' && b.type === 'factory' && b.id !== e.id);
+            if (e.type === 'starport') tech.starport = entities.some(b => b.faction === 'player' && b.type === 'starport' && b.id !== e.id);
+          }
+
           entities.splice(i, 1);
           updateUI();
 
@@ -460,7 +498,7 @@
             gameOver = true;
             setTimeout(() => {
               if (e.faction === 'enemy') {
-                alert("🎉 우주 대승리! 적 사령부를 완전히 파괴했습니다!");
+                alert("🎉 우주 대승리! 적 사령부를 함락했습니다!");
               } else {
                 alert("💥 아군 사령부가 파괴되었습니다! 게임 오버!");
               }
@@ -470,6 +508,7 @@
           continue;
         }
 
+        // 터렛 자동 방어 시스템
         if (e.type === 'turret') {
           if (e.cooldown > 0) e.cooldown--;
           let targets = entities.filter(t => t.faction !== 'neutral' && t.faction !== e.faction);
@@ -481,16 +520,16 @@
           });
           if (closestTarget && minDist <= e.attackRange && e.cooldown <= 0) {
             bullets.push({
-              x: e.x, y: e.y,
-              targetX: closestTarget.x, targetY: closestTarget.y,
-              targetId: closestTarget.id, faction: e.faction,
-              speed: 8, damage: 18, splash: false
+              x: e.x, y: e.y, targetX: closestTarget.x, targetY: closestTarget.y,
+              targetId: closestTarget.id, faction: e.faction, speed: 8,
+              damage: e.damage, splash: false, splashRadius: 0
             });
             playSound('laser');
             e.cooldown = e.cooldownMax;
           }
         }
 
+        // SCV 채취 프로세스
         if (e.type === 'scv') {
           const hq = entities.find(h => h.type === 'hq' && h.faction === e.faction);
           if (!e.cargo) {
@@ -503,7 +542,7 @@
             });
 
             if (closestNode) {
-              if (minDist > 15) {
+              if (minDist > 16) {
                 let angle = Math.atan2(closestNode.y - e.y, closestNode.x - e.x);
                 e.x += Math.cos(angle) * e.speed;
                 e.y += Math.sin(angle) * e.speed;
@@ -533,7 +572,8 @@
           }
         }
 
-        if (e.type === 'fighter' || e.type === 'cruiser' || e.type === 'boss') {
+        // 전투 유닛 AI 및 교전 물리 연산
+        if (['fighter','scout','tank','mech','cruiser','carrier','boss'].includes(e.type)) {
           if (e.cooldown > 0) e.cooldown--;
 
           let targets = entities.filter(t => t.faction !== 'neutral' && t.faction !== e.faction);
@@ -544,6 +584,8 @@
             if (d < minDist) { minDist = d; closestTarget = t; }
           });
 
+          let activeTarget = e.forcedTarget && entities.includes(e.forcedTarget) ? e.forcedTarget : closestTarget;
+
           if (e.moveTarget) {
             let distToMove = Math.hypot(e.moveTarget.x - e.x, e.moveTarget.y - e.y);
             if (distToMove > 10) {
@@ -553,20 +595,19 @@
             } else {
               e.moveTarget = null;
             }
-          } else if (closestTarget && minDist > e.attackRange) {
-            let angle = Math.atan2(closestTarget.y - e.y, closestTarget.x - e.x);
+          } else if (activeTarget && minDist > e.attackRange) {
+            let angle = Math.atan2(activeTarget.y - e.y, activeTarget.x - e.x);
             e.x += Math.cos(angle) * e.speed;
             e.y += Math.sin(angle) * e.speed;
           }
 
-          if (closestTarget && minDist <= e.attackRange && e.cooldown <= 0) {
+          if (activeTarget && Math.hypot(activeTarget.x - e.x, activeTarget.y - e.y) <= e.attackRange && e.cooldown <= 0) {
             bullets.push({
               x: e.x, y: e.y,
-              targetX: closestTarget.x, targetY: closestTarget.y,
-              targetId: closestTarget.id, faction: e.faction,
-              speed: 7,
-              damage: e.type === 'cruiser' ? 30 : (e.type === 'boss' ? 25 : 12),
-              splash: (e.type === 'cruiser' || e.type === 'boss')
+              targetX: activeTarget.x, targetY: activeTarget.y,
+              targetId: activeTarget.id, faction: e.faction,
+              speed: 7.5, damage: e.damage,
+              splash: e.splash, splashRadius: e.splashRadius
             });
             playSound('laser');
             e.cooldown = e.cooldownMax;
@@ -574,6 +615,7 @@
         }
       }
 
+      // 투사체 충돌 연산
       for (let i = bullets.length - 1; i >= 0; i--) {
         let b = bullets[i];
         let angle = Math.atan2(b.targetY - b.y, b.targetX - b.x);
@@ -586,7 +628,7 @@
             particles.push({ x: b.x, y: b.y, vx: 0, vy: 0, life: 12, text: '💥' });
             entities.forEach(t => {
               if (t.faction !== 'neutral' && t.faction !== b.faction) {
-                if (Math.hypot(t.x - b.x, t.y - b.y) <= 35) {
+                if (Math.hypot(t.x - b.x, t.y - b.y) <= b.splashRadius) {
                   t.hp -= b.damage;
                 }
               }
@@ -613,6 +655,7 @@
       ctx.save();
       ctx.translate(-camX, -camY);
 
+      // 격자 배경 렌더링
       ctx.strokeStyle = '#111827';
       ctx.lineWidth = 1;
       for (let x = 0; x < WORLD_W; x += 100) {
@@ -622,6 +665,7 @@
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(WORLD_W, y); ctx.stroke();
       }
 
+      // 탄환 렌더링
       bullets.forEach(b => {
         ctx.fillStyle = b.faction === 'player' ? '#4dadf7' : '#ff6b6b';
         ctx.beginPath();
@@ -629,6 +673,7 @@
         ctx.fill();
       });
 
+      // 엔티티 렌더링
       entities.forEach(e => {
         if (selectedUnits.includes(e)) {
           ctx.beginPath();
@@ -644,7 +689,7 @@
         ctx.fillText(e.emoji, e.x, e.y);
 
         if (e.cargo) {
-          ctx.font = '12px sans-serif';
+          ctx.font = '11px sans-serif';
           ctx.fillText('📦', e.x + 10, e.y - 10);
         }
 
@@ -662,8 +707,9 @@
         }
       });
 
+      // 이펙트 파티클
       particles.forEach(p => {
-        ctx.font = '16px sans-serif';
+        ctx.font = '15px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(p.text, p.x, p.y);
@@ -671,6 +717,7 @@
 
       ctx.restore();
 
+      // 드래그 선택 박스 렌더링
       if (isDragging) {
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 1;
@@ -681,6 +728,7 @@
         ctx.strokeRect(dragStartScreen.x, dragStartScreen.y, w, h);
       }
 
+      // 레이더 미니맵 렌더링
       const miniW = 110;
       const miniH = 80;
       const miniX = 10;
@@ -717,7 +765,7 @@
     function gameLoop() {
       if (!gameOver) {
         updateCamera();
-        updateAI();
+        updateSmartAI();
         updateEntities();
       }
       render();
