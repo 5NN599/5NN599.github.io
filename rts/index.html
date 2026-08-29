@@ -156,7 +156,6 @@
             ctx.fillText(playerM.emoji, playerM.x-20, playerM.y+20); ctx.fillText(playerG.emoji, playerG.x-20, playerG.y+20);
             ctx.fillText(enemyM.emoji, enemyM.x-20, enemyM.y+20); ctx.fillText(enemyG.emoji, enemyG.x-20, enemyG.y+20);
 
-            // 실시간 건설 건물 동적 렌더링 및 체력바 마크업
             playerBuildings.forEach(b => {
                 ctx.font = "50px sans-serif"; ctx.fillText(b.emoji, b.x-20, b.y+20);
                 ctx.fillStyle = "#ff6b6b"; ctx.fillRect(b.x-30, b.y-30, 80, 5);
@@ -168,7 +167,6 @@
                 ctx.fillStyle = "#51cf66"; ctx.fillRect(b.x-30, b.y-30, (b.hp/b.maxHp)*80, 5);
             });
 
-            // 🤖 적군 AI 난이도 밸런스 완전 패치 스펙 (3웨이브 중순양함 억까 버그 치료)
             if(frameCount % 100 === 0) { enemyMinerals += 15; enemyGas += 5; }
             if(frameCount % 320 === 0) {
                 let enemyHasBarracks = enemyBuildings.some(b => b.type === 'barracks');
@@ -176,7 +174,6 @@
                     enemyMinerals -= 40; enemyBuildings.push({ x: enemyCC.x-70, y: enemyCC.y+80, emoji: "🏭", hp: 300, maxHp: 300, type: 'barracks' });
                 }
                 if (enemyHasBarracks) {
-                    // 수 정: 6웨이브 미만일 때는 오직 기본 전투기만 출격하도록 공세 제어
                     if(wave >= 6 && enemyMinerals >= 50 && enemyGas >= 15 && Math.random()<0.4) {
                         enemyMinerals -= 50; enemyGas -= 15; enemies.push({ x: enemyCC.x-40, y: enemyCC.y+40, type: 'cruiser', state: 'attack', hp: 120, maxHp: 120, cool: 0, spd: 1.2 });
                     } else if(enemyMinerals >= 30) {
@@ -198,7 +195,7 @@
                     ctx.save(); ctx.font = "16px sans-serif"; ctx.fillText(u.res?"📦":"🛸", u.x-8, u.y+6); ctx.restore();
                 } else {
                     let aliveEnemyB = enemyBuildings.filter(b => b.hp > 0);
-                    let target = fEnemies.length > 0 ? fEnemies : (aliveEnemyB.length > 0 ? aliveEnemyB : enemyCC);
+                    let target = fEnemies.length > 0 ? fEnemies[0] : (aliveEnemyB.length > 0 ? aliveEnemyB[0] : enemyCC);
                     let dx = target.x - u.x; let dy = target.y - u.y; let d = Math.sqrt(dx*dx + dy*dy);
                     if (d > 140) { u.x += (dx/d)*u.spd; u.y += (dy/d)*u.spd; }
                     else if (u.cool <= 0) { bullets.push({ x: u.x, y: u.y, target: target, isEnemy: false, dmg: u.type==='cruiser'?15:7, type: u.type }); u.cool = u.type==='cruiser'?35:18; playSound('laser'); }
@@ -220,7 +217,7 @@
                     ctx.save(); ctx.font = "16px sans-serif"; ctx.fillText(en.res?"📦":"🛸", en.x-8, en.y+6); ctx.restore();
                 } else {
                     let alivePlayerB = playerBuildings.filter(b => b.hp > 0);
-                    let target = fUnits.length > 0 ? fUnits : (alivePlayerB.length > 0 ? alivePlayerB : playerCC);
+                    let target = fUnits.length > 0 ? fUnits[0] : (alivePlayerB.length > 0 ? alivePlayerB[0] : playerCC);
                     let dx = target.x - en.x; let dy = target.y - en.y; let d = Math.sqrt(dx*dx + dy*dy);
                     if (d > 140) { en.x += (dx/d)*en.spd; en.y += (dy/d)*en.spd; }
                     else if (en.cool <= 0) { bullets.push({ x: en.x, y: en.y, target: target, isEnemy: true, dmg: en.type==='cruiser'?15:7, type: en.type }); en.cool = en.type==='cruiser'?35:18; playSound('laser'); }
@@ -251,7 +248,7 @@
                         updateHUD();
                     }
                     bullets.splice(i, 1);
-                } else { b.x += (dx/d)*6; b.y += (dy/d)*6; ctx.fillStyle = b.isEnemy?'#ff4d4d':'#00ffcc'; ctx.beginPath(); ctx.arc(b.x, b.y, b.type==='cruiser'?3.5:2, 0, Math.PI*2); ctx.fill(); }
+                } else { b.x += (dx/d)*6; b.y += (dy/d)*6; ctx.fillStyle = b.isEnemy?'#ff4d4d':'#00ffcc'; ctx.beginPath(); ctx.arc(b.x, b.y, b.type==='cruiser'?3.5:2, 0, Math.PI * 2); ctx.fill(); }
             }
 
             for (let i = explosions.length - 1; i >= 0; i--) { let exp = explosions[i]; exp.rad += 2; ctx.save(); ctx.font = "20px sans-serif"; ctx.fillText("💥", exp.x-10, exp.y+8); ctx.restore(); if (exp.rad >= 20) explosions.splice(i, 1); }
