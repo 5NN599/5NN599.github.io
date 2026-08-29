@@ -78,7 +78,7 @@
         const storyTexts = [
             "서기 2026년... 지구 방위대 최후의 함선 '미니지호'..",
             "상점에서 확률 연구 시 커먼 확률은 줄어들고 레어/에픽/전설 확률이 일제히 상승한다!",
-            "범위 미사일의 스플래시 파동은 스치는 모든 일반 잡몹을 즉사시킨다.",
+            "다이아몬드 기동, 공중 루프 도약 등 잡몹들의 비행 전술 모션이 대폭 강화되었다.",
             "격파할 때마다 진화하여 차원을 넘어 쳐들어오는 보스를 섬멸하라!",
             "👉 [Space] 또는 화면을 터치해 우주 전쟁을 시작하세요!"
         ];
@@ -91,10 +91,8 @@
             document.getElementById("shopPoints").innerText = `보유 포인트: ${shopPoints} P`; document.getElementById("strLv").innerText = `⚔️ 공격력 Lv.${upgLv.dmg} (+${upgLv.dmg-1})`; document.getElementById("probLv").innerText = `🍀 확률업 Lv.${upgLv.prob} (전설:${lg.toFixed(1)}%)`; document.getElementById("hpLv").innerText = `🛡️ 최대실드 Lv.${upgLv.hp}`; document.getElementById("dmgCostBtn").innerText = `${upgCost.dmg} P`; document.getElementById("probCostBtn").innerText = `${upgCost.prob} P`; document.getElementById("hpCostBtn").innerText = `${upgCost.hp} P`; 
         }
         function buyUpgrade(type) { if(shopPoints >= upgCost[type]) { shopPoints -= upgCost[type]; if(type === 'dmg') { upgLv.dmg++; player.dmg += 0.5; } else if(type === 'prob') { upgLv.prob++; player.upgProbLv++; } else if(type === 'hp') { upgLv.hp += 2; player.maxHp += 2; player.hp += 2; } upgCost[type] = Math.floor(upgCost[type] * 1.6); updateShopUI(); updateBoard(); playSound('start'); } }
-        // 🚀 개편: 커먼은 하락하고 레어/에픽/전설 수치가 고르게 빌드업되는 실시간 보정 가챠 연산 시스템
         function getRandomWeapon() {
-            let rnd = Math.random() * 100;
-            let cProb = Math.max(10, 50 - player.upgProbLv * 5); let rProb = 35 + player.upgProbLv * 3; let eProb = 13 + player.upgProbLv * 1.5;
+            let rnd = Math.random() * 100; let cProb = Math.max(10, 50 - player.upgProbLv * 5); let rProb = 35 + player.upgProbLv * 3; let eProb = 13 + player.upgProbLv * 1.5;
             if (rnd < cProb) return Math.random() < 0.5 ? { wp: '기본 레이저', grade: '🟢 [커먼]' } : { wp: '🔱 3갈래 확산탄', grade: '🟢 [커먼]' };
             else if (rnd < cProb + rProb) { let r = Math.random(); if (r < 0.33) return { wp: '🚀 범위 미사일', grade: '🔵 [레어]' }; else if (r < 0.66) return { wp: '⚡ 관통 레이저', grade: '🔵 [레어]' }; else return { wp: '💣 기뢰 설치', grade: '🔵 [레어]' }; }
             else if (rnd < cProb + rProb + eProb) return Math.random() < 0.5 ? { wp: '🛡️ 유도 드론', grade: '🟣 [에픽]' } : { wp: 'CNG 블랙홀', grade: '🟣 [에픽]' };
@@ -131,7 +129,6 @@
             if((keys["ArrowUp"] || keys["w"]) && player.y > 0) player.y -= player.speed; if((keys["ArrowDown"] || keys["s"]) && player.y < canvas.height - player.h) player.y += player.speed;
             if(player.invuln == 0 || Math.floor(player.invuln/4) % 2 == 0) { ctx.save(); ctx.font = "32px sans-serif"; ctx.fillText("🚀", player.x, player.y + 26); ctx.restore(); }
             ctx.save(); ctx.fillStyle = "rgba(255, 255, 255, 0.15)"; ctx.fillRect(230, 8, 160, 28); ctx.strokeStyle = "#fcc419"; ctx.strokeRect(230, 8, 160, 28); ctx.fillStyle = "#fff"; ctx.font = "11px sans-serif"; ctx.textAlign = "center"; ctx.fillText(`장비: ${player.currentWeapon}`, 310, 26); ctx.restore();
-            // 미사일 및 핵융합 파동 실시간 렌더링
             for(let e=explosions.length-1; e>=0; e--) {
                 explosions[e].rad += explosions[e].isNuke ? 16 : 4; ctx.save(); ctx.beginPath(); ctx.arc(explosions[e].x, explosions[e].y, explosions[e].rad, 0, Math.PI*2); ctx.fillStyle = explosions[e].isNuke ? `rgba(255, 100, 0, ${1 - explosions[e].rad/400})` : `rgba(0, 255, 200, ${1 - explosions[e].rad/80})`; ctx.fill(); ctx.closePath(); ctx.restore();
                 if(explosions[e].isNuke && explosions[e].rad >= 400) explosions.splice(e, 1); else if(!explosions[e].isNuke && explosions[e].rad >= 80) explosions.splice(e, 1);
@@ -156,49 +153,48 @@
             }
             for(let i=items.length-1; i>=0; i--) {
                 items[i].y += 1.5; ctx.save(); ctx.font="24px sans-serif"; ctx.fillText("🎁", items[i].x, items[i].y+20); ctx.restore();
-                if(items[i].x < player.x+player.w && items[i].x+24 > player.x && items[i].y < player.y+player.h && items[i].y+20 > player.y) {
-                    items.splice(i, 1); playSound('item'); player.hp = player.maxHp; updateBoard(); let res = getRandomWeapon(); askEquip(res.grade, res.wp); continue;
-                }
-                // 🚀 중요 수정: 전리품을 다 챙기거나 상자가 화면 아래로 나가 사라지면, 억까 버그 없이 무조건 상점 오버랩이 100% 열리도록 라이프사이클을 통제했습니다.
+                if(items[i].x < player.x+player.w && items[i].x+24 > player.x && items[i].y < player.y+player.h && items[i].y+20 > player.y) { items.splice(i, 1); playSound('item'); player.hp = player.maxHp; updateBoard(); let res = getRandomWeapon(); askEquip(res.grade, res.wp); continue; }
                 if(items[i].y > canvas.height) { items.splice(i, 1); openShop(); }
             }
             if(enemiesKilled >= 15 && !bossSpawned) { bossSpawned = true; boss = { x: 160, y: -60, w: 64, h: 44, hp: 30 * bossLevel, maxHp: 30 * bossLevel, targetY: 50, speed: 1.8 + bossLevel*0.1, dx: 2, shotTimer: 0 }; updateBoard(); }
             if(bossSpawned && boss) {
                 if(boss.hp > 0) {
                     if(boss.y < boss.targetY) boss.y += 1; 
-                    else { boss.x += boss.dx; if(boss.x < 10 || boss.x > canvas.width - boss.w - 10) boss.dx = -boss.dx; boss.shotTimer++; if(boss.shotTimer % Math.max(20, 45 - bossLevel*2) === 0) { enemyBullets.push({ x: boss.x + boss.w/2 - 2, y: boss.y + boss.h, w: 6, h: 12, speed: 4.5 }); } if(boss.shotTimer % 85 === 0) { enemyBullets.push({ x: boss.x + 10, y: boss.y + boss.h, w: 6, h: 6, speed: 3.5, dx: -1.2 }); enemyBullets.push({ x: boss.x + boss.w/2, y: boss.y + boss.h, w: 6, h: 6, speed: 4.2, dx: 0 }); enemyBullets.push({ x: boss.x + boss.w - 10, y: boss.y + boss.h, w: 6, h: 6, speed: 3.5, dx: 1.2 }); } }
+                    else { boss.x += boss.dx; if(boss.x < 10 || boss.x > canvas.width - boss.w - 10) boss.dx = -boss.dx; boss.shotTimer++; 
+                        // 🚀 보스 고유 4대 복합 탄막 패턴 생성 시스템 가동
+                        if(boss.shotTimer % Math.max(15, 35 - bossLevel*2) === 0) { enemyBullets.push({ x: boss.x + boss.w/2 - 2, y: boss.y + boss.h, w: 6, h: 12, speed: 4.5 }); } // 패턴 1: 실시간 플레이어 조준탄
+                        if(boss.shotTimer % 70 === 0) { enemyBullets.push({ x: boss.x + 10, y: boss.y + boss.h, w: 6, h: 6, speed: 3.8, dx: -1.2 }); enemyBullets.push({ x: boss.x + boss.w/2, y: boss.y + boss.h, w: 6, h: 6, speed: 4.2, dx: 0 }); enemyBullets.push({ x: boss.x + boss.w - 10, y: boss.y + boss.h, w: 6, h: 6, speed: 3.5, dx: 1.2 }); } // 패턴 2: 3갈래 분사
+                        if(boss.shotTimer % 110 === 0) { for(let a=0; a<6; a++) { let ang = (a * Math.PI) / 3; enemyBullets.push({ x: boss.x + 32, y: boss.y + 22, w: 5, h: 5, speed: 2.2, dx: Math.cos(ang)*2.0 }); } } // 패턴 3: 나선 링 탄막 난사
+                        if(boss.shotTimer % 140 === 0) { enemyBullets.push({ x: boss.x + 5, y: boss.y + boss.h, w: 4, h: 10, speed: 3.0 }); enemyBullets.push({ x: boss.x + 30, y: boss.y + boss.h, w: 4, h: 10, speed: 3.0 }); enemyBullets.push({ x: boss.x + 55, y: boss.y + boss.h, w: 4, h: 10, speed: 3.0 }); } // 패턴 4: 수직 카펫 폭격
+                    }
                     ctx.save(); ctx.font = "54px sans-serif"; ctx.fillText("🛸", boss.x, boss.y + 44); ctx.restore();
-                    // 미사일 스플래시 범위 파동이 보스 기체 범위에 들어왔을 때 유효 지속 대미지 연산 타격 처리
                     explosions.forEach(exp => { if(boss && boss.hp > 0) { let d=Math.sqrt((boss.x+32-exp.x)**2+(boss.y+22-exp.y)**2); if(d <= exp.rad + 32) { boss.hp -= (exp.isNuke ? player.dmg * 0.4 : player.dmg * 0.15); updateBoard(); if(boss.hp <= 0) { score += (150 * bossLevel); shopPoints += (5 + bossLevel * 5); enemiesKilled = 0; bossSpawned = false; playSound('win'); items.push({ x: boss.x + boss.w/2 - 12, y: boss.y }); bossLevel++; enemies = []; enemyBullets = []; updateBoard(); } } } });
                     if(boss && boss.hp > 0 && player.invuln == 0 && player.x < boss.x + boss.w && player.x + player.w > boss.x && player.y < boss.y + boss.h && player.y + player.h > boss.y) { player.hp = 0; triggerGameOver(); return; }
                 }
-                for(let j=bullets.length-1; j>=0; j--) {
-                    if(boss && boss.hp > 0 && bullets[j].x < boss.x+boss.w && bullets[j].x+bullets[j].w > boss.x && bullets[j].y < boss.y+boss.h && bullets[j].y+bullets[j].h > boss.y) {
-                        if(bullets[j].type === 'missile') explosions.push({ x: bullets[j].x, y: bullets[j].y, rad: 10 }); boss.hp -= player.dmg; if(bullets[j].type !== 'pierce') bullets.splice(j,1); updateBoard(); playSound('hit');
-                        if(boss.hp <= 0) { score += (150 * bossLevel); shopPoints += (5 + bossLevel * 5); enemiesKilled = 0; bossSpawned = false; playSound('win'); items.push({ x: boss.x + boss.w/2 - 12, y: boss.y }); bossLevel++; enemies = []; enemyBullets = []; updateBoard(); } break;
-                    }
-                }
+                for(let j=bullets.length-1; j>=0; j--) { if(boss && boss.hp > 0 && bullets[j].x < boss.x+boss.w && bullets[j].x+bullets[j].w > boss.x && bullets[j].y < boss.y+boss.h && bullets[j].y+bullets[j].h > boss.y) { if(bullets[j].type === 'missile') explosions.push({ x: bullets[j].x, y: bullets[j].y, rad: 10 }); boss.hp -= player.dmg; if(bullets[j].type !== 'pierce') bullets.splice(j,1); updateBoard(); playSound('hit'); if(boss.hp <= 0) { score += (150 * bossLevel); shopPoints += (5 + bossLevel * 5); enemiesKilled = 0; bossSpawned = false; playSound('win'); items.push({ x: boss.x + boss.w/2 - 12, y: boss.y }); bossLevel++; enemies = []; enemyBullets = []; updateBoard(); } break; } }
             }
-            if(!bossSpawned && Math.random() < 0.025) { let rType = Math.random(); let type = 'sine'; let spd = 2.2 + Math.random()*1.5; if(rType < 0.25) { type = 'rush'; spd = 5.0; } else if(rType < 0.40) { type = 'track'; } enemies.push({ x: Math.random()*(canvas.width-38), y: -40, w: 36, h: 32, speed: spd, pType: type, sinTimer: Math.random()*10, shotTimer: Math.floor(Math.random()*60) }); }
+            if(!bossSpawned && Math.random() < 0.025) { 
+                // 🚀 개편: 잡몹 궤적 타입을 다이아몬드 지그재그와 위아래 공중 루프 도약 모션까지 총 5종으로 전면 다양화 확장 완료!
+                let rType = Math.random(); let type = 'sine'; let spd = 2.0 + Math.random()*1.2;
+                if(rType < 0.20) type = 'rush'; else if(rType < 0.40) type = 'track'; else if(rType < 0.65) type = 'diamond'; else if(rType < 0.85) type = 'loop';
+                if(type==='rush') spd = 4.5; enemies.push({ x: Math.random()*(canvas.width-38), y: -40, w: 36, h: 32, speed: spd, pType: type, sinTimer: Math.random()*10, shotTimer: Math.floor(Math.random()*40), dx: Math.random() < 0.5 ? -2 : 2, dirY: 1 }); 
+            }
             for(let i=enemies.length-1; i>=0; i--) {
-                enemies[i].y += enemies[i].speed; if(enemies[i].pType === 'sine') { enemies[i].sinTimer += 0.05; enemies[i].x += Math.sin(enemies[i].sinTimer) * 2.5; } else if(enemies[i].pType === 'track') { enemies[i].x += (player.x - enemies[i].x) * 0.015; }
+                if(enemies[i].pType === 'diamond') { enemies[i].y += enemies[i].speed * 0.7; enemies[i].x += enemies[i].dx; if(enemies[i].x < 10 || enemies[i].x > canvas.width-45) enemies[i].dx = -enemies[i].dx; }
+                else if(enemies[i].pType === 'loop') { enemies[i].sinTimer += 0.06; enemies[i].y += enemies[i].speed * enemies[i].dirY; enemies[i].x += Math.cos(enemies[i].sinTimer)*1.8; if(enemies[i].y > 180 && enemies[i].dirY === 1) { enemies[i].dirY = -0.4; } if(enemies[i].y < 60 && enemies[i].dirY < 0) { enemies[i].dirY = 1; } }
+                else { enemies[i].y += enemies[i].speed; if(enemies[i].pType === 'sine') { enemies[i].sinTimer += 0.05; enemies[i].x += Math.sin(enemies[i].sinTimer) * 2.5; } else if(enemies[i].pType === 'track') { enemies[i].x += (player.x - enemies[i].x) * 0.015; } }
                 if(enemies[i].x < 5) enemies[i].x = 5; if(enemies[i].x > canvas.width-40) enemies[i].x = canvas.width-40;
                 
                 enemies[i].shotTimer++; 
-                // 🚀 중요 보정: 잡몹의 조준탄 발사 주기를 75프레임으로 크게 '늘려서' 가끔씩만 조준 사격하도록 수정했습니다!
-                if(!bossSpawned && enemies[i].shotTimer >= 75 && enemies[i].y < player.y - 30) { 
+                // 🚀 중요 보정: 잡몹들의 저격탄 발사 주기를 150프레임(약 2.5초에 딱 1발)으로 크게 대폭 늘렸습니다!
+                if(!bossSpawned && enemies[i].shotTimer >= 150 && enemies[i].y < player.y - 30) { 
                     let dx = player.x + 16 - (enemies[i].x + 18); let dy = player.y + 16 - (enemies[i].y + 32); let dist = Math.sqrt(dx*dx + dy*dy);
-                    enemyBullets.push({ x: enemies[i].x + 16, y: enemies[i].y + 32, w: 5, h: 5, speed: 3.5, dx: (dx/dist) * 1.8 }); enemies[i].shotTimer = 0; 
+                    enemyBullets.push({ x: enemies[i].x + 16, y: enemies[i].y + 32, w: 5, h: 5, speed: 3.2, dx: (dx/dist) * 1.6 }); enemies[i].shotTimer = 0; 
                 }
                 ctx.save(); ctx.font = "36px sans-serif"; ctx.fillText("🛸", enemies[i].x, enemies[i].y + 30); ctx.restore(); if(enemies[i].y > canvas.height) { enemies.splice(i,1); continue; }
-                // 🚀 미사일 스플래시 원형 파동에 스쳐 닿은 모든 일반 잡몹🛸은 즉시 100% 즉사 사망 처리합니다!
                 explosions.forEach(exp => { if(enemies[i]) { let d=Math.sqrt((enemies[i].x+18-exp.x)**2+(enemies[i].y+16-exp.y)**2); if(d <= exp.rad + 16) { enemies.splice(i,1); score += 10; enemiesKilled++; updateBoard(); playSound('explode'); } } }); if(!enemies[i]) continue;
                 if(player.invuln == 0 && enemies[i].x < player.x+player.w && enemies[i].x+enemies[i].w > player.x && enemies[i].y < player.y+player.h && enemies[i].y+enemies[i].h > player.y) { enemies.splice(i, 1); player.hp--; player.invuln = 60; updateBoard(); playSound('hit'); if(player.hp <= 0) { triggerGameOver(); return; } continue; }
-                for(let j=bullets.length-1; j>=0; j--) {
-                    if(bullets[j].x < enemies[i].x+enemies[i].w && bullets[j].x+bullets[j].w > enemies[i].x && bullets[j].y < enemies[i].y+enemies[i].h && bullets[j].y+bullets[j].h > enemies[i].y) {
-                        if(bullets[j].type === 'missile') explosions.push({ x: bullets[j].x, y: bullets[j].y, rad: 10 }); enemies.splice(i,1); if(bullets[j].type !== 'pierce') bullets.splice(j,1); score += 10; enemiesKilled++; updateBoard(); playSound('explode'); break;
-                    }
-                }
+                for(let j=bullets.length-1; j>=0; j--) { if(bullets[j].x < enemies[i].x+enemies[i].w && bullets[j].x+bullets[j].w > enemies[i].x && bullets[j].y < enemies[i].y+enemies[i].h && bullets[j].y+bullets[j].h > enemies[i].y) { if(bullets[j].type === 'missile') explosions.push({ x: bullets[j].x, y: bullets[j].y, rad: 10 }); enemies.splice(i,1); if(bullets[j].type !== 'pierce') bullets.splice(j,1); score += 10; enemiesKilled++; updateBoard(); playSound('explode'); break; } }
             }
         }
         initStars(); restart();
