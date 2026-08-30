@@ -69,7 +69,7 @@
     </div>
   </div>
 
-  <div class="help-text">마우스 드래그: 다중 선택 | 우클릭: 강제 이동/공격 | 방향키/WASD: 화면 이동</div>
+  <div class="help-text">마우스 드래그: 다중 선택 | 우클릭: 강제 이동/채굴 지시 | 방향키/WASD: 화면 이동</div>
 
   <script>
     window.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -190,12 +190,30 @@
             Math.hypot(ent.x - worldX, ent.y - worldY) <= ent.radius + 12
           );
 
+          const targetRes = entities.find(ent => 
+            (ent.type === 'resource_min' || (ent.type === 'resource_gas' && ent.hasRefinery)) &&
+            Math.hypot(ent.x - worldX, ent.y - worldY) <= ent.radius + 15
+          );
+
           selectedUnits.forEach((unit, idx) => {
             if (unit.isBuildingSCV) unit.isBuildingSCV = false;
             const offsetX = (idx % 4 - 1.5) * 18;
             const offsetY = (Math.floor(idx / 4) - 1.5) * 18;
-            unit.moveTarget = { x: worldX + offsetX, y: worldY + offsetY };
-            unit.forcedTarget = targetEnemy || null;
+
+            if (unit.type === 'scv') {
+              if (targetRes) {
+                unit.isManualMove = false;
+                unit.moveTarget = null;
+                unit.assignedRes = targetRes;
+              } else {
+                unit.isManualMove = true;
+                unit.moveTarget = { x: worldX + offsetX, y: worldY + offsetY };
+                unit.assignedRes = null;
+              }
+            } else {
+              unit.moveTarget = { x: worldX + offsetX, y: worldY + offsetY };
+              unit.forcedTarget = targetEnemy || null;
+            }
           });
         }
         return;
@@ -274,7 +292,7 @@
     function handleBuild(wx, wy) {
       const freeSCV = entities.find(e => e.faction === 'player' && e.type === 'scv' && !e.isBuildingSCV);
       if (!freeSCV) {
-        showToast("⚠️ 일하는 중이지 않은 SCV가 없습니다!");
+        showToast("⚠️ 일을 쉬고 있거나 대기 중인 SCV가 없습니다!");
         buildMode = null; resetBuildButtons(); return;
       }
 
@@ -312,6 +330,7 @@
       b.builderSCVId = scv ? scv.id : null;
       if (scv) {
         scv.isBuildingSCV = true;
+        scv.isManualMove = false;
         scv.moveTarget = { x: x, y: y };
         scv.cargo = null;
       }
@@ -320,13 +339,13 @@
     function produce(unitType) {
       initAudio();
       const costs = {
-        scv: { min: 20, gas: 0, req: true, bType: 'hq', time: 100 },
-        fighter: { min: 30, gas: 0, req: tech.barracks, bType: 'barracks', time: 150 },
-        scout: { min: 25, gas: 0, req: tech.barracks, bType: 'barracks', time: 120 },
-        tank: { min: 60, gas: 10, req: tech.factory, bType: 'factory', time: 240 },
-        mech: { min: 50, gas: 15, req: tech.factory, bType: 'factory', time: 200 },
-        cruiser: { min: 70, gas: 30, req: tech.starport, bType: 'starport', time: 300 },
-        carrier: { min: 100, gas: 60, req: tech.starport, bType: 'starport', time: 420 }
+        scv: { min: 20, gas: 0, req: true, bType: 'hq', time: 100, name: 'SCV' },
+        fighter: { min: 30, gas: 0, req: tech.barracks, bType: 'barracks', time: 150, name: '전투기' },
+        scout: { min: 25, gas: 0, req: tech.barracks, bType: 'barracks', time: 120, name: '정찰기' },
+        tank: { min: 60, gas: 10, req: tech.factory, bType: 'factory', time: 240, name: '전차' },
+        mech: { min: 50, gas: 15, req: tech.factory, bType: 'factory', time: 200, name: '메카' },
+        cruiser: { min: 70, gas: 30, req: tech.starport, bType: 'starport', time: 300, name: '중순양함' },
+        carrier: { min: 100, gas: 60, req: tech.starport, bType: 'starport', time: 420, name: '항공모함' }
       };
 
       const c = costs[unitType];
@@ -337,6 +356,7 @@
         resources.min -= c.min; resources.gas -= c.gas;
         if (!prodBuilding.productionQueue) prodBuilding.productionQueue = [];
         prodBuilding.productionQueue.push({ unitType: unitType, progress: 0, maxTime: c.time });
+        showToast(`🛠️ ${c.name} 생산 예약됨`);
         updateUI();
       } else {
         showToast("⚠️ 생산 건물이 부족하거나 대기열이 가득 찼습니다!");
@@ -382,7 +402,7 @@
         damage: 10, splash: false, splashRadius: 0,
         cargo: null, moveTarget: null, forcedTarget: null,
         isUnderConstruction: false, buildProgress: 0, buildMaxTime: 0,
-        productionQueue: [], isBuildingSCV: false
+        productionQueue: [], isBuildingSCV: false, isManualMove: false, assignedRes: null
       };
 
       if (type === 'hq') {
@@ -655,8 +675,9 @@
           let item = e.productionQueue[0];
           item.progress++;
           if (item.progress >= item.maxTime) {
-            spawnEntity(item.unitType, e.faction, e.x + (Math.random() * 30 - 15), e.y + e.radius + 15);
+            const newUnit = spawnEntity(item.unitType, e.faction, e.x + (Math.random() * 30 - 15), e.y + e.radius + 15);
             playSound('produce');
+            if (e.faction === 'player') showToast(`✨ ${item.unitType.toUpperCase()} 생산 완료!`);
             e.productionQueue.shift();
           }
         }
@@ -672,67 +693,78 @@
           }
         }
 
-        // SCV AI (자원 반납 각도 오류 수정됨)
+        // SCV AI (수동 이동 지시 시 채굴 모드 해제 로직 구현 완료)
         if (e.type === 'scv' && !e.isBuildingSCV) {
-          if (e.moveTarget) {
-            let angle = Math.atan2(e.moveTarget.y - e.y, e.moveTarget.x - e.x);
-            e.x += Math.cos(angle) * e.speed;
-            e.y += Math.sin(angle) * e.speed;
-            if (Math.hypot(e.moveTarget.x - e.x, e.moveTarget.y - e.y) < 4) e.moveTarget = null;
+          if (e.isManualMove) {
+            if (e.moveTarget) {
+              let angle = Math.atan2(e.moveTarget.y - e.y, e.moveTarget.x - e.x);
+              e.x += Math.cos(angle) * e.speed;
+              e.y += Math.sin(angle) * e.speed;
+              if (Math.hypot(e.moveTarget.x - e.x, e.moveTarget.y - e.y) < 4) {
+                e.moveTarget = null; // 도착 후 더이상 자동 채굴하지 않고 정지
+              }
+            }
           } else {
-            const nearbyDamaged = entities.find(b => 
-              b.faction === e.faction && 
-              ['hq','barracks','factory','starport','refinery','turret'].includes(b.type) &&
-              !b.isUnderConstruction && b.hp < b.maxHp &&
-              Math.hypot(b.x - e.x, b.y - e.y) <= 120
-            );
-
-            if (nearbyDamaged) {
-              let dist = Math.hypot(nearbyDamaged.x - e.x, nearbyDamaged.y - e.y);
-              if (dist > nearbyDamaged.radius + 15) {
-                let angle = Math.atan2(nearbyDamaged.y - e.y, nearbyDamaged.x - e.x);
-                e.x += Math.cos(angle) * e.speed;
-                e.y += Math.sin(angle) * e.speed;
-              } else {
-                nearbyDamaged.hp = Math.min(nearbyDamaged.maxHp, nearbyDamaged.hp + 0.35);
-                if (Math.random() < 0.2) particles.push({ x: e.x, y: e.y, vx: 0, vy: -1, life: 10, text: '🔧' });
-              }
-            } else if (!e.cargo) {
-              let targetRes = entities.filter(node => 
-                node.type === 'resource_min' || (node.type === 'resource_gas' && node.hasRefinery)
-              ).reduce((closest, node) => {
-                let d = Math.hypot(node.x - e.x, node.y - e.y);
-                return (!closest || d < closest.d) ? { node, d } : closest;
-              }, null);
-
-              if (targetRes) {
-                if (targetRes.d < targetRes.node.radius + 12) {
-                  e.cargo = { type: targetRes.node.resType, amount: 8 };
-                } else {
-                  let angle = Math.atan2(targetRes.node.y - e.y, targetRes.node.x - e.x);
-                  e.x += Math.cos(angle) * e.speed;
-                  e.y += Math.sin(angle) * e.speed;
-                }
-              }
+            if (e.moveTarget) {
+              let angle = Math.atan2(e.moveTarget.y - e.y, e.moveTarget.x - e.x);
+              e.x += Math.cos(angle) * e.speed;
+              e.y += Math.sin(angle) * e.speed;
+              if (Math.hypot(e.moveTarget.x - e.x, e.moveTarget.y - e.y) < 4) e.moveTarget = null;
             } else {
-              // 본진 복귀 각도 오류(e.y) 수정 완료
-              let myHQ = entities.find(h => h.type === 'hq' && h.faction === e.faction && !h.isUnderConstruction);
-              if (myHQ) {
-                let d = Math.hypot(myHQ.x - e.x, myHQ.y - e.y);
-                if (d < myHQ.radius + 15) {
-                  if (e.faction === 'player') {
-                    if (e.cargo.type === 'min') resources.min += e.cargo.amount;
-                    else resources.gas += e.cargo.amount;
-                    updateUI();
-                  } else {
-                    if (e.cargo.type === 'min') resources.enemyMin += e.cargo.amount;
-                    else resources.enemyGas += e.cargo.amount;
-                  }
-                  e.cargo = null;
-                } else {
-                  let angle = Math.atan2(myHQ.y - e.y, myHQ.x - e.x);
+              const nearbyDamaged = entities.find(b => 
+                b.faction === e.faction && 
+                ['hq','barracks','factory','starport','refinery','turret'].includes(b.type) &&
+                !b.isUnderConstruction && b.hp < b.maxHp &&
+                Math.hypot(b.x - e.x, b.y - e.y) <= 120
+              );
+
+              if (nearbyDamaged) {
+                let dist = Math.hypot(nearbyDamaged.x - e.x, nearbyDamaged.y - e.y);
+                if (dist > nearbyDamaged.radius + 15) {
+                  let angle = Math.atan2(nearbyDamaged.y - e.y, nearbyDamaged.x - e.x);
                   e.x += Math.cos(angle) * e.speed;
                   e.y += Math.sin(angle) * e.speed;
+                } else {
+                  nearbyDamaged.hp = Math.min(nearbyDamaged.maxHp, nearbyDamaged.hp + 0.35);
+                  if (Math.random() < 0.2) particles.push({ x: e.x, y: e.y, vx: 0, vy: -1, life: 10, text: '🔧' });
+                }
+              } else if (!e.cargo) {
+                let targetRes = e.assignedRes || entities.filter(node => 
+                  node.type === 'resource_min' || (node.type === 'resource_gas' && node.hasRefinery)
+                ).reduce((closest, node) => {
+                  let d = Math.hypot(node.x - e.x, node.y - e.y);
+                  return (!closest || d < closest.d) ? node : closest;
+                }, null);
+
+                if (targetRes) {
+                  let dist = Math.hypot(targetRes.x - e.x, targetRes.y - e.y);
+                  if (dist < targetRes.radius + 12) {
+                    e.cargo = { type: targetRes.resType, amount: 8 };
+                  } else {
+                    let angle = Math.atan2(targetRes.y - e.y, targetRes.x - e.x);
+                    e.x += Math.cos(angle) * e.speed;
+                    e.y += Math.sin(angle) * e.speed;
+                  }
+                }
+              } else {
+                let myHQ = entities.find(h => h.type === 'hq' && h.faction === e.faction && !h.isUnderConstruction);
+                if (myHQ) {
+                  let d = Math.hypot(myHQ.x - e.x, myHQ.y - e.y);
+                  if (d < myHQ.radius + 15) {
+                    if (e.faction === 'player') {
+                      if (e.cargo.type === 'min') resources.min += e.cargo.amount;
+                      else resources.gas += e.cargo.amount;
+                      updateUI();
+                    } else {
+                      if (e.cargo.type === 'min') resources.enemyMin += e.cargo.amount;
+                      else resources.enemyGas += e.cargo.amount;
+                    }
+                    e.cargo = null;
+                  } else {
+                    let angle = Math.atan2(myHQ.y - e.y, myHQ.x - e.x);
+                    e.x += Math.cos(angle) * e.speed;
+                    e.y += Math.sin(angle) * e.speed;
+                  }
                 }
               }
             }
@@ -844,6 +876,15 @@
           ctx.fillRect(e.x - 20, e.y + e.radius + 4, 40, 6);
           ctx.fillStyle = '#fcc419';
           ctx.fillRect(e.x - 20, e.y + e.radius + 4, 40 * (e.buildProgress / e.buildMaxTime), 6);
+        }
+
+        // 유닛 생산 진행바 시각화
+        if (e.productionQueue && e.productionQueue.length > 0) {
+          let item = e.productionQueue[0];
+          ctx.fillStyle = 'rgba(0,0,0,0.7)';
+          ctx.fillRect(e.x - 20, e.y - e.radius - 16, 40, 5);
+          ctx.fillStyle = '#74c0fc';
+          ctx.fillRect(e.x - 20, e.y - e.radius - 16, 40 * (item.progress / item.maxTime), 5);
         }
       });
 
