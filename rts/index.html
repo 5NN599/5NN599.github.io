@@ -100,6 +100,286 @@
     let camX = 0;
     let camY = WORLD_H - VIEW_H;
 
+    // =========================
+    // 맵 지형 시스템
+    // =========================
+    const TERRAIN_TILE = 80;
+    const TERRAIN_COLS = Math.ceil(WORLD_W / TERRAIN_TILE);
+    const TERRAIN_ROWS = Math.ceil(WORLD_H / TERRAIN_TILE);
+
+    // grass / water / hill / ramp
+    let terrain = [];
+
+    function terrainIndex(col, row) {
+      return row * TERRAIN_COLS + col;
+    }
+
+    function terrainRand(col, row) {
+      // 맵을 재시작해도 같은 지형이 나오도록 고정 시드 기반 난수.
+      let n = (col * 374761393 + row * 668265263) >>> 0;
+      n = (n ^ (n >>> 13)) * 1274126177 >>> 0;
+      n ^= n >>> 16;
+      return (n >>> 0) / 4294967295;
+    }
+
+    function generateTerrain() {
+      terrain = new Array(TERRAIN_COLS * TERRAIN_ROWS);
+
+      for (let row = 0; row < TERRAIN_ROWS; row++) {
+        for (let col = 0; col < TERRAIN_COLS; col++) {
+          const x = col * TERRAIN_TILE + TERRAIN_TILE / 2;
+          const y = row * TERRAIN_TILE + TERRAIN_TILE / 2;
+
+          // 기본 평지.
+          let type = 'grass';
+
+          // 굽이치는 강 + 넓은 만.
+          const riverY =
+            1200 +
+            Math.sin(x / 430) * 180 +
+            Math.sin(x / 170) * 45;
+
+          const riverWidth = 125 + 30 * Math.sin(x / 250 + 0.5);
+
+          if (Math.abs(y - riverY) < riverWidth) {
+            type = 'water';
+          }
+
+          // 중앙 하부의 작은 호수.
+          const lakeDist = Math.hypot(x - 1540, y - 1770);
+          if (lakeDist < 245) {
+            type = 'water';
+          }
+
+          // 고지대: 강/호수와 겹치면 물을 우선.
+          const hillA = Math.hypot((x - 780) / 1.15, y - 760);
+          const hillB = Math.hypot((x - 2320) / 1.2, y - 820);
+          const hillC = Math.hypot((x - 1580) / 1.0, y - 430);
+
+          if (type !== 'water' &&
+              (hillA < 360 || hillB < 380 || hillC < 310)) {
+            type = 'hill';
+          }
+
+          // 경사로: 강을 건너는 주요 연결 지점.
+          const crossings = [
+            { x: 1020, y: 1200 },
+            { x: 1940, y: 1140 },
+            { x: 1540, y: 1490 }
+          ];
+
+          for (const c of crossings) {
+            if (Math.hypot(x - c.x, y - c.y) < 145) {
+              type = 'ramp';
+              break;
+            }
+          }
+
+          terrain[terrainIndex(col, row)] = type;
+        }
+      }
+
+      // 기지 주변은 넓은 평지로 확보.
+      [
+        { x: 350, y: WORLD_H - 350 },
+        { x: WORLD_W - 350, y: 350 }
+      ].forEach(base => {
+        const minCol = Math.floor((base.x - 420) / TERRAIN_TILE);
+        const maxCol = Math.floor((base.x + 420) / TERRAIN_TILE);
+        const minRow = Math.floor((base.y - 420) / TERRAIN_TILE);
+        const maxRow = Math.floor((base.y + 420) / TERRAIN_TILE);
+
+        for (let row = minRow; row <= maxRow; row++) {
+          for (let col = minCol; col <= maxCol; col++) {
+            if (col < 0 || row < 0 || col >= TERRAIN_COLS || row >= TERRAIN_ROWS) continue;
+            if (Math.hypot(
+              col * TERRAIN_TILE + TERRAIN_TILE / 2 - base.x,
+              row * TERRAIN_TILE + TERRAIN_TILE / 2 - base.y
+            ) < 340) {
+              terrain[terrainIndex(col, row)] = 'grass';
+            }
+          }
+        }
+      });
+    }
+
+    function getTerrainTypeAt(x, y) {
+      const col = Math.floor(x / TERRAIN_TILE);
+      const row = Math.floor(y / TERRAIN_TILE);
+      if (col < 0 || row < 0 || col >= TERRAIN_COLS || row >= TERRAIN_ROWS) return 'grass';
+      return terrain[terrainIndex(col, row)] || 'grass';
+    }
+
+    function drawTerrain() {
+      const col0 = Math.max(0, Math.floor(camX / TERRAIN_TILE) - 1);
+      const col1 = Math.min(TERRAIN_COLS - 1, Math.ceil((camX + VIEW_W) / TERRAIN_TILE) + 1);
+      const row0 = Math.max(0, Math.floor(camY / TERRAIN_TILE) - 1);
+      const row1 = Math.min(TERRAIN_ROWS - 1, Math.ceil((camY + VIEW_H) / TERRAIN_TILE) + 1);
+
+      for (let row = row0; row <= row1; row++) {
+        for (let col = col0; col <= col1; col++) {
+          const type = terrain[terrainIndex(col, row)] || 'grass';
+          const x = col * TERRAIN_TILE - camX;
+          const y = row * TERRAIN_TILE - camY;
+          const n = terrainRand(col, row);
+
+          // 지형 기본 색상.
+          if (type === 'grass') {
+            const shade = Math.floor(3 + n * 7);
+            ctx.fillStyle = `rgb(${28 + shade}, ${82 + shade * 3}, ${42 + shade * 2})`;
+          } else if (type === 'water') {
+            const shade = Math.floor(n * 12);
+            ctx.fillStyle = `rgb(${20 + shade}, ${80 + shade * 2}, ${125 + shade * 3})`;
+          } else if (type === 'hill') {
+            const shade = Math.floor(n * 9);
+            ctx.fillStyle = `rgb(${72 + shade}, ${92 + shade * 2}, ${52 + shade})`;
+          } else {
+            // 경사로는 바위/모래색의 통로.
+            const shade = Math.floor(n * 10);
+            ctx.fillStyle = `rgb(${126 + shade}, ${104 + shade}, ${70 + shade})`;
+          }
+
+          ctx.fillRect(x, y, TERRAIN_TILE + 1, TERRAIN_TILE + 1);
+
+          // 잔디 지표면 디테일.
+          if (type === 'grass') {
+            ctx.strokeStyle = `rgba(120, 170, 95, ${0.10 + n * 0.06})`;
+            ctx.lineWidth = 1;
+            for (let k = 0; k < 4; k++) {
+              const gx = x + 10 + terrainRand(col + k, row + 13) * (TERRAIN_TILE - 20);
+              const gy = y + 12 + terrainRand(col + 19, row + k) * (TERRAIN_TILE - 24);
+              ctx.beginPath();
+              ctx.moveTo(gx, gy + 4);
+              ctx.lineTo(gx + 2, gy);
+              ctx.stroke();
+            }
+          }
+
+          // 물결.
+          if (type === 'water') {
+            ctx.strokeStyle = 'rgba(145, 220, 240, 0.22)';
+            ctx.lineWidth = 1;
+            for (let k = 0; k < 3; k++) {
+              const wy = y + 18 + k * 22 + terrainRand(col + 3, row + k + 30) * 6;
+              ctx.beginPath();
+              ctx.moveTo(x + 10, wy);
+              ctx.quadraticCurveTo(
+                x + TERRAIN_TILE / 2,
+                wy - 5,
+                x + TERRAIN_TILE - 10,
+                wy
+              );
+              ctx.stroke();
+            }
+          }
+
+          // 언덕의 층층이 보이는 지형 윤곽.
+          if (type === 'hill') {
+            ctx.strokeStyle = 'rgba(25, 55, 35, 0.34)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.ellipse(
+              x + TERRAIN_TILE * 0.52,
+              y + TERRAIN_TILE * 0.54,
+              26 + n * 10,
+              18 + n * 8,
+              0,
+              0,
+              Math.PI * 2
+            );
+            ctx.stroke();
+
+            ctx.strokeStyle = 'rgba(150, 160, 100, 0.18)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.ellipse(
+              x + TERRAIN_TILE * 0.53,
+              y + TERRAIN_TILE * 0.50,
+              13 + n * 5,
+              9 + n * 4,
+              0,
+              0,
+              Math.PI * 2
+            );
+            ctx.stroke();
+          }
+
+          // 경사로의 진행 방향과 가장자리.
+          if (type === 'ramp') {
+            ctx.strokeStyle = 'rgba(75, 55, 35, 0.45)';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(x + 8, y + TERRAIN_TILE - 8);
+            ctx.lineTo(x + TERRAIN_TILE - 8, y + 8);
+            ctx.stroke();
+
+            ctx.strokeStyle = 'rgba(205, 179, 125, 0.55)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x + 18, y + TERRAIN_TILE - 5);
+            ctx.lineTo(x + TERRAIN_TILE - 5, y + 18);
+            ctx.stroke();
+          }
+
+          // 지형 타일 사이를 자연스럽게 연결하는 약한 음영.
+          ctx.strokeStyle = 'rgba(0, 0, 0, 0.08)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x, y, TERRAIN_TILE, TERRAIN_TILE);
+        }
+      }
+
+      // 강의 가장자리에 얕은 해안선.
+      const shoreCol0 = Math.max(0, Math.floor(camX / TERRAIN_TILE) - 2);
+      const shoreCol1 = Math.min(TERRAIN_COLS - 1, Math.ceil((camX + VIEW_W) / TERRAIN_TILE) + 2);
+      const shoreRow0 = Math.max(0, Math.floor(camY / TERRAIN_TILE) - 2);
+      const shoreRow1 = Math.min(TERRAIN_ROWS - 1, Math.ceil((camY + VIEW_H) / TERRAIN_TILE) + 2);
+
+      ctx.strokeStyle = 'rgba(205, 190, 125, 0.24)';
+      ctx.lineWidth = 2;
+
+      for (let row = shoreRow0; row <= shoreRow1; row++) {
+        for (let col = shoreCol0; col <= shoreCol1; col++) {
+          if (terrain[terrainIndex(col, row)] !== 'water') continue;
+
+          const x = col * TERRAIN_TILE - camX;
+          const y = row * TERRAIN_TILE - camY;
+
+          const neigh = [
+            [col - 1, row], [col + 1, row],
+            [col, row - 1], [col, row + 1]
+          ];
+
+          neigh.forEach(([nc, nr]) => {
+            if (nc < 0 || nr < 0 || nc >= TERRAIN_COLS || nr >= TERRAIN_ROWS) return;
+            if (terrain[terrainIndex(nc, nr)] === 'water') return;
+
+            if (nc < col) {
+              ctx.beginPath();
+              ctx.moveTo(x, y);
+              ctx.lineTo(x, y + TERRAIN_TILE);
+              ctx.stroke();
+            } else if (nc > col) {
+              ctx.beginPath();
+              ctx.moveTo(x + TERRAIN_TILE, y);
+              ctx.lineTo(x + TERRAIN_TILE, y + TERRAIN_TILE);
+              ctx.stroke();
+            } else if (nr < row) {
+              ctx.beginPath();
+              ctx.moveTo(x, y);
+              ctx.lineTo(x + TERRAIN_TILE, y);
+              ctx.stroke();
+            } else if (nr > row) {
+              ctx.beginPath();
+              ctx.moveTo(x, y + TERRAIN_TILE);
+              ctx.lineTo(x + TERRAIN_TILE, y + TERRAIN_TILE);
+              ctx.stroke();
+            }
+          });
+        }
+      }
+    }
+
+
     // 전장의 안개(Fog of War)
     const FOG_TILE = 80;
     const FOG_COLS = Math.ceil(WORLD_W / FOG_TILE);
@@ -788,6 +1068,8 @@ function assignBestResource(scv) {
       enemyAI.initialized = false; enemyAI.phase = 'OPENING'; enemyAI.timer = 0; enemyAI.attackTimer = 0; enemyAI.rallyTimer = 0; enemyAI.attackCount = 0; enemyAI.threatened = false; enemyAI.attackTarget = null; enemyAI.lastAttackSize = 0; enemyAI.rallyPoint = null;
       tech = { barracks: false, academy: false, factory: false, armory: false, starport: false, lab: false };
 
+      generateTerrain();
+
       const pX = 350, pY = WORLD_H - 350;
       spawnEntity('hq', 'player', pX, pY);
       spawnCurvedResources(pX, pY, -Math.PI * 0.45, Math.PI * 0.05, 140);
@@ -1127,19 +1409,57 @@ function assignBestResource(scv) {
       const scv = enemyFreeSCV();
       if (!hq || !scv) return null;
 
-      const spots = {
-        depot: { x: hq.x - 80, y: hq.y + 90 },
-        barracks: { x: hq.x - 115, y: hq.y + 70 },
-        academy: { x: hq.x - 125, y: hq.y - 55 },
-        factory: { x: hq.x - 135, y: hq.y - 105 },
-        armory: { x: hq.x - 200, y: hq.y - 30 },
-        starport: { x: hq.x - 190, y: hq.y + 105 },
-        lab: { x: hq.x - 210, y: hq.y + 155 },
-        bunker: { x: hq.x - 65, y: hq.y + 150 },
-        turret: { x: hq.x - 55, y: hq.y + 185 }
+      // 건물별 우선 배치 영역. 고정 좌표 하나만 쓰지 않고
+      // 주변 후보지를 순회해서 서로 겹치지 않는 위치를 찾는다.
+      const anchor = {
+        depot:   { x: hq.x - 85,  y: hq.y + 85 },
+        barracks:{ x: hq.x - 120, y: hq.y + 55 },
+        academy: { x: hq.x - 125, y: hq.y - 70 },
+        factory: { x: hq.x - 140, y: hq.y - 120 },
+        armory:  { x: hq.x - 200, y: hq.y - 35 },
+        starport:{ x: hq.x - 205, y: hq.y + 105 },
+        lab:     { x: hq.x - 215, y: hq.y + 165 },
+        bunker:  { x: hq.x - 65,  y: hq.y + 160 },
+        turret:  { x: hq.x - 55,  y: hq.y + 215 }
+      }[type];
+
+      if (!anchor) return null;
+
+      const candidateOffsets = [
+        [0, 0], [-70, 0], [70, 0], [0, -70], [0, 70],
+        [-70, -70], [70, -70], [-70, 70], [70, 70],
+        [-140, 0], [140, 0], [0, -140], [0, 140],
+        [-140, -70], [140, -70], [-140, 70], [140, 70]
+      ];
+
+      const radiusByType = {
+        depot: 24, barracks: 34, academy: 32, factory: 36,
+        armory: 34, starport: 40, lab: 42, bunker: 30, turret: 26, hq: 48
       };
 
-      return spots[type] ? { scv, pos: spots[type] } : null;
+      const newRadius = radiusByType[type] || 30;
+
+      for (const [ox, oy] of candidateOffsets) {
+        const px = Math.max(80, Math.min(WORLD_W - 80, anchor.x + ox));
+        const py = Math.max(80, Math.min(WORLD_H - 80, anchor.y + oy));
+
+        // 기존 적 건물/건설 예정 건물과 충분히 떨어져 있어야 한다.
+        const occupied = entities.some(e => {
+          if (e.faction !== 'enemy') return false;
+          if (e.type === 'resource_min' || e.type === 'resource_gas' || e.type === 'obstacle') return false;
+
+          const requiredGap = newRadius + (e.radius || 20) + 18;
+          return Math.hypot(e.x - px, e.y - py) < requiredGap;
+        });
+
+        if (!occupied) {
+          // 사령부와 너무 가까워서 출입을 막는 위치는 피한다.
+          if (Math.hypot(hq.x - px, hq.y - py) < (hq.radius + newRadius + 20)) continue;
+          return { scv, pos: { x: px, y: py } };
+        }
+      }
+
+      return null;
     }
 
     function enemyBuild(type, minCost, gasCost = 0, time = 500) {
@@ -1160,6 +1480,149 @@ function assignBestResource(scv) {
       resources.enemyGas -= gasCost;
       startBuildingConstruction(type, 'enemy', plan.pos.x, plan.pos.y, plan.scv, time);
       return true;
+    }
+
+    function enemyBuildingCount(type, includeConstruction = true) {
+      return entities.filter(e =>
+        e.faction === 'enemy' &&
+        e.type === type &&
+        (includeConstruction || !e.isUnderConstruction)
+      ).length;
+    }
+
+    function enemyConstructionCount() {
+      return entities.filter(e =>
+        e.faction === 'enemy' && e.isUnderConstruction
+      ).length;
+    }
+
+    function enemyGasMinerBalance() {
+      const refinery = entities.find(e =>
+        e.faction === 'enemy' &&
+        e.type === 'refinery' &&
+        !e.isUnderConstruction
+      );
+
+      if (!refinery) return;
+
+      const gasNode = entities.find(e =>
+        e.type === 'resource_gas' &&
+        e.hasRefinery &&
+        Math.hypot(e.x - refinery.x, e.y - refinery.y) < 50 &&
+        e.amount > 0
+      );
+
+      if (!gasNode) return;
+
+      const gasMiners = entities.filter(e =>
+        e.faction === 'enemy' &&
+        e.type === 'scv' &&
+        e.assignedRes === gasNode &&
+        !e.isBuildingSCV &&
+        !e.isManualMove
+      );
+
+      const desired = resources.enemyGas < 180 ? 3 : 1;
+
+      if (gasMiners.length < desired) {
+        const candidates = entities.filter(e =>
+          e.faction === 'enemy' &&
+          e.type === 'scv' &&
+          !e.isBuildingSCV &&
+          !e.isManualMove &&
+          e.assignedRes !== gasNode
+        );
+
+        candidates
+          .sort((a, b) =>
+            Math.hypot(a.x - gasNode.x, a.y - gasNode.y) -
+            Math.hypot(b.x - gasNode.x, b.y - gasNode.y)
+          )
+          .slice(0, desired - gasMiners.length)
+          .forEach(scv => {
+            scv.assignedRes = gasNode;
+            scv.assignedBaseId = refinery.id;
+            scv.mineTimer = 0;
+            scv.cargo = null;
+          });
+      }
+    }
+
+    function enemyBuildPriority() {
+      const supply = getSupplyInfo('enemy');
+      const scvCount = enemyUnits('scv').length;
+      const combatCount = enemyCombatUnits().length;
+      const tech = enemyTechState();
+      let built = 0;
+      const maxBuildsPerThink = 2;
+
+      const tryBuild = (type, min, gas, time) => {
+        if (built >= maxBuildsPerThink) return false;
+        if (enemyConstructionCount() >= 2) return false;
+        if (enemyBuild(type, min, gas, time)) {
+          built++;
+          return true;
+        }
+        return false;
+      };
+
+      // 보급은 막히기 전에 미리 확보한다.
+      if (supply.max > 0 && supply.current >= supply.max - 2 && resources.enemyMin >= 30) {
+        tryBuild('depot', 30, 0, 450);
+      }
+
+      // 생산 기반을 적극적으로 확보한다.
+      const desiredBarracks =
+        enemyAI.mode === 'RUSH' ? 3 :
+        enemyAI.mode === 'BIO_PRESSURE' ? 4 : 2;
+
+      if (tech.barracks && enemyBuildingCount('barracks') < desiredBarracks &&
+          resources.enemyMin >= 40) {
+        tryBuild('barracks', 40, 0, 600);
+      }
+
+      if (tech.barracks && !tech.academy &&
+          resources.enemyMin >= 50 && scvCount >= 7) {
+        tryBuild('academy', 50, 0, 650);
+      }
+
+      if (tech.barracks && !tech.factory &&
+          resources.enemyMin >= 60 && resources.enemyGas >= 20 &&
+          scvCount >= 8) {
+        tryBuild('factory', 60, 20, 850);
+      }
+
+      if (tech.factory && !tech.armory &&
+          resources.enemyMin >= 70 && resources.enemyGas >= 30 &&
+          scvCount >= 10) {
+        tryBuild('armory', 70, 30, 900);
+      }
+
+      const desiredFactories = enemyAI.mode === 'MECH' ? 3 : 2;
+      if (tech.factory &&
+          enemyBuildingCount('factory') < desiredFactories &&
+          resources.enemyMin >= 60 && resources.enemyGas >= 20) {
+        tryBuild('factory', 60, 20, 850);
+      }
+
+      if (tech.factory && enemyAI.mode === 'AIR' && !tech.starport &&
+          resources.enemyMin >= 80 && resources.enemyGas >= 40) {
+        tryBuild('starport', 80, 40, 1000);
+      }
+
+      if (tech.starport && !tech.lab &&
+          resources.enemyMin >= 100 && resources.enemyGas >= 50) {
+        tryBuild('lab', 100, 50, 1100);
+      }
+
+      // 본진 방어선도 한 개 정도는 미리 마련한다.
+      if (enemyBuildingCount('bunker') < 1 &&
+          resources.enemyMin >= 45 &&
+          (enemyAI.threatened || combatCount >= 6)) {
+        tryBuild('bunker', 45, 0, 550);
+      }
+
+      return built;
     }
 
     function enemyProduce(unitType, maxQueue = 2) {
@@ -1234,6 +1697,13 @@ function assignBestResource(scv) {
       // React immediately to an early attack.
       enemyDefendBase();
 
+      // 가스 확보를 위해 일부 SCV를 가스에 유지한다.
+      enemyGasMinerBalance();
+
+      // 건물은 자원이 많이 쌓인 상태에서 생산에 밀려 계속 뒤로 가지 않도록
+      // 병력 생산보다 먼저 판단한다.
+      const strategicBuilds = enemyBuildPriority();
+
       // The strategic controller thinks in chunky ticks, like a script-driven AI.
       const thinkInterval = currentDifficulty.buildInterval;
       if (enemyAI.timer % thinkInterval !== 0) {
@@ -1269,9 +1739,15 @@ function assignBestResource(scv) {
         enemyAI.mode === 'MECH' ? 16 : 18;
 
       if (scvCount < workerTarget && resources.enemyMin >= 20) {
-        if (enemyProduce('scv', 2)) {
-          enemySetState('⛏️ SCV 생산');
-          return;
+        const reserveForBuild =
+          (!tech.barracks ? 40 : 0) +
+          (!tech.factory && scvCount >= 8 ? 60 : 0);
+
+        if (resources.enemyMin - 20 >= reserveForBuild) {
+          if (enemyProduce('scv', 2)) {
+            enemySetState('⛏️ SCV 생산');
+            return;
+          }
         }
       }
 
@@ -1816,10 +2292,11 @@ function assignBestResource(scv) {
     function render() {
       ctx.clearRect(0, 0, VIEW_W, VIEW_H);
 
-      ctx.fillStyle = '#05070a';
-      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+      // 실제 지형을 먼저 그린다.
+      drawTerrain();
 
-      ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+      // 기존 RTS 스타일 격자는 아주 약하게 유지한다.
+      ctx.strokeStyle = 'rgba(255,255,255,0.035)';
       ctx.lineWidth = 1;
 
       const startX = -(camX % 40);
@@ -1837,6 +2314,31 @@ function assignBestResource(scv) {
         ctx.moveTo(0, y);
         ctx.lineTo(VIEW_W, y);
         ctx.stroke();
+      }
+
+      // 지형 장식: 바위/나무 군락을 타일 기반으로 가볍게 표시.
+      // 엔티티가 아니므로 충돌/AI/자원에는 영향을 주지 않는다.
+      const decoCol0 = Math.max(0, Math.floor(camX / TERRAIN_TILE) - 1);
+      const decoCol1 = Math.min(TERRAIN_COLS - 1, Math.ceil((camX + VIEW_W) / TERRAIN_TILE) + 1);
+      const decoRow0 = Math.max(0, Math.floor(camY / TERRAIN_TILE) - 1);
+      const decoRow1 = Math.min(TERRAIN_ROWS - 1, Math.ceil((camY + VIEW_H) / TERRAIN_TILE) + 1);
+
+      for (let row = decoRow0; row <= decoRow1; row++) {
+        for (let col = decoCol0; col <= decoCol1; col++) {
+          const type = terrain[terrainIndex(col, row)];
+          const n = terrainRand(col + 100, row + 200);
+          if (type !== 'grass' || n < 0.72) continue;
+
+          const sx = col * TERRAIN_TILE - camX + 15 + n * 35;
+          const sy = row * TERRAIN_TILE - camY + 18 + terrainRand(col + 300, row + 400) * 38;
+
+          ctx.font = '22px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.globalAlpha = 0.72;
+          ctx.fillText(n > 0.88 ? '🌲' : '🌿', sx, sy);
+          ctx.globalAlpha = 1;
+        }
       }
 
       const buildings = entities.filter(e => e.speed === 0);
@@ -1967,8 +2469,32 @@ function assignBestResource(scv) {
       const mmX = VIEW_W - mmW - 10;
       const mmY = VIEW_H - mmH - 10;
 
-      ctx.fillStyle = 'rgba(5, 7, 10, 0.92)';
+      // 미니맵 지형
+      ctx.fillStyle = '#244c2e';
       ctx.fillRect(mmX, mmY, mmW, mmH);
+
+      for (let row = 0; row < TERRAIN_ROWS; row++) {
+        for (let col = 0; col < TERRAIN_COLS; col++) {
+          const type = terrain[terrainIndex(col, row)] || 'grass';
+
+          ctx.fillStyle =
+            type === 'water' ? '#185a82' :
+            type === 'hill' ? '#566844' :
+            type === 'ramp' ? '#92784e' :
+            '#2b6838';
+
+          const mx0 = mmX + (col / TERRAIN_COLS) * mmW;
+          const my0 = mmY + (row / TERRAIN_ROWS) * mmH;
+
+          ctx.fillRect(
+            mx0,
+            my0,
+            mmW / TERRAIN_COLS + 0.5,
+            mmH / TERRAIN_ROWS + 0.5
+          );
+        }
+      }
+
       ctx.strokeStyle = '#30363d';
       ctx.strokeRect(mmX, mmY, mmW, mmH);
 
