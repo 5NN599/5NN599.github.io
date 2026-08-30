@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>미니지 - 갤럭시 블리츠RTS</title>
+  <title>갤럭시 블리츠: 스텔라 워 (Galactic Blitz)</title>
   <style>
     :root { --bg: #f8f9fa; --text: #333; --canvas-bg: #05070a; --border: #30363d; --btn-bg: #fff; }
     [data-theme="dark"] { --bg: #0d1117; --text: #c9d1d9; --canvas-bg: #020305; --border: #30363d; --btn-bg: #21262d; }
@@ -185,7 +185,6 @@
           gain.gain.setValueAtTime(0.18, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
           osc.start(now); osc.stop(now + 0.2);
         } else if (type === 'mine') {
-          // SCV 채굴 전용 찌릿한 금속성 사운드
           osc.type = 'triangle'; osc.frequency.setValueAtTime(800, now); osc.frequency.exponentialRampToValueAtTime(1400, now + 0.06);
           gain.gain.setValueAtTime(0.08, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.06);
           osc.start(now); osc.stop(now + 0.06);
@@ -500,13 +499,11 @@
       spawnEntity('resource_gas', 'neutral', gx, gy);
     }
 
-    // 자바스크립트 기반 지형지물(암석, 산맥 장애물) 동적 배치 함수
     function spawnObstacles() {
       const obsEmojis = ['🪨', '⛰️', '🌋', '🪵'];
       for (let i = 0; i < 30; i++) {
         let ox = Math.random() * (WORLD_W - 400) + 200;
         let oy = Math.random() * (WORLD_H - 400) + 200;
-        // 기지 주변 안전지대 확보
         if (Math.hypot(ox - 350, oy - (WORLD_H - 350)) < 450) continue;
         if (Math.hypot(ox - (WORLD_W - 350), oy - 350) < 450) continue;
 
@@ -545,9 +542,7 @@
       spawnCurvedResources(1100, 1500, Math.PI * 0.2, Math.PI * 0.7, 120);
       spawnCurvedResources(2100, 900, -Math.PI * 0.8, -Math.PI * 0.3, 120);
 
-      // 자바스크립트 지형지물 배치 실행
       spawnObstacles();
-
       updateUI();
     }
 
@@ -712,12 +707,44 @@
           }
         }
 
-        // SCV 자원 채굴 (이펙트 & 효과음 강화)
+        // SCV 수리 / 분산 자원 채굴 로직
         if (e.type === 'scv' && !e.isBuildingSCV) {
           if (!e.isManualMove) {
-            let nearestHQ = entities.find(h => h.type === 'hq' && h.faction === e.faction && !h.isUnderConstruction);
-            
-            if (e.cargo) {
+            // 1. 자동 수리 기능: 근처 손상된 아군 건물/기계 유닛 수리
+            let damagedTarget = null;
+            if (!e.cargo) {
+              damagedTarget = entities.find(other => 
+                other.faction === e.faction && 
+                other.id !== e.id && 
+                !other.isUnderConstruction && 
+                other.hp < other.maxHp && 
+                Math.hypot(other.x - e.x, other.y - e.y) <= 200
+              );
+            }
+
+            if (damagedTarget) {
+              const distRepair = Math.hypot(damagedTarget.x - e.x, damagedTarget.y - e.y);
+              if (distRepair > damagedTarget.radius + 8) {
+                e.x += ((damagedTarget.x - e.x) / distRepair) * e.speed;
+                e.y += ((damagedTarget.y - e.y) / distRepair) * e.speed;
+              } else {
+                damagedTarget.hp = Math.min(damagedTarget.maxHp, damagedTarget.hp + 0.4);
+                if (Math.random() < 0.25) {
+                  particles.push({
+                    x: damagedTarget.x + (Math.random()-0.5)*damagedTarget.radius,
+                    y: damagedTarget.y + (Math.random()-0.5)*damagedTarget.radius,
+                    vx: (Math.random()-0.5)*2,
+                    vy: (Math.random()-0.5)*2,
+                    life: 12,
+                    text: '🔧'
+                  });
+                  if (e.faction === 'player') playSound('mine');
+                }
+              }
+            } 
+            // 2. 자원 반납
+            else if (e.cargo) {
+              let nearestHQ = entities.find(h => h.type === 'hq' && h.faction === e.faction && !h.isUnderConstruction);
               if (nearestHQ) {
                 const distHQ = Math.hypot(nearestHQ.x - e.x, nearestHQ.y - e.y);
                 if (distHQ > nearestHQ.radius + 10) {
@@ -735,8 +762,30 @@
                   updateUI();
                 }
               }
-            } else {
-              let resNode = e.assignedRes || entities.find(r => (r.type === 'resource_min' || (r.type === 'resource_gas' && r.hasRefinery)) && Math.hypot(r.x - e.x, r.y - e.y) < 300);
+            } 
+            // 3. 자원 채굴 (스마트 분산 채굴 방식)
+            else {
+              let resNode = e.assignedRes;
+
+              // 노드가 없거나 고갈되면 일꾼이 가장 적게 몰린 노드로 최적 배분
+              if (!resNode || resNode.amount <= 0 || !entities.includes(resNode)) {
+                let availableRes = entities.filter(r => 
+                  (r.type === 'resource_min' || (r.type === 'resource_gas' && r.hasRefinery)) &&
+                  r.amount > 0 &&
+                  Math.hypot(r.x - e.x, r.y - e.y) < 450
+                );
+
+                if (availableRes.length > 0) {
+                  availableRes.sort((a, b) => {
+                    let countA = entities.filter(u => u.type === 'scv' && u.assignedRes === a).length;
+                    let countB = entities.filter(u => u.type === 'scv' && u.assignedRes === b).length;
+                    if (countA !== countB) return countA - countB;
+                    return Math.hypot(a.x - e.x, a.y - e.y) - Math.hypot(b.x - e.x, b.y - e.y);
+                  });
+                  resNode = e.assignedRes = availableRes[0];
+                }
+              }
+
               if (resNode) {
                 const distRes = Math.hypot(resNode.x - e.x, resNode.y - e.y);
                 if (distRes > resNode.radius + 5) {
@@ -744,7 +793,6 @@
                   e.y += ((resNode.y - e.y) / distRes) * e.speed;
                 } else {
                   e.mineTimer++;
-                  // 채굴 중 10프레임마다 불꽃/스파크 파티클 생성
                   if (e.mineTimer % 10 === 0) {
                     particles.push({
                       x: resNode.x + (Math.random()-0.5)*16,
@@ -761,7 +809,7 @@
                     const amount = resNode.type === 'resource_min' ? 8 : 6;
                     resNode.amount -= amount;
                     e.cargo = { type: resNode.resType, amount: amount };
-                    if (e.faction === 'player') playSound('mine'); // 채굴 완성음
+                    if (e.faction === 'player') playSound('mine');
                   }
                 }
               }
@@ -780,7 +828,7 @@
           }
         }
 
-        // [버그 수정] 사거리 무한 해결: 사거리 내 접근 후 공격 로직
+        // 유닛 전투 및 타겟 검증 로직
         if (e.attackRange > 0) {
           if (e.cooldown > 0) e.cooldown--;
 
@@ -801,12 +849,10 @@
 
           if (target) {
             const dist = Math.hypot(target.x - e.x, target.y - e.y);
-            // 사거리 밖이면 타겟을 향해 이동
             if (dist > e.attackRange) {
               e.x += ((target.x - e.x) / dist) * e.speed;
               e.y += ((target.y - e.y) / dist) * e.speed;
             } else {
-              // 사거리 안으로 들어왔을 때만 공격
               if (e.cooldown <= 0) {
                 e.cooldown = e.cooldownMax;
                 if (e.isHealer) {
