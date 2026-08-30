@@ -536,7 +536,8 @@ function assignBestResource(scv) {
       const enemySquad = entities.filter(e => e.faction === 'enemy' && Object.keys(UNIT_SPECS).includes(e.type));
       document.getElementById('ai-squad').innerText = enemySquad.length;
       
-      document.getElementById('ai-state-text').innerText = '🟢 활성화됨';
+      const aiStateEl = document.getElementById('ai-state-text');
+      if (aiStateEl) aiStateEl.innerText = '🟢 AI';
 
       Object.keys(UNIT_SPECS).forEach(uType => {
         const btn = document.getElementById(`btn-${uType}`);
