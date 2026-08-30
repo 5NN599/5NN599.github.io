@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>갤럭시 블리츠: 스텔라 워 (Galactic Blitz)</title>
+  <title>미니지 - 갤럭시 블리츠RTS</title>
   <style>
     :root { --bg: #f8f9fa; --text: #333; --canvas-bg: #05070a; --border: #30363d; --btn-bg: #fff; }
     [data-theme="dark"] { --bg: #0d1117; --text: #c9d1d9; --canvas-bg: #020305; --border: #30363d; --btn-bg: #21262d; }
@@ -41,7 +41,7 @@
     <span>🌊 웨이브: <span id="wave-num">1</span></span>
     <span>🏰 사령부: <span id="hq-count">1</span>개</span>
     <span>⚔️ 적: <span id="ai-squad">0</span> (<span id="ai-supply">0/10</span>)</span>
-    <span>🎯 AI: <span id="ai-state-text">탐색 중</span></span>
+    <span>🎯 AI: <span id="ai-state-text">비활성화됨</span></span>
     <select id="diff-select" class="diff-select" onchange="changeDifficulty(this.value)">
       <option value="EASY">난이도: 쉬움</option>
       <option value="NORMAL" selected>난이도: 보통</option>
@@ -122,6 +122,7 @@
     let entities = [];
     let bullets = [];
     let particles = [];
+    let sparks = []; // 건설 용접 스파크 입자
     let selectedUnits = [];
     let keys = {};
 
@@ -130,10 +131,10 @@
     let dragEndScreen = { x: 0, y: 0 };
     let isMinimapDragging = false;
 
-    let aiStateMode = 'expand';
+    let aiStateMode = 'disabled';
 
     const UNIT_SPECS = {
-      scv:       { min: 20,  gas: 0,   supply: 1, req: true,          bType: 'hq',       time: 70,  name: 'SCV' },
+      scv:       { min: 20,  gas: 0,   supply: 1, req: true,         bType: 'hq',       time: 70,  name: 'SCV' },
       marine:    { min: 15,  gas: 0,   supply: 1, req: 'barracks',    bType: 'barracks', time: 80,  name: '보병' },
       medic:     { min: 25,  gas: 0,   supply: 1, req: 'academy',     bType: 'barracks', time: 100, name: '의무병' },
       fighter:   { min: 30,  gas: 0,   supply: 2, req: 'barracks',    bType: 'barracks', time: 120, name: '전투기' },
@@ -339,7 +340,8 @@
         buildMode = null; resetBuildButtons(); return;
       }
 
-      const buildTimes = { hq: 400, depot: 150, barracks: 200, academy: 220, refinery: 150, factory: 280, armory: 300, starport: 340, lab: 380, bunker: 180, turret: 160 };
+      // 건설 시간 대폭 연장 (프레임 단위)
+      const buildTimes = { hq: 1200, depot: 450, barracks: 600, academy: 650, refinery: 450, factory: 850, armory: 900, starport: 1000, lab: 1100, bunker: 550, turret: 500 };
 
       if (buildMode === 'hq' && resources.min >= 150) {
         resources.min -= 150; startBuildingConstruction('hq', 'player', wx, wy, freeSCV, buildTimes.hq);
@@ -378,7 +380,7 @@
       b.buildProgress = 0; 
       b.buildMaxTime = maxTime;
       b.builderSCVId = scv ? scv.id : null;
-      b.hp = 1; // 초기에 1 HP로 터를 잡음
+      b.hp = 1;
 
       if (scv) {
         scv.isBuildingSCV = true; 
@@ -387,6 +389,19 @@
         scv.cargo = null; 
         scv.mineTimer = 0;
         scv.buildingTargetId = b.id;
+      }
+    }
+
+    function createSparks(x, y) {
+      for (let i = 0; i < 2; i++) {
+        sparks.push({
+          x: x + (Math.random() - 0.5) * 10,
+          y: y + (Math.random() - 0.5) * 10,
+          vx: (Math.random() - 0.5) * 3,
+          vy: (Math.random() - 0.5) * 3,
+          life: 8 + Math.random() * 8,
+          color: Math.random() > 0.3 ? '#fcc419' : '#ffffff'
+        });
       }
     }
 
@@ -434,11 +449,7 @@
       const enemySquad = entities.filter(e => e.faction === 'enemy' && Object.keys(UNIT_SPECS).includes(e.type));
       document.getElementById('ai-squad').innerText = enemySquad.length;
       
-      let stateLabel = '🛡️ 자원 탐색 및 주둔';
-      if (aiStateMode === 'expand') stateLabel = '🏰 멀티 확장 중';
-      else if (aiStateMode === 'attack') stateLabel = '💥 총공격 공세';
-      else if (aiStateMode === 'harass') stateLabel = '⚡ 자원 기습 게릴라';
-      document.getElementById('ai-state-text').innerText = stateLabel;
+      document.getElementById('ai-state-text').innerText = '🛑 비활성화됨';
 
       Object.keys(UNIT_SPECS).forEach(uType => {
         const btn = document.getElementById(`btn-${uType}`);
@@ -529,7 +540,7 @@
     }
 
     function initGame() {
-      entities = []; bullets = []; particles = []; selectedUnits = [];
+      entities = []; bullets = []; particles = []; sparks = []; selectedUnits = [];
       resources = { min: 200, gas: 0, enemyMin: 250, enemyGas: 0 };
       wave = 1; waveTimer = 0; gameOver = false;
       tech = { barracks: false, academy: false, factory: false, armory: false, starport: false, lab: false };
@@ -568,478 +579,319 @@
       camY = Math.max(0, Math.min(WORLD_H - VIEW_H, camY));
     }
 
-    let aiTimer = 0;
+    // 적 AI 완전히 비활성화 (아무것도 안 함)
     function updateHumanlikeAI() {
-      aiTimer++;
-      if (aiTimer % currentDifficulty.buildInterval !== 0) return;
+      return;
+    }
 
-      const enemyHQs = entities.filter(e => e.type === 'hq' && e.faction === 'enemy' && !e.isUnderConstruction);
-      if (enemyHQs.length === 0) return;
+    function updateGameLogic() {
+      if (gameOver) return;
 
-      const enemySquad = entities.filter(e => e.faction === 'enemy' && Object.keys(UNIT_SPECS).includes(e.type));
-      const playerHQs = entities.filter(e => e.type === 'hq' && e.faction === 'player');
-      const aiSupply = getSupplyInfo('enemy');
+      updateCamera();
+      updateHumanlikeAI();
 
-      if (aiSupply.current + 3 >= aiSupply.max && resources.enemyMin >= 30 && aiSupply.max < 200) {
-        const freeAISCV = entities.find(e => e.faction === 'enemy' && e.type === 'scv' && !e.isBuildingSCV);
-        if (freeAISCV) {
-          const mainHQ = enemyHQs[0];
-          resources.enemyMin -= 30;
-          startBuildingConstruction('depot', 'enemy', mainHQ.x + (Math.random()-0.5)*160, mainHQ.y + (Math.random()-0.5)*160, freeAISCV, 150);
-          return;
-        }
-      }
+      // 테크 트리 갱신
+      tech.barracks = entities.some(e => e.faction === 'player' && e.type === 'barracks' && !e.isUnderConstruction);
+      tech.academy = entities.some(e => e.faction === 'player' && e.type === 'academy' && !e.isUnderConstruction);
+      tech.factory = entities.some(e => e.faction === 'player' && e.type === 'factory' && !e.isUnderConstruction);
+      tech.armory = entities.some(e => e.faction === 'player' && e.type === 'armory' && !e.isUnderConstruction);
+      tech.starport = entities.some(e => e.faction === 'player' && e.type === 'starport' && !e.isUnderConstruction);
+      tech.lab = entities.some(e => e.faction === 'player' && e.type === 'lab' && !e.isUnderConstruction);
 
-      if (resources.enemyMin >= 150) {
-        const freeAISCV = entities.find(e => e.faction === 'enemy' && e.type === 'scv' && !e.isBuildingSCV);
-        if (freeAISCV) {
-          const neutralNodes = entities.filter(e => e.type === 'resource_min' && e.amount > 500);
-          const unownedSpot = neutralNodes.find(node => !entities.some(b => b.type === 'hq' && Math.hypot(b.x - node.x, b.y - node.y) < 350));
-
-          if (unownedSpot) {
-            aiStateMode = 'expand';
-            resources.enemyMin -= 150;
-            startBuildingConstruction('hq', 'enemy', unownedSpot.x - 70, unownedSpot.y - 70, freeAISCV, 400);
+      // 개체 업데이트
+      entities.forEach(ent => {
+        // 건물 생산 대기열
+        if (ent.productionQueue && ent.productionQueue.length > 0) {
+          let item = ent.productionQueue[0];
+          item.progress++;
+          if (item.progress >= item.maxTime) {
+            spawnEntity(item.unitType, ent.faction, ent.x + (Math.random() - 0.5) * 30, ent.y + ent.radius + 15);
+            ent.productionQueue.shift();
+            playSound('produce');
           }
         }
-      }
 
-      if (enemySquad.length >= 8) {
-        aiStateMode = 'attack';
-        const target = playerHQs[Math.floor(Math.random() * playerHQs.length)] || entities.find(e => e.faction === 'player');
-        if (target) {
-          enemySquad.forEach(u => {
-            if (!u.moveTarget) u.moveTarget = { x: target.x + (Math.random()-0.5)*100, y: target.y + (Math.random()-0.5)*100 };
-          });
+        // SCV 건설 및 채굴 로직
+        if (ent.type === 'scv') {
+          if (ent.isBuildingSCV && ent.buildingTargetId) {
+            const b = entities.find(e => e.id === ent.buildingTargetId);
+            if (b && b.isUnderConstruction) {
+              const dist = Math.hypot(b.x - ent.x, b.y - ent.y);
+              if (dist > b.radius + 10) {
+                const angle = Math.atan2(b.y - ent.y, b.x - ent.x);
+                ent.x += Math.cos(angle) * ent.speed;
+                ent.y += Math.sin(angle) * ent.speed;
+              } else {
+                // 건설 작업 중 스파크 생성
+                createSparks(ent.x, ent.y);
+                b.buildProgress++;
+                b.hp = Math.min(b.maxHp, Math.floor((b.buildProgress / b.buildMaxTime) * b.maxHp));
+                if (b.buildProgress >= b.buildMaxTime) {
+                  b.isUnderConstruction = false;
+                  b.hp = b.maxHp;
+                  ent.isBuildingSCV = false;
+                  ent.buildingTargetId = null;
+                  showToast("🏗️ 건물 건설 완료!");
+                }
+              }
+            } else {
+              ent.isBuildingSCV = false;
+              ent.buildingTargetId = null;
+            }
+          } else if (!ent.isManualMove) {
+            // 자원 채굴
+            if (!ent.assignedRes) {
+              const nearest = entities.find(r => (r.type === 'resource_min' || (r.type === 'resource_gas' && r.hasRefinery)) && r.amount > 0);
+              if (nearest) ent.assignedRes = nearest;
+            }
+
+            if (ent.assignedRes && ent.assignedRes.amount > 0) {
+              const res = ent.assignedRes;
+              if (!ent.cargo) {
+                const dist = Math.hypot(res.x - ent.x, res.y - ent.y);
+                if (dist > res.radius + 5) {
+                  const angle = Math.atan2(res.y - ent.y, res.x - ent.x);
+                  ent.x += Math.cos(angle) * ent.speed;
+                  ent.y += Math.sin(angle) * ent.speed;
+                } else {
+                  ent.mineTimer++;
+                  if (ent.mineTimer >= 40) {
+                    ent.cargo = res.resType;
+                    res.amount -= 8;
+                    ent.mineTimer = 0;
+                    playSound('mine');
+                  }
+                }
+              } else {
+                const hq = entities.find(h => h.faction === ent.faction && h.type === 'hq' && !h.isUnderConstruction);
+                if (hq) {
+                  const dist = Math.hypot(hq.x - ent.x, hq.y - ent.y);
+                  if (dist > hq.radius + 5) {
+                    const angle = Math.atan2(hq.y - ent.y, hq.x - ent.x);
+                    ent.x += Math.cos(angle) * ent.speed;
+                    ent.y += Math.sin(angle) * ent.speed;
+                  } else {
+                    if (ent.cargo === 'min') {
+                      if (ent.faction === 'player') resources.min += 10;
+                      else resources.enemyMin += 10 * currentDifficulty.aiGatherRate;
+                    } else if (ent.cargo === 'gas') {
+                      if (ent.faction === 'player') resources.gas += 8;
+                      else resources.enemyGas += 8 * currentDifficulty.aiGatherRate;
+                    }
+                    ent.cargo = null;
+                  }
+                }
+              }
+            }
+          } else if (ent.moveTarget) {
+            const dist = Math.hypot(ent.moveTarget.x - ent.x, ent.moveTarget.y - ent.y);
+            if (dist > 3) {
+              const angle = Math.atan2(ent.moveTarget.y - ent.y, ent.moveTarget.x - ent.x);
+              ent.x += Math.cos(angle) * ent.speed;
+              ent.y += Math.sin(angle) * ent.speed;
+            } else {
+              ent.moveTarget = null;
+            }
+          }
         }
-      } else if (enemySquad.length >= 4 && Math.random() < 0.3) {
-        aiStateMode = 'harass';
-        const targetSCV = entities.find(e => e.faction === 'player' && e.type === 'scv');
-        if (targetSCV) {
-          enemySquad.forEach(u => { u.moveTarget = { x: targetSCV.x, y: targetSCV.y }; });
+
+        // 일반 유닛 이동 및 공격
+        if (ent.speed > 0 && ent.type !== 'scv') {
+          let target = ent.forcedTarget;
+          if (!target || target.hp <= 0) {
+            const opp = (ent.faction === 'player') ? 'enemy' : 'player';
+            target = entities.find(e => e.faction === opp && Math.hypot(e.x - ent.x, e.y - ent.y) <= ent.attackRange + 50);
+          }
+
+          if (target && target.hp > 0) {
+            const dist = Math.hypot(target.x - ent.x, target.y - ent.y);
+            if (dist > ent.attackRange) {
+              const angle = Math.atan2(target.y - ent.y, target.x - ent.x);
+              ent.x += Math.cos(angle) * ent.speed;
+              ent.y += Math.sin(angle) * ent.speed;
+            } else if (ent.cooldown <= 0) {
+              target.hp -= ent.damage;
+              ent.cooldown = ent.cooldownMax;
+              bullets.push({ x: ent.x, y: ent.y, tx: target.x, ty: target.y, life: 6 });
+              playSound('laser');
+              if (target.hp <= 0) playSound('explode');
+            }
+          } else if (ent.moveTarget) {
+            const dist = Math.hypot(ent.moveTarget.x - ent.x, ent.moveTarget.y - ent.y);
+            if (dist > 4) {
+              const angle = Math.atan2(ent.moveTarget.y - ent.y, ent.moveTarget.x - ent.x);
+              ent.x += Math.cos(angle) * ent.speed;
+              ent.y += Math.sin(angle) * ent.speed;
+            } else {
+              ent.moveTarget = null;
+            }
+          }
         }
+
+        if (ent.cooldown > 0) ent.cooldown--;
+      });
+
+      // 스파크 입자 업그레이드
+      for (let i = sparks.length - 1; i >= 0; i--) {
+        let p = sparks[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life--;
+        if (p.life <= 0) sparks.splice(i, 1);
       }
 
-      const eSCVs = entities.filter(e => e.type === 'scv' && e.faction === 'enemy');
-      if (eSCVs.length < enemyHQs.length * 6 && resources.enemyMin >= 20 && aiSupply.current + 1 <= aiSupply.max) {
-        let spawnHQ = enemyHQs[Math.floor(Math.random() * enemyHQs.length)];
-        resources.enemyMin -= 20;
-        spawnEntity('scv', 'enemy', spawnHQ.x - 30, spawnHQ.y + 30);
-      }
+      // 파괴된 엔티티 제거
+      entities = entities.filter(e => e.hp > 0 || e.type.startsWith('resource_') || e.type === 'obstacle');
 
-      const freeAISCV = eSCVs.find(s => !s.isBuildingSCV);
-      const mainHQ = enemyHQs[0];
-      const eBarracks = entities.find(e => e.type === 'barracks' && e.faction === 'enemy');
-      const eFactory = entities.find(e => e.type === 'factory' && e.faction === 'enemy');
-      const eStarport = entities.find(e => e.type === 'starport' && e.faction === 'enemy');
-
-      if (freeAISCV) {
-        if (!eBarracks && resources.enemyMin >= 40) {
-          resources.enemyMin -= 40; startBuildingConstruction('barracks', 'enemy', mainHQ.x - 100, mainHQ.y + 80, freeAISCV, 200);
-        } else if (eBarracks && !eFactory && resources.enemyMin >= 60 && resources.enemyGas >= 20) {
-          resources.enemyMin -= 60; resources.enemyGas -= 20; startBuildingConstruction('factory', 'enemy', mainHQ.x + 100, mainHQ.y + 80, freeAISCV, 280);
-        } else if (eFactory && !eStarport && resources.enemyMin >= 80 && resources.enemyGas >= 40) {
-          resources.enemyMin -= 80; resources.enemyGas -= 40; startBuildingConstruction('starport', 'enemy', mainHQ.x - 120, mainHQ.y - 80, freeAISCV, 340);
-        }
-      }
-
-      if (eStarport && resources.enemyMin >= 100 && resources.enemyGas >= 60 && aiSupply.current + 6 <= aiSupply.max) {
-        resources.enemyMin -= 100; resources.enemyGas -= 60; spawnEntity('carrier', 'enemy', eStarport.x - 30, eStarport.y + 30);
-      } else if (eFactory && resources.enemyMin >= 60 && resources.enemyGas >= 10 && aiSupply.current + 3 <= aiSupply.max) {
-        resources.enemyMin -= 60; resources.enemyGas -= 10; spawnEntity('tank', 'enemy', eFactory.x - 30, eFactory.y + 30);
-      } else if (eBarracks && resources.enemyMin >= 15 && aiSupply.current + 1 <= aiSupply.max) {
-        resources.enemyMin -= 15; spawnEntity(Math.random() < 0.6 ? 'marine' : 'fighter', 'enemy', eBarracks.x - 30, eBarracks.y + 30);
+      // 게임 승패 체크
+      const pMaxHQ = entities.some(e => e.faction === 'player' && e.type === 'hq');
+      const eMaxHQ = entities.some(e => e.faction === 'enemy' && e.type === 'hq');
+      if (!pMaxHQ && !gameOver) {
+        gameOver = true;
+        document.getElementById('game-over-title').innerText = '💥 패배했습니다!';
+        document.getElementById('game-over-modal').style.display = 'block';
+      } else if (!eMaxHQ && !gameOver) {
+        gameOver = true;
+        document.getElementById('game-over-title').innerText = '🎉 승리했습니다!';
+        document.getElementById('game-over-modal').style.display = 'block';
       }
 
       updateUI();
     }
 
-    function updateEntities() {
-      waveTimer++;
-      if (waveTimer % 1200 === 0) { wave++; updateUI(); }
-
-      for (let i = entities.length - 1; i >= 0; i--) {
-        let e = entities[i];
-
-        if (e.hp <= 0) {
-          for (let p = 0; p < 6; p++) {
-            particles.push({ x: e.x, y: e.y, vx: (Math.random() - 0.5) * 5, vy: (Math.random() - 0.5) * 5, life: 22, text: '💥' });
-          }
-          playSound('explode');
-          selectedUnits = selectedUnits.filter(u => u.id !== e.id);
-          
-          if (e.faction === 'player') {
-            if (e.type === 'barracks') tech.barracks = entities.some(b => b.faction === 'player' && b.type === 'barracks' && !b.isUnderConstruction && b.id !== e.id);
-            if (e.type === 'academy') tech.academy = entities.some(b => b.faction === 'player' && b.type === 'academy' && !b.isUnderConstruction && b.id !== e.id);
-            if (e.type === 'factory') tech.factory = entities.some(b => b.faction === 'player' && b.type === 'factory' && !b.isUnderConstruction && b.id !== e.id);
-            if (e.type === 'armory') tech.armory = entities.some(b => b.faction === 'player' && b.type === 'armory' && !b.isUnderConstruction && b.id !== e.id);
-            if (e.type === 'starport') tech.starport = entities.some(b => b.faction === 'player' && b.type === 'starport' && !b.isUnderConstruction && b.id !== e.id);
-            if (e.type === 'lab') tech.lab = entities.some(b => b.faction === 'player' && b.type === 'lab' && !b.isUnderConstruction && b.id !== e.id);
-          }
-
-          entities.splice(i, 1);
-          updateUI();
-          continue;
-        }
-
-        // 건설 중인 건물
-        if (e.isUnderConstruction) {
-          // 일꾼 SCV가 건축 현장에 도착했는지 확인
-          const builder = entities.find(s => s.id === e.builderSCVId && s.hp > 0);
-          
-          // SCV가 살아있고, 건물 근처(사거리)에 도착했을 때만 건설 진행
-          if (builder && Math.hypot(builder.x - e.x, builder.y - e.y) <= e.radius + 20) {
-            e.buildProgress++;
-            e.hp = Math.min(e.maxHp, Math.max(1, (e.buildProgress / e.buildMaxTime) * e.maxHp));
-
-            if (e.buildProgress >= e.buildMaxTime) {
-              e.isUnderConstruction = false;
-              e.hp = e.maxHp;
-              builder.isBuildingSCV = false;
-              builder.buildingTargetId = null;
-
-              if (e.faction === 'player') {
-                if (e.type === 'barracks') tech.barracks = true;
-                if (e.type === 'academy') tech.academy = true;
-                if (e.type === 'factory') tech.factory = true;
-                if (e.type === 'armory') tech.armory = true;
-                if (e.type === 'starport') tech.starport = true;
-                if (e.type === 'lab') tech.lab = true;
-                showToast(`✅ ${e.type.toUpperCase()} 건설 완료!`);
-              }
-              updateUI();
-            }
-          }
-          continue;
-        }
-
-        // 유닛 생산 대기열
-        if (e.productionQueue && e.productionQueue.length > 0) {
-          const item = e.productionQueue[0];
-          item.progress++;
-          if (item.progress >= item.maxTime) {
-            spawnEntity(item.unitType, e.faction, e.x + (Math.random()-0.5)*30, e.y + e.radius + 15);
-            e.productionQueue.shift();
-            playSound('produce');
-            updateUI();
-          }
-        }
-
-        // SCV 전용 동작
-        if (e.type === 'scv') {
-          // 0. 건물을 지으러 이동 중인 경우
-          if (e.isBuildingSCV) {
-            const targetB = entities.find(b => b.id === e.buildingTargetId);
-            if (targetB && targetB.isUnderConstruction) {
-              const distB = Math.hypot(targetB.x - e.x, targetB.y - e.y);
-              if (distB > targetB.radius + 10) {
-                e.x += ((targetB.x - e.x) / distB) * e.speed;
-                e.y += ((targetB.y - e.y) / distB) * e.speed;
-              }
-            } else {
-              // 건물이 이미 완성되었거나 파괴된 경우 자유 상태 전환
-              e.isBuildingSCV = false;
-              e.buildingTargetId = null;
-            }
-          } 
-          // 일꾼이 일반 수리 / 채굴 수행
-          else if (!e.isManualMove) {
-            // 1. 자동 수리 기능
-            let damagedTarget = null;
-            if (!e.cargo) {
-              damagedTarget = entities.find(other => 
-                other.faction === e.faction && 
-                other.id !== e.id && 
-                !other.isUnderConstruction && 
-                other.hp < other.maxHp && 
-                Math.hypot(other.x - e.x, other.y - e.y) <= 200
-              );
-            }
-
-            if (damagedTarget) {
-              const distRepair = Math.hypot(damagedTarget.x - e.x, damagedTarget.y - e.y);
-              if (distRepair > damagedTarget.radius + 8) {
-                e.x += ((damagedTarget.x - e.x) / distRepair) * e.speed;
-                e.y += ((damagedTarget.y - e.y) / distRepair) * e.speed;
-              } else {
-                damagedTarget.hp = Math.min(damagedTarget.maxHp, damagedTarget.hp + 0.4);
-                if (Math.random() < 0.25) {
-                  particles.push({
-                    x: damagedTarget.x + (Math.random()-0.5)*damagedTarget.radius,
-                    y: damagedTarget.y + (Math.random()-0.5)*damagedTarget.radius,
-                    vx: (Math.random()-0.5)*2,
-                    vy: (Math.random()-0.5)*2,
-                    life: 12,
-                    text: '🔧'
-                  });
-                  if (e.faction === 'player') playSound('mine');
-                }
-              }
-            } 
-            // 2. 자원 반납
-            else if (e.cargo) {
-              let nearestHQ = entities.find(h => h.type === 'hq' && h.faction === e.faction && !h.isUnderConstruction);
-              if (nearestHQ) {
-                const distHQ = Math.hypot(nearestHQ.x - e.x, nearestHQ.y - e.y);
-                if (distHQ > nearestHQ.radius + 10) {
-                  e.x += ((nearestHQ.x - e.x) / distHQ) * e.speed;
-                  e.y += ((nearestHQ.y - e.y) / distHQ) * e.speed;
-                } else {
-                  if (e.faction === 'player') {
-                    if (e.cargo.type === 'min') resources.min += e.cargo.amount;
-                    else resources.gas += e.cargo.amount;
-                  } else {
-                    if (e.cargo.type === 'min') resources.enemyMin += e.cargo.amount * currentDifficulty.aiGatherRate;
-                    else resources.enemyGas += e.cargo.amount * currentDifficulty.aiGatherRate;
-                  }
-                  e.cargo = null;
-                  updateUI();
-                }
-              }
-            } 
-            // 3. 분산 자원 채굴
-            else {
-              let resNode = e.assignedRes;
-
-              if (!resNode || resNode.amount <= 0 || !entities.includes(resNode)) {
-                let availableRes = entities.filter(r => 
-                  (r.type === 'resource_min' || (r.type === 'resource_gas' && r.hasRefinery)) &&
-                  r.amount > 0 &&
-                  Math.hypot(r.x - e.x, r.y - e.y) < 450
-                );
-
-                if (availableRes.length > 0) {
-                  availableRes.sort((a, b) => {
-                    let countA = entities.filter(u => u.type === 'scv' && u.assignedRes === a).length;
-                    let countB = entities.filter(u => u.type === 'scv' && u.assignedRes === b).length;
-                    if (countA !== countB) return countA - countB;
-                    return Math.hypot(a.x - e.x, a.y - e.y) - Math.hypot(b.x - e.x, b.y - e.y);
-                  });
-                  resNode = e.assignedRes = availableRes[0];
-                }
-              }
-
-              if (resNode) {
-                const distRes = Math.hypot(resNode.x - e.x, resNode.y - e.y);
-                if (distRes > resNode.radius + 5) {
-                  e.x += ((resNode.x - e.x) / distRes) * e.speed;
-                  e.y += ((resNode.y - e.y) / distRes) * e.speed;
-                } else {
-                  e.mineTimer++;
-                  if (e.mineTimer % 10 === 0) {
-                    particles.push({
-                      x: resNode.x + (Math.random()-0.5)*16,
-                      y: resNode.y + (Math.random()-0.5)*16,
-                      vx: (Math.random()-0.5)*2,
-                      vy: (Math.random()-0.5)*2,
-                      life: 10,
-                      text: resNode.resType === 'min' ? '✨' : '🔥'
-                    });
-                  }
-
-                  if (e.mineTimer >= 50) {
-                    e.mineTimer = 0;
-                    const amount = resNode.type === 'resource_min' ? 8 : 6;
-                    resNode.amount -= amount;
-                    e.cargo = { type: resNode.resType, amount: amount };
-                    if (e.faction === 'player') playSound('mine');
-                  }
-                }
-              }
-            }
-          }
-        }
-
-        // 일반 이동
-        if (e.moveTarget) {
-          const dist = Math.hypot(e.moveTarget.x - e.x, e.moveTarget.y - e.y);
-          if (dist > 5) {
-            e.x += ((e.moveTarget.x - e.x) / dist) * e.speed;
-            e.y += ((e.moveTarget.y - e.y) / dist) * e.speed;
-          } else {
-            e.moveTarget = null;
-          }
-        }
-
-        // 전투 로직
-        if (e.attackRange > 0) {
-          if (e.cooldown > 0) e.cooldown--;
-
-          let target = e.forcedTarget;
-          if (target && (target.hp <= 0 || !entities.includes(target))) {
-            target = null;
-            e.forcedTarget = null;
-          }
-
-          if (!target) {
-            const targets = entities.filter(other => 
-              other.hp > 0 && other.faction !== 'neutral' &&
-              (e.isHealer ? (other.faction === e.faction && UNIT_SPECS[other.type]) : (other.faction !== e.faction)) &&
-              Math.hypot(other.x - e.x, other.y - e.y) <= e.attackRange
-            );
-            target = targets[0] || null;
-          }
-
-          if (target) {
-            const dist = Math.hypot(target.x - e.x, target.y - e.y);
-            if (dist > e.attackRange) {
-              e.x += ((target.x - e.x) / dist) * e.speed;
-              e.y += ((target.y - e.y) / dist) * e.speed;
-            } else {
-              if (e.cooldown <= 0) {
-                e.cooldown = e.cooldownMax;
-                if (e.isHealer) {
-                  target.hp = Math.min(target.maxHp, target.hp + e.damage * 2);
-                  particles.push({ x: target.x, y: target.y, vx: 0, vy: -1, life: 15, text: '✨' });
-                } else {
-                  bullets.push({
-                    x: e.x, y: e.y, targetX: target.x, targetY: target.y, targetEnt: target,
-                    damage: e.damage, splash: e.splash, splashRadius: e.splashRadius, faction: e.faction, speed: 8
-                  });
-                  playSound('laser');
-                }
-              }
-            }
-          }
-        }
-      }
-
-      const playerHQs = entities.filter(h => h.type === 'hq' && h.faction === 'player');
-      const enemyHQs = entities.filter(h => h.type === 'hq' && h.faction === 'enemy');
-
-      if (!gameOver) {
-        if (playerHQs.length === 0) {
-          gameOver = true;
-          document.getElementById('game-over-title').innerText = "💀 패배했습니다! 사령부가 전멸했습니다.";
-          document.getElementById('game-over-modal').style.display = 'block';
-        } else if (enemyHQs.length === 0) {
-          gameOver = true;
-          document.getElementById('game-over-title').innerText = "🏆 승리했습니다! 적의 진영을 완전히 소탕했습니다.";
-          document.getElementById('game-over-modal').style.display = 'block';
-        }
-      }
-    }
-
-    function updateBullets() {
-      for (let i = bullets.length - 1; i >= 0; i--) {
-        let b = bullets[i];
-        let targetX = b.targetEnt && b.targetEnt.hp > 0 ? b.targetEnt.x : b.targetX;
-        let targetY = b.targetEnt && b.targetEnt.hp > 0 ? b.targetEnt.y : b.targetY;
-
-        let dist = Math.hypot(targetX - b.x, targetY - b.y);
-        if (dist <= b.speed) {
-          if (b.splash) {
-            entities.forEach(ent => {
-              if (ent.faction !== b.faction && ent.faction !== 'neutral' && Math.hypot(ent.x - targetX, ent.y - targetY) <= b.splashRadius) {
-                ent.hp -= b.damage;
-              }
-            });
-            particles.push({ x: targetX, y: targetY, vx: 0, vy: 0, life: 10, text: '💥' });
-          } else if (b.targetEnt && b.targetEnt.hp > 0) {
-            b.targetEnt.hp -= b.damage;
-          }
-          bullets.splice(i, 1);
-        } else {
-          b.x += ((targetX - b.x) / dist) * b.speed;
-          b.y += ((targetY - b.y) / dist) * b.speed;
-        }
-      }
-    }
-
-    function updateParticles() {
-      for (let i = particles.length - 1; i >= 0; i--) {
-        let p = particles[i];
-        p.x += p.vx; p.y += p.vy; p.life--;
-        if (p.life <= 0) particles.splice(i, 1);
-      }
-    }
-
-    function draw() {
+    function render() {
       ctx.clearRect(0, 0, VIEW_W, VIEW_H);
 
-      ctx.strokeStyle = '#111827';
+      // 격자 배경
+      ctx.strokeStyle = 'rgba(255,255,255,0.03)';
       ctx.lineWidth = 1;
-      const startX = Math.floor(camX / 50) * 50;
-      const startY = Math.floor(camY / 50) * 50;
-      for (let x = startX; x < camX + VIEW_W; x += 50) {
-        ctx.beginPath(); ctx.moveTo(x - camX, 0); ctx.lineTo(x - camX, VIEW_H); ctx.stroke();
+      const startX = -(camX % 40);
+      const startY = -(camY % 40);
+      for (let x = startX; x < VIEW_W; x += 40) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, VIEW_H); ctx.stroke();
       }
-      for (let y = startY; y < camY + VIEW_H; y += 50) {
-        ctx.beginPath(); ctx.moveTo(0, y - camY); ctx.lineTo(VIEW_W, y - camY); ctx.stroke();
+      for (let y = startY; y < VIEW_H; y += 40) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(VIEW_W, y); ctx.stroke();
       }
 
-      entities.forEach(e => {
-        const screenX = e.x - camX;
-        const screenY = e.y - camY;
+      // 개체 분류 (건물 -> 유닛 순으로 그려 SCV가 건물 위에 가려지지 않게 렌더링 순서 보장)
+      const buildings = entities.filter(e => e.speed === 0);
+      const units = entities.filter(e => e.speed > 0);
 
-        if (screenX + e.radius < 0 || screenX - e.radius > VIEW_W || screenY + e.radius < 0 || screenY - e.radius > VIEW_H) return;
+      // 1. 건물 렌더링 (가장 바닥)
+      buildings.forEach(e => {
+        const sx = e.x - camX;
+        const sy = e.y - camY;
+        if (sx < -50 || sx > VIEW_W + 50 || sy < -50 || sy > VIEW_H + 50) return;
 
-        if (selectedUnits.some(u => u.id === e.id)) {
-          ctx.strokeStyle = '#00ff66'; ctx.lineWidth = 2;
-          ctx.beginPath(); ctx.arc(screenX, screenY, e.radius + 4, 0, Math.PI * 2); ctx.stroke();
+        ctx.font = `${e.radius * 1.5}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(e.emoji, sx, sy);
+
+        // 건물 건설 진행바 또는 체력바
+        if (e.isUnderConstruction) {
+          ctx.fillStyle = 'rgba(0,0,0,0.6)';
+          ctx.fillRect(sx - 20, sy - e.radius - 12, 40, 6);
+          ctx.fillStyle = '#4dadf7';
+          ctx.fillRect(sx - 20, sy - e.radius - 12, (e.buildProgress / e.buildMaxTime) * 40, 6);
+        } else if (e.maxHp && e.hp < e.maxHp) {
+          ctx.fillStyle = 'rgba(0,0,0,0.6)';
+          ctx.fillRect(sx - 15, sy - e.radius - 8, 30, 4);
+          ctx.fillStyle = '#51cf66';
+          ctx.fillRect(sx - 15, sy - e.radius - 8, (e.hp / e.maxHp) * 30, 4);
+        }
+      });
+
+      // 2. 유닛 렌더링 (건물 위에 레이어 위치)
+      units.forEach(e => {
+        const sx = e.x - camX;
+        const sy = e.y - camY;
+        if (sx < -50 || sx > VIEW_W + 50 || sy < -50 || sy > VIEW_H + 50) return;
+
+        // 선택 테두리
+        if (selectedUnits.includes(e)) {
+          ctx.strokeStyle = '#51cf66';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(sx, sy, e.radius + 3, 0, Math.PI * 2);
+          ctx.stroke();
         }
 
         ctx.font = `${e.radius * 1.5}px sans-serif`;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(e.emoji, screenX, screenY);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(e.emoji, sx, sy);
 
-        if (e.type !== 'obstacle' && (e.hp < e.maxHp || e.isUnderConstruction)) {
-          ctx.fillStyle = 'rgba(255,0,0,0.7)';
-          ctx.fillRect(screenX - e.radius, screenY - e.radius - 8, e.radius * 2, 4);
-          ctx.fillStyle = e.isUnderConstruction ? '#fcc419' : '#00ff66';
-          ctx.fillRect(screenX - e.radius, screenY - e.radius - 8, (e.hp / e.maxHp) * e.radius * 2, 4);
+        // 체력바
+        if (e.hp < e.maxHp) {
+          ctx.fillStyle = 'rgba(0,0,0,0.6)';
+          ctx.fillRect(sx - 12, sy - e.radius - 6, 24, 3);
+          ctx.fillStyle = '#51cf66';
+          ctx.fillRect(sx - 12, sy - e.radius - 6, (e.hp / e.maxHp) * 24, 3);
         }
       });
 
-      bullets.forEach(b => {
-        ctx.fillStyle = '#ffcc00';
-        ctx.beginPath(); ctx.arc(b.x - camX, b.y - camY, 3, 0, Math.PI * 2); ctx.fill();
+      // 3. 건설 용접 불꽃 스파크 렌더링
+      sparks.forEach(p => {
+        const sx = p.x - camX;
+        const sy = p.y - camY;
+        ctx.fillStyle = p.color;
+        ctx.fillRect(sx, sy, 2.5, 2.5);
       });
 
-      particles.forEach(p => {
-        ctx.font = '12px sans-serif';
-        ctx.fillText(p.text, p.x - camX, p.y - camY);
+      // 4. 총알 및 레이저
+      bullets.forEach((b, idx) => {
+        ctx.strokeStyle = '#ffec99';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(b.x - camX, b.y - camY);
+        ctx.lineTo(b.tx - camX, b.ty - camY);
+        ctx.stroke();
+        b.life--;
+        if (b.life <= 0) bullets.splice(idx, 1);
       });
 
+      // 드래그 박스
       if (isDragging) {
-        ctx.strokeStyle = '#4dadf7'; ctx.fillStyle = 'rgba(77, 173, 247, 0.15)'; ctx.lineWidth = 1;
+        ctx.strokeStyle = '#4dadf7';
+        ctx.fillStyle = 'rgba(77, 173, 247, 0.15)';
+        ctx.lineWidth = 1;
         const w = dragEndScreen.x - dragStartScreen.x;
         const h = dragEndScreen.y - dragStartScreen.y;
         ctx.fillRect(dragStartScreen.x, dragStartScreen.y, w, h);
         ctx.strokeRect(dragStartScreen.x, dragStartScreen.y, w, h);
       }
 
+      // 미니맵 렌더링
       const mmW = 160, mmH = 120;
       const mmX = VIEW_W - mmW - 10;
       const mmY = VIEW_H - mmH - 10;
 
       ctx.fillStyle = 'rgba(5, 7, 10, 0.85)';
       ctx.fillRect(mmX, mmY, mmW, mmH);
-      ctx.strokeStyle = '#30363d'; ctx.lineWidth = 2;
+      ctx.strokeStyle = '#30363d';
       ctx.strokeRect(mmX, mmY, mmW, mmH);
 
       entities.forEach(e => {
         const mx = mmX + (e.x / WORLD_W) * mmW;
         const my = mmY + (e.y / WORLD_H) * mmH;
-        ctx.fillStyle = e.faction === 'player' ? '#4dadf7' : (e.faction === 'enemy' ? '#ff6b6b' : '#fcc419');
-        ctx.fillRect(mx - 1, my - 1, e.type === 'obstacle' ? 2 : 3, e.type === 'obstacle' ? 2 : 3);
+        ctx.fillStyle = (e.faction === 'player') ? '#4dadf7' : (e.faction === 'enemy') ? '#ff6b6b' : '#fcc419';
+        ctx.fillRect(mx - 1, my - 1, 2, 2);
       });
 
-      const camMmX = mmX + (camX / WORLD_W) * mmW;
-      const camMmY = mmY + (camY / WORLD_H) * mmH;
-      const camMmW = (VIEW_W / WORLD_W) * mmW;
-      const camMmH = (VIEW_H / WORLD_H) * mmH;
-      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1;
-      ctx.strokeRect(camMmX, camMmY, camMmW, camMmH);
+      // 미니맵 시야 영역
+      const vx = mmX + (camX / WORLD_W) * mmW;
+      const vy = mmY + (camY / WORLD_H) * mmH;
+      const vw = (VIEW_W / WORLD_W) * mmW;
+      const vh = (VIEW_H / WORLD_H) * mmH;
+      ctx.strokeStyle = '#ffffff';
+      ctx.strokeRect(vx, vy, vw, vh);
     }
 
     function gameLoop() {
-      updateCamera();
-      updateHumanlikeAI();
-      updateEntities();
-      updateBullets();
-      updateParticles();
-      draw();
+      updateGameLogic();
+      render();
       requestAnimationFrame(gameLoop);
     }
 
