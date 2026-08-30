@@ -40,7 +40,7 @@
   <h1>⚔️ 우주 전쟁: 지능형 RTS</h1>
   
   <div id="rts-panel">
-    💎 <span id="res-min">150</span> | 🌋 <span id="res-gas">0</span> | 🌊 웨이브: <span id="wave-num">1</span> | 🏰 사령부: <span id="hq-count">1</span>개 | ⚔️ 적 부대: <span id="ai-squad">0</span> (<span id="ai-state-text">방어 모드</span>)
+    💎 <span id="res-min">200</span> | 🌋 <span id="res-gas">0</span> | 🌊 웨이브: <span id="wave-num">1</span> | 🏰 사령부: <span id="hq-count">1</span>개 | ⚔️ 적 부대: <span id="ai-squad">0</span> (<span id="ai-state-text">평화 수호</span>)
   </div>
 
   <div class="build-row">
@@ -89,7 +89,7 @@
     const canvas = document.getElementById('game-canvas');
     const ctx = canvas.getContext('2d');
 
-    let resources = { min: 150, gas: 0, enemyMin: 150, enemyGas: 0 };
+    let resources = { min: 200, gas: 0, enemyMin: 200, enemyGas: 0 };
     let wave = 1;
     let waveTimer = 0;
     let buildMode = null;
@@ -110,6 +110,7 @@
 
     let aiStateMode = 'defend';
     let aiRetreatTimer = 0;
+    let aiAttackCooldown = 0; // AI 공격 후 휴식 쿨타임
 
     let toastTimer = null;
     function showToast(msg) {
@@ -298,7 +299,7 @@
         buildMode = null; resetBuildButtons(); return;
       }
 
-      const buildTimes = { hq: 450, barracks: 250, refinery: 180, factory: 320, starport: 400, turret: 200 };
+      const buildTimes = { hq: 380, barracks: 200, refinery: 150, factory: 260, starport: 320, turret: 160 };
 
       if (buildMode === 'hq' && resources.min >= 150) {
         resources.min -= 150;
@@ -345,13 +346,13 @@
     function produce(unitType) {
       initAudio();
       const costs = {
-        scv: { min: 20, gas: 0, req: true, bType: 'hq', time: 100, name: 'SCV' },
-        fighter: { min: 30, gas: 0, req: tech.barracks, bType: 'barracks', time: 150, name: '전투기' },
-        scout: { min: 25, gas: 0, req: tech.barracks, bType: 'barracks', time: 120, name: '정찰기' },
-        tank: { min: 60, gas: 10, req: tech.factory, bType: 'factory', time: 240, name: '전차' },
-        mech: { min: 50, gas: 15, req: tech.factory, bType: 'factory', time: 200, name: '메카' },
-        cruiser: { min: 70, gas: 30, req: tech.starport, bType: 'starport', time: 300, name: '중순양함' },
-        carrier: { min: 100, gas: 60, req: tech.starport, bType: 'starport', time: 420, name: '항공모함' }
+        scv: { min: 20, gas: 0, req: true, bType: 'hq', time: 60, name: 'SCV' }, // SCV 빠른 생산
+        fighter: { min: 30, gas: 0, req: tech.barracks, bType: 'barracks', time: 130, name: '전투기' },
+        scout: { min: 25, gas: 0, req: tech.barracks, bType: 'barracks', time: 100, name: '정찰기' },
+        tank: { min: 60, gas: 10, req: tech.factory, bType: 'factory', time: 200, name: '전차' },
+        mech: { min: 50, gas: 15, req: tech.factory, bType: 'factory', time: 170, name: '메카' },
+        cruiser: { min: 70, gas: 30, req: tech.starport, bType: 'starport', time: 260, name: '중순양함' },
+        carrier: { min: 100, gas: 60, req: tech.starport, bType: 'starport', time: 360, name: '항공모함' }
       };
 
       const c = costs[unitType];
@@ -381,7 +382,8 @@
       document.getElementById('ai-squad').innerText = enemySquad.length;
       
       let stateLabel = '🛡️ 방어 및 성장';
-      if (aiStateMode === 'attack') stateLabel = '💥 총공격 추진';
+      if (wave < 2) stateLabel = '🕊️ 평화 수호';
+      else if (aiStateMode === 'attack') stateLabel = '💥 총공격 추진';
       else if (aiStateMode === 'harass') stateLabel = '⚡ 견제 정찰';
       else if (aiStateMode === 'retreat') stateLabel = '🏃 후퇴 재정비';
       document.getElementById('ai-state-text').innerText = stateLabel;
@@ -427,7 +429,7 @@
       } else if (type === 'resource_gas') {
         e.radius = 20; e.emoji = '🌋'; e.resType = 'gas'; e.hasRefinery = false; e.amount = e.maxAmount = 2500;
       } else if (type === 'scv') {
-        e.hp = e.maxHp = 60; e.speed = 2.1; e.radius = 12; e.emoji = '🛸';
+        e.hp = e.maxHp = 60; e.speed = 2.4; e.radius = 12; e.emoji = '🛸';
       } else if (type === 'fighter') {
         e.hp = e.maxHp = 100; e.speed = 2.4; e.radius = 14; e.emoji = '🚀';
         e.attackRange = 135; e.cooldownMax = 32; e.damage = 14;
@@ -452,7 +454,6 @@
       return e;
     }
 
-    // 미네랄 곡선 생성 함수
     function spawnCurvedResources(hqX, hqY, startAngle, endAngle, radius = 130) {
       const count = 6;
       for (let i = 0; i < count; i++) {
@@ -474,17 +475,18 @@
 
     function initGame() {
       entities = []; bullets = []; particles = []; selectedUnits = [];
-      resources = { min: 150, gas: 0, enemyMin: 150, enemyGas: 0 };
+      resources = { min: 200, gas: 0, enemyMin: 200, enemyGas: 0 };
       wave = 1; waveTimer = 0; gameOver = false;
+      aiAttackCooldown = 0;
       tech = { barracks: false, factory: false, starport: false };
 
-      // 아군 본진 (좌하단) 및 곡선 미네랄
+      // 아군 본진 (좌하단)
       const pX = 220, pY = 1000;
       spawnEntity('hq', 'player', pX, pY);
       spawnCurvedResources(pX, pY, -Math.PI * 0.45, Math.PI * 0.05, 125);
-      for (let i = 0; i < 4; i++) spawnEntity('scv', 'player', pX - 40 + (i * 22), pY - 50);
+      for (let i = 0; i < 5; i++) spawnEntity('scv', 'player', pX - 40 + (i * 20), pY - 50);
 
-      // 적군 본진 (우상단) 및 곡선 미네랄
+      // 적군 본진 (우상단)
       const eX = 1380, eY = 200;
       spawnEntity('hq', 'enemy', eX, eY);
       spawnCurvedResources(eX, eY, Math.PI * 0.55, Math.PI * 1.05, 125);
@@ -492,7 +494,7 @@
       if (eGas) { eGas.hasRefinery = true; spawnEntity('refinery', 'enemy', eGas.x, eGas.y); }
       for (let i = 0; i < 4; i++) spawnEntity('scv', 'enemy', eX - 40 + (i * 22), eY + 50);
 
-      // 멀티 거점 3곳 (좌상, 우하, 중앙)
+      // 멀티 거점
       spawnCurvedResources(300, 260, 0, Math.PI * 0.5, 110);
       spawnCurvedResources(1300, 940, Math.PI, Math.PI * 1.5, 110);
       spawnCurvedResources(800, 600, -Math.PI * 0.25, Math.PI * 0.25, 110);
@@ -531,29 +533,37 @@
       aiTimer++;
       if (aiTimer % 35 !== 0) return;
 
+      if (aiAttackCooldown > 0) aiAttackCooldown--;
+
       const mainHQ = entities.find(e => e.type === 'hq' && e.faction === 'enemy' && !e.isUnderConstruction);
       if (!mainHQ) return;
 
       const enemySquad = entities.filter(e => e.faction === 'enemy' && ['fighter','scout','tank','mech','cruiser','carrier'].includes(e.type));
       const playerSquad = entities.filter(e => e.faction === 'player' && ['fighter','scout','tank','mech','cruiser','carrier'].includes(e.type));
 
-      // 난이도 조절: 초반 무리한 공격 억제 및 대기 조건 추가
+      // 난이도 하향 조정: 웨이브 1~2는 완전 평화 시간 + 공격 후 휴식 쿨타임 적용
       if (aiRetreatTimer > 0) {
         aiRetreatTimer--;
         aiStateMode = 'retreat';
+      } else if (wave < 2) {
+        aiStateMode = 'defend';
+      } else if (aiAttackCooldown > 0) {
+        aiStateMode = 'defend';
       } else {
-        if (enemySquad.length >= 9 && wave >= 2) {
+        if (enemySquad.length >= 12) {
           aiStateMode = 'attack';
-        } else if (enemySquad.length >= 4 && Math.random() < 0.25) {
+          aiAttackCooldown = 18; // 공격 후 쿨타임
+        } else if (enemySquad.length >= 7 && Math.random() < 0.15) {
           aiStateMode = 'harass';
+          aiAttackCooldown = 12; // 견제 후 쿨타임
         } else {
           aiStateMode = 'defend';
         }
       }
 
-      if (aiStateMode === 'retreat') {
-        enemySquad.forEach(u => {
-          u.moveTarget = { x: mainHQ.x - 80 + (Math.random() * 60), y: mainHQ.y + 80 + (Math.random() * 60) };
+      if (aiStateMode === 'retreat' || aiStateMode === 'defend') {
+        enemySquad.forEach((u, idx) => {
+          u.moveTarget = { x: mainHQ.x - 120 + (idx % 4) * 25, y: mainHQ.y + 80 + Math.floor(idx / 4) * 25 };
         });
       } else if (aiStateMode === 'harass') {
         const playerSCVs = entities.filter(e => e.faction === 'player' && e.type === 'scv');
@@ -572,16 +582,10 @@
             if (!u.moveTarget) u.moveTarget = { x: targetBuilding.x, y: targetBuilding.y };
           });
         }
-      } else {
-        enemySquad.forEach((u, idx) => {
-          if (!u.moveTarget) {
-            u.moveTarget = { x: mainHQ.x - 140 + (idx % 3) * 30, y: mainHQ.y + 100 + Math.floor(idx / 3) * 30 };
-          }
-        });
       }
 
       const eSCVs = entities.filter(e => e.type === 'scv' && e.faction === 'enemy');
-      if (eSCVs.length < 6 && resources.enemyMin >= 20) {
+      if (eSCVs.length < 5 && resources.enemyMin >= 20) {
         resources.enemyMin -= 20;
         spawnEntity('scv', 'enemy', mainHQ.x - 20, mainHQ.y + 20);
       }
@@ -642,7 +646,6 @@
           entities.splice(i, 1);
           updateUI();
 
-          // 승패 조건: 플레이어/적의 모든 사령부(HQ) 파괴 여부 판단
           const playerHQs = entities.filter(h => h.type === 'hq' && h.faction === 'player');
           const enemyHQs = entities.filter(h => h.type === 'hq' && h.faction === 'enemy');
 
@@ -658,7 +661,6 @@
           continue;
         }
 
-        // 건설 작업 로직
         if (e.isUnderConstruction) {
           const builder = entities.find(scv => scv.id === e.builderSCVId);
           if (builder) {
@@ -722,7 +724,7 @@
           }
         }
 
-        // SCV AI (자원 매장량 소모 + 채굴 시간 딜레이 + 가장 가까운 사령부 반납)
+        // SCV AI (속도 및 채굴 효율 대폭 상향)
         if (e.type === 'scv' && !e.isBuildingSCV) {
           if (e.isManualMove) {
             if (e.moveTarget) {
@@ -766,15 +768,14 @@
                 if (targetRes) {
                   let dist = Math.hypot(targetRes.x - e.x, targetRes.y - e.y);
                   if (dist < targetRes.radius + 12) {
-                    // 채굴 딜레이 시간 적용
                     if (!e.mineTimer) e.mineTimer = 0;
                     e.mineTimer++;
-                    if (Math.random() < 0.25) {
+                    if (Math.random() < 0.3) {
                       particles.push({ x: e.x + (Math.random()-0.5)*10, y: e.y - 5, vx: (Math.random()-0.5)*2, vy: -1, life: 8, text: '✨' });
                     }
-                    if (e.mineTimer >= 65) { // 약 1.1초 동안 채굴
+                    if (e.mineTimer >= 35) { // 약 0.6초 채굴 (기존 1.1초에서 단축)
                       e.mineTimer = 0;
-                      let harvest = Math.min(8, targetRes.amount);
+                      let harvest = Math.min(12, targetRes.amount); // 1회 채굴량 12로 증대
                       targetRes.amount -= harvest;
                       e.cargo = { type: targetRes.resType, amount: harvest };
 
@@ -791,7 +792,6 @@
                   }
                 }
               } else {
-                // 자원 반납: 가장 가까운 완성된 사령부 검색
                 let myHQs = entities.filter(h => h.type === 'hq' && h.faction === e.faction && !h.isUnderConstruction);
                 if (myHQs.length > 0) {
                   let closestHQ = myHQs.reduce((prev, curr) => 
@@ -819,7 +819,6 @@
           }
         }
 
-        // 전투 유닛 AI
         if (['fighter','scout','tank','mech','cruiser','carrier'].includes(e.type)) {
           if (e.cooldown > 0) e.cooldown--;
 
@@ -919,7 +918,6 @@
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText(e.emoji, e.x, e.y);
 
-        // 체력바
         if (e.hp < e.maxHp) {
           ctx.fillStyle = 'rgba(0,0,0,0.6)';
           ctx.fillRect(e.x - 16, e.y - e.radius - 8, 32, 5);
@@ -927,14 +925,12 @@
           ctx.fillRect(e.x - 16, e.y - e.radius - 8, 32 * (Math.max(0, e.hp) / e.maxHp), 5);
         }
 
-        // 자원 잔량 표시
         if (e.type === 'resource_min' || e.type === 'resource_gas') {
           ctx.fillStyle = '#fff';
           ctx.font = '10px sans-serif';
           ctx.fillText(e.amount, e.x, e.y + e.radius + 8);
         }
 
-        // 건설 게이지
         if (e.isUnderConstruction) {
           ctx.fillStyle = 'rgba(0,0,0,0.6)';
           ctx.fillRect(e.x - 20, e.y + e.radius + 4, 40, 6);
@@ -942,7 +938,6 @@
           ctx.fillRect(e.x - 20, e.y + e.radius + 4, 40 * (e.buildProgress / e.buildMaxTime), 6);
         }
 
-        // 유닛 생산 게이지
         if (e.productionQueue && e.productionQueue.length > 0) {
           let item = e.productionQueue[0];
           ctx.fillStyle = 'rgba(0,0,0,0.7)';
