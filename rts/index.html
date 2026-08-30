@@ -2,320 +2,945 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>HTML5 RTS - 밸런스 패치 버전</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>미니지 RTS - 광활한 전장 (밸런스 패치 완료)</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
-    body { background: #121212; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; }
+    :root { --bg: #f8f9fa; --text: #333; --canvas-bg: #05070a; --border: #30363d; --btn-bg: #fff; }
+    [data-theme="dark"] { --bg: #0d1117; --text: #c9d1d9; --canvas-bg: #020305; --border: #30363d; --btn-bg: #21262d; }
+    body { background-color: var(--bg); color: var(--text); text-align: center; font-family: sans-serif; padding-top: 6px; margin: 0; user-select: none; overflow: hidden; }
+    button { background-color: var(--btn-bg); color: var(--text); border: 1px solid var(--border); padding: 4px 8px; font-size: 0.75rem; border-radius: 5px; cursor: pointer; margin: 1px; font-weight: bold; }
+    button:disabled { opacity: 0.3; cursor: not-allowed; }
+    #rts-panel { font-size: 0.9rem; font-weight: bold; color: #fcc419; margin-bottom: 3px; display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .build-row { margin: 2px 0; display: flex; justify-content: center; flex-wrap: wrap; gap: 2px; }
+    .active-mode { border: 2px solid #4dadf7 !important; background-color: #183153 !important; color: #fff !important; }
+    .diff-select { background: var(--btn-bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 2px 5px; font-weight: bold; font-size: 0.8rem; }
     
-    #game-container { display: flex; flex-direction: column; gap: 10px; background: #1e1e1e; padding: 15px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
-    
-    /* 상단 자원 및 정보 UI */
-    .header-ui { display: flex; justify-content: space-between; align-items: center; background: #2a2a2a; padding: 10px 20px; border-radius: 8px; font-weight: bold; }
-    .resource-box { display: flex; gap: 20px; }
-    .res-item { display: flex; align-items: center; gap: 6px; font-size: 16px; }
-    .res-icon { width: 14px; height: 14px; display: inline-block; border-radius: 2px; }
-    .mineral-icon { background: #00d2ff; }
-    .supply-icon { background: #ffcc00; }
-    
-    /* 캔버스 영역 */
-    canvas { background: #111; border: 2px solid #333; border-radius: 6px; cursor: crosshair; }
-    
-    /* 하단 조작 UI */
-    .controls-ui { display: flex; justify-content: space-between; align-items: center; background: #2a2a2a; padding: 10px; border-radius: 8px; }
-    .btn-group { display: flex; gap: 8px; }
-    button { background: #3a3a3a; color: #fff; border: 1px solid #555; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; }
-    button:hover { background: #4a4a4a; border-color: #00d2ff; }
-    button:disabled { background: #222; color: #666; border-color: #333; cursor: not-allowed; }
-    
-    /* 난이도 선택 버튼 */
-    .diff-btn.active { background: #007acc; border-color: #00d2ff; }
-    
-    /* 로그 박스 */
-    #log-box { width: 800px; height: 80px; background: #000; color: #00ff66; font-family: monospace; font-size: 12px; padding: 8px; border-radius: 6px; overflow-y: auto; border: 1px solid #333; margin-top: 5px; }
+    .canvas-container { position: relative; display: inline-block; }
+    #game-canvas { background: var(--canvas-bg); border: 2px solid var(--border); border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); cursor: default; }
+    .help-text { font-size: 0.75rem; opacity: 0.8; margin-top: 2px; }
+
+    #toast-msg {
+      position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.92); color: #74c0fc; border: 1px solid #4dadf7;
+      padding: 6px 16px; border-radius: 20px; font-size: 0.82rem; font-weight: bold;
+      pointer-events: none; opacity: 0; transition: opacity 0.3s ease; z-index: 100;
+    }
+
+    #game-over-modal {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background: rgba(10, 15, 26, 0.95); border: 2px solid #fcc419; padding: 25px 35px;
+      border-radius: 12px; color: #fff; text-align: center; display: none; z-index: 200;
+    }
+    #game-over-modal h2 { margin: 0 0 15px 0; font-size: 1.3rem; color: #fcc419; }
   </style>
 </head>
 <body>
+  <div id="rts-panel">
+    <span>💎 <span id="res-min">200</span> | 🌋 <span id="res-gas">0</span></span>
+    <span>📦 인구: <span id="p-supply">0/10</span></span>
+    <span>🌊 웨이브: <span id="wave-num">1</span></span>
+    <span>🏰 사령부: <span id="hq-count">1</span>개</span>
+    <span>⚔️ 적: <span id="ai-squad">0</span> (<span id="ai-supply">0/10</span>)</span>
+    <span>🎯 AI: <span id="ai-state-text">탐색 중</span></span>
+    <select id="diff-select" class="diff-select" onchange="changeDifficulty(this.value)">
+      <option value="EASY">난이도: 쉬움</option>
+      <option value="NORMAL" selected>난이도: 보통</option>
+      <option value="HARD">난이도: 어려움</option>
+    </select>
+  </div>
 
-<div id="game-container">
-  <!-- 상단 자원 및 인구수 UI -->
-  <div class="header-ui">
-    <div class="resource-box">
-      <div class="res-item"><span class="res-icon mineral-icon"></span> 미네랄: <span id="p-mineral">400</span></div>
-      <div class="res-item"><span class="res-icon supply-icon"></span> 인구수: <span id="p-supply">0 / 10</span></div>
-    </div>
-    <div>
-      난이도: 
-      <button class="diff-btn active" onclick="setDifficulty('EASY')">쉬움</button>
-      <button class="diff-btn" onclick="setDifficulty('NORMAL')">보통</button>
-      <button class="diff-btn" onclick="setDifficulty('HARD')">어려움</button>
+  <!-- 건물 버튼 (보급고 추가) -->
+  <div class="build-row">
+    <button id="btn-hq" onclick="toggleBuild('hq')">🏰 사령부(💎150)</button>
+    <button id="btn-depot" onclick="toggleBuild('depot')">🏠 보급고(💎30)</button>
+    <button id="btn-barracks" onclick="toggleBuild('barracks')">🏭 병영(💎40)</button>
+    <button id="btn-academy" onclick="toggleBuild('academy')">🎓 사관학교(💎50)</button>
+    <button id="btn-refinery" onclick="toggleBuild('refinery')">🌋 제련소(💎30)</button>
+    <button id="btn-factory" onclick="toggleBuild('factory')">⚙️ 공장(💎60/🌋20)</button>
+    <button id="btn-armory" onclick="toggleBuild('armory')">⚔️ 무기고(💎70/🌋30)</button>
+    <button id="btn-starport" onclick="toggleBuild('starport')">🛫 우주항(💎80/🌋40)</button>
+    <button id="btn-lab" onclick="toggleBuild('lab')">🔬 연구소(💎100/🌋50)</button>
+    <button id="btn-bunker" onclick="toggleBuild('bunker')">🛡️ 벙커(💎45)</button>
+    <button id="btn-turret" onclick="toggleBuild('turret')">📡 터렛(💎35)</button>
+  </div>
+
+  <!-- 유닛 버튼 -->
+  <div class="build-row">
+    <button id="btn-scv" onclick="produce('scv')">🛸 SCV(💎20/📦1)</button>
+    <button id="btn-marine" onclick="produce('marine')" disabled>🪖 보병(💎15/📦1)</button>
+    <button id="btn-medic" onclick="produce('medic')" disabled>🏥 의무병(💎25/📦1)</button>
+    <button id="btn-fighter" onclick="produce('fighter')" disabled>🚀 전투기(💎30/📦2)</button>
+    <button id="btn-scout" onclick="produce('scout')" disabled>🥷 정찰기(💎25/📦2)</button>
+    <button id="btn-tank" onclick="produce('tank')" disabled>🚜 전차(💎60/🌋10/📦3)</button>
+    <button id="btn-siegetank" onclick="produce('siegetank')" disabled>💥 공성전차(💎90/🌋30/📦4)</button>
+    <button id="btn-mech" onclick="produce('mech')" disabled>🤖 메카(💎50/🌋15/📦3)</button>
+    <button id="btn-cruiser" onclick="produce('cruiser')" disabled>🛩️ 중순양함(💎70/🌋30/📦5)</button>
+    <button id="btn-carrier" onclick="produce('carrier')" disabled>🛸 항공모함(💎100/🌋60/📦6)</button>
+    <button id="btn-titan" onclick="produce('titan')" disabled>🛡️ 요새함(💎150/🌋100/📦8)</button>
+  </div>
+
+  <div class="canvas-container">
+    <canvas id="game-canvas" width="650" height="460"></canvas>
+    <div id="toast-msg"></div>
+    <div id="game-over-modal">
+      <h2 id="game-over-title">게임 종료</h2>
+      <button onclick="restartGame()">🎮 다시 시작하기</button>
     </div>
   </div>
 
-  <!-- 게임 화면 Canvas -->
-  <canvas id="gameCanvas" width="800" height="500"></canvas>
+  <div class="help-text">마우스 드래그: 다중 선택 | 우클릭: 이동/채굴/공격 | WASD/방향키: 화면 이동 (대형 맵 3200x2400)</div>
 
-  <!-- 하단 컨트롤 UI -->
-  <div class="controls-ui">
-    <div class="btn-group">
-      <button onclick="buildSupplyDepot()">서플라이 디포 (미네랄 100)</button>
-      <button onclick="produceUnit()">유닛 생산 (미네랄 50 / 인구 1)</button>
-    </div>
-    <div>
-      <span style="font-size: 13px; color: #aaa;">AI 미네랄: <b id="ai-mineral">200</b> | AI 인구: <b id="ai-supply">0/10</b></span>
-    </div>
-  </div>
+  <script>
+    window.addEventListener('contextmenu', (e) => e.preventDefault());
 
-  <!-- 게임 로그 -->
-  <div id="log-box"></div>
-</div>
+    const WORLD_W = 3200;
+    const WORLD_H = 2400;
+    const VIEW_W = 650;
+    const VIEW_H = 460;
 
-<script>
-  const canvas = document.getElementById('gameCanvas');
-  const ctx = canvas.getContext('2d');
+    let camX = 0;
+    let camY = WORLD_H - VIEW_H;
 
-  // ==========================================
-  // 1. 난이도 및 데이터 설정 (Step 1 & 2)
-  // ==========================================
-  const DIFFICULTY_SETTINGS = {
-    EASY:   { name: "쉬움",   aiStartMinerals: 200, aiGatherRate: 1, aiBuildInterval: 4000 },
-    NORMAL: { name: "보통",   aiStartMinerals: 400, aiGatherRate: 2, aiBuildInterval: 2500 },
-    HARD:   { name: "어려움", aiStartMinerals: 600, aiGatherRate: 4, aiBuildInterval: 1200 }
-  };
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
 
-  let currentDiff = DIFFICULTY_SETTINGS.EASY;
+    // 1단계: 난이도 설정 및 AI 자원 수급률
+    const DIFFICULTY_SETTINGS = {
+      EASY:   { name: '쉬움', aiGatherRate: 0.8, buildInterval: 45 },
+      NORMAL: { name: '보통', aiGatherRate: 1.2, buildInterval: 30 },
+      HARD:   { name: '어려움', aiGatherRate: 1.8, buildInterval: 18 }
+    };
+    let currentDifficulty = DIFFICULTY_SETTINGS.NORMAL;
 
-  // 플레이어 & AI 데이터
-  const player = {
-    color: '#00d2ff',
-    minerals: 400,
-    currentSupply: 0,
-    maxSupply: 10,
-    buildings: [{ type: 'HQ', x: 80, y: 250, hp: 1000, maxHp: 1000 }],
-    units: []
-  };
+    let resources = { min: 200, gas: 0, enemyMin: 250, enemyGas: 0 };
+    let wave = 1;
+    let waveTimer = 0;
+    let buildMode = null;
+    let gameOver = false;
 
-  const ai = {
-    color: '#ff4444',
-    minerals: currentDiff.aiStartMinerals,
-    currentSupply: 0,
-    maxSupply: 10,
-    buildings: [{ type: 'HQ', x: 720, y: 250, hp: 1000, maxHp: 1000 }],
-    units: []
-  };
+    let tech = { barracks: false, academy: false, factory: false, armory: false, starport: false, lab: false };
 
-  // ==========================================
-  // 2. 인구수 계산 로직 (Step 2)
-  // ==========================================
-  function updateSupply(faction) {
-    const depotCount = faction.buildings.filter(b => b.type === 'SUPPLY_DEPOT').length;
-    faction.maxSupply = Math.min(200, 10 + (depotCount * 8)); // 기본 10 + 디포당 8 (최대 200)
-    faction.currentSupply = faction.units.length; // 유닛당 인구 1 소비
-  }
+    let entities = [];
+    let bullets = [];
+    let particles = [];
+    let selectedUnits = [];
+    let keys = {};
 
-  // ==========================================
-  // 3. 생산 및 건설 기능
-  // ==========================================
-  function log(msg) {
-    const box = document.getElementById('log-box');
-    box.innerHTML += `<div>> ${msg}</div>`;
-    box.scrollTop = box.scrollHeight;
-  }
+    let isDragging = false;
+    let dragStartScreen = { x: 0, y: 0 };
+    let dragEndScreen = { x: 0, y: 0 };
+    let isMinimapDragging = false;
 
-  function setDifficulty(level) {
-    currentDiff = DIFFICULTY_SETTINGS[level];
-    ai.minerals = currentDiff.aiStartMinerals;
-    document.querySelectorAll('.diff-btn').forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
-    log(`난이도가 [${currentDiff.name}] (으)로 변경되었습니다.`);
-  }
+    let aiStateMode = 'expand';
 
-  // 플레이어: 서플라이 건설
-  function buildSupplyDepot() {
-    if (player.minerals < 100) { log("미네랄이 부족합니다! (100 필요)"); return; }
-    
-    player.minerals -= 100;
-    const hq = player.buildings[0];
-    const offsetX = (Math.random() - 0.5) * 120;
-    const offsetY = (Math.random() - 0.5) * 120;
-    
-    player.buildings.push({
-      type: 'SUPPLY_DEPOT',
-      x: hq.x + offsetX,
-      y: hq.y + offsetY,
-      hp: 400, maxHp: 400
-    });
-    
-    updateSupply(player);
-    log(`서플라이 디포 건설 완료! (최대 인구수: ${player.maxSupply})`);
-  }
+    // 2단계: 유닛별 인구수 및 스펙 데이터
+    const UNIT_SPECS = {
+      scv:       { min: 20,  gas: 0,   supply: 1, req: true,          bType: 'hq',       time: 70,  name: 'SCV' },
+      marine:    { min: 15,  gas: 0,   supply: 1, req: 'barracks',    bType: 'barracks', time: 80,  name: '보병' },
+      medic:     { min: 25,  gas: 0,   supply: 1, req: 'academy',     bType: 'barracks', time: 100, name: '의무병' },
+      fighter:   { min: 30,  gas: 0,   supply: 2, req: 'barracks',    bType: 'barracks', time: 120, name: '전투기' },
+      scout:     { min: 25,  gas: 0,   supply: 2, req: 'barracks',    bType: 'barracks', time: 90,  name: '정찰기' },
+      tank:      { min: 60,  gas: 10,  supply: 3, req: 'factory',     bType: 'factory',  time: 180, name: '전차' },
+      siegetank: { min: 90,  gas: 30,  supply: 4, req: 'armory',      bType: 'factory',  time: 240, name: '공성전차' },
+      mech:      { min: 50,  gas: 15,  supply: 3, req: 'factory',     bType: 'factory',  time: 150, name: '메카' },
+      cruiser:   { min: 70,  gas: 30,  supply: 5, req: 'starport',    bType: 'starport', time: 220, name: '중순양함' },
+      carrier:   { min: 100, gas: 60,  supply: 6, req: 'starport',    bType: 'starport', time: 320, name: '항공모함' },
+      titan:     { min: 150, gas: 100, supply: 8, req: 'lab',         bType: 'starport', time: 420, name: '거대요새함' }
+    };
 
-  // 플레이어: 유닛 생산
-  function produceUnit() {
-    if (player.minerals < 50) { log("미네랄이 부족합니다! (50 필요)"); return; }
-    if (player.currentSupply + 1 > player.maxSupply) { log("인구수가 가득 찼습니다! 서플라이 디포를 지으세요."); return; }
-
-    player.minerals -= 50;
-    const hq = player.buildings[0];
-    player.units.push({
-      x: hq.x + 30, y: hq.y + (Math.random() - 0.5) * 40,
-      hp: 100, maxHp: 100, speed: 1.5, attackPower: 8, target: null
-    });
-
-    updateSupply(player);
-    log(`유닛 생산 완료! (인구수: ${player.currentSupply}/${player.maxSupply})`);
-  }
-
-  // ==========================================
-  // 4. AI 자원 계산 및 생산 알고리즘 (Step 1)
-  // ==========================================
-  setInterval(() => {
-    // 자원 자동 획득 (플레이어 10, AI는 난이도 비례)
-    player.minerals += 10;
-    ai.minerals += 10 * currentDiff.aiGatherRate;
-  }, 1000);
-
-  setInterval(() => {
-    updateSupply(ai);
-
-    // AI 판단 1: 인구수 한계에 도달하면 자원이 되는 대로 서플라이 디포 건설
-    if (ai.currentSupply + 2 >= ai.maxSupply && ai.minerals >= 100 && ai.maxSupply < 200) {
-      ai.minerals -= 100;
-      const hq = ai.buildings[0];
-      ai.buildings.push({
-        type: 'SUPPLY_DEPOT',
-        x: hq.x + (Math.random() - 0.5) * 120,
-        y: hq.y + (Math.random() - 0.5) * 120,
-        hp: 400, maxHp: 400
-      });
-      updateSupply(ai);
-      log(`[AI] 서플라이 디포 건설! (최대 인구: ${ai.maxSupply})`);
-      return;
+    let toastTimer = null;
+    function showToast(msg) {
+      const toast = document.getElementById('toast-msg');
+      toast.innerText = msg;
+      toast.style.opacity = '1';
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { toast.style.opacity = '0'; }, 2000);
     }
 
-    // AI 판단 2: 자원과 인구수가 허용될 때만 유닛 생산 (무한 생산 차단)
-    if (ai.minerals >= 50 && ai.currentSupply + 1 <= ai.maxSupply) {
-      ai.minerals -= 50;
-      const hq = ai.buildings[0];
-      ai.units.push({
-        x: hq.x - 30, y: hq.y + (Math.random() - 0.5) * 40,
-        hp: 100, maxHp: 100, speed: 1.5, attackPower: 8, target: null
-      });
-      updateSupply(ai);
-      log(`[AI] 유닛 생산 완료! (남은 AI 미네랄: ${ai.minerals})`);
+    function changeDifficulty(val) {
+      currentDifficulty = DIFFICULTY_SETTINGS[val] || DIFFICULTY_SETTINGS.NORMAL;
+      showToast(`난이도가 [${currentDifficulty.name}](으)로 설정되었습니다.`);
     }
-  }, currentDiff.aiBuildInterval);
 
-  // ==========================================
-  // 5. 전투 & 이동 루프
-  // ==========================================
-  function gameUpdate() {
-    // 플레이어 유닛 -> AI 본진으로 이동 및 공격
-    player.units.forEach(u => {
-      const target = ai.buildings[0]; // 적 본진 타겟
-      if (target) {
-        const dist = Math.hypot(target.x - u.x, target.y - u.y);
-        if (dist > 35) {
-          u.x += ((target.x - u.x) / dist) * u.speed;
-          u.y += ((target.y - u.y) / dist) * u.speed;
-        } else {
-          target.hp -= u.attackPower * 0.05; // 공격
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+    function initAudio() { if (!audioCtx) audioCtx = new AudioCtx(); }
+
+    function playSound(type) {
+      if (!audioCtx) return;
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        const now = audioCtx.currentTime;
+
+        if (type === 'produce') {
+          osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); osc.frequency.exponentialRampToValueAtTime(800, now + 0.1);
+          gain.gain.setValueAtTime(0.12, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+          osc.start(now); osc.stop(now + 0.1);
+        } else if (type === 'laser') {
+          osc.type = 'sawtooth'; osc.frequency.setValueAtTime(650, now); osc.frequency.exponentialRampToValueAtTime(150, now + 0.07);
+          gain.gain.setValueAtTime(0.06, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.07);
+          osc.start(now); osc.stop(now + 0.07);
+        } else if (type === 'explode') {
+          osc.type = 'square'; osc.frequency.setValueAtTime(130, now); osc.frequency.exponentialRampToValueAtTime(25, now + 0.2);
+          gain.gain.setValueAtTime(0.18, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+          osc.start(now); osc.stop(now + 0.2);
+        }
+      } catch (e) {}
+    }
+
+    window.addEventListener('keydown', (e) => { keys[e.code] = true; });
+    window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+
+    function handleMinimapClick(mx, my) {
+      const mmW = 160, mmH = 120;
+      const mmX = VIEW_W - mmW - 10;
+      const mmY = VIEW_H - mmH - 10;
+
+      if (mx >= mmX && mx <= mmX + mmW && my >= mmY && my <= mmY + mmH) {
+        const targetX = ((mx - mmX) / mmW) * WORLD_W;
+        const targetY = ((my - mmY) / mmH) * WORLD_H;
+        camX = Math.max(0, Math.min(WORLD_W - VIEW_W, targetX - VIEW_W / 2));
+        camY = Math.max(0, Math.min(WORLD_H - VIEW_H, targetY - VIEW_H / 2));
+        return true;
+      }
+      return false;
+    }
+
+    // 2단계: 인구수 실시간 계산 함수
+    function getSupplyInfo(faction) {
+      const hqCount = entities.filter(e => e.faction === faction && e.type === 'hq' && !e.isUnderConstruction).length;
+      const depotCount = entities.filter(e => e.faction === faction && e.type === 'depot' && !e.isUnderConstruction).length;
+      
+      const maxSupply = Math.min(200, (hqCount * 10) + (depotCount * 8));
+      
+      const currentSupply = entities
+        .filter(e => e.faction === faction && UNIT_SPECS[e.type])
+        .reduce((sum, u) => sum + (UNIT_SPECS[u.type].supply || 1), 0);
+
+      return { current: currentSupply, max: maxSupply };
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+      initAudio();
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      if (e.button === 0 && handleMinimapClick(mouseX, mouseY)) {
+        isMinimapDragging = true;
+        return;
+      }
+
+      const worldX = mouseX + camX;
+      const worldY = mouseY + camY;
+
+      if (e.button === 2) {
+        if (selectedUnits.length > 0) {
+          const targetEnemy = entities.find(ent => 
+            ent.faction === 'enemy' && Math.hypot(ent.x - worldX, ent.y - worldY) <= ent.radius + 12
+          );
+
+          const targetRes = entities.find(ent => 
+            (ent.type === 'resource_min' || (ent.type === 'resource_gas' && ent.hasRefinery)) &&
+            Math.hypot(ent.x - worldX, ent.y - worldY) <= ent.radius + 15
+          );
+
+          selectedUnits.forEach((unit, idx) => {
+            if (unit.isBuildingSCV) unit.isBuildingSCV = false;
+            unit.mineTimer = 0;
+            const offsetX = (idx % 4 - 1.5) * 20;
+            const offsetY = (Math.floor(idx / 4) - 1.5) * 20;
+
+            if (unit.type === 'scv') {
+              if (targetRes) {
+                unit.isManualMove = false; unit.moveTarget = null; unit.assignedRes = targetRes;
+              } else {
+                unit.isManualMove = true; unit.moveTarget = { x: worldX + offsetX, y: worldY + offsetY }; unit.assignedRes = null;
+              }
+            } else {
+              unit.moveTarget = { x: worldX + offsetX, y: worldY + offsetY };
+              unit.forcedTarget = targetEnemy || null;
+            }
+          });
+        }
+        return;
+      }
+
+      if (e.button === 0) {
+        if (buildMode) { handleBuild(worldX, worldY); return; }
+        isDragging = true;
+        dragStartScreen = { x: mouseX, y: mouseY };
+        dragEndScreen = { x: mouseX, y: mouseY };
+      }
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      if (isMinimapDragging) {
+        handleMinimapClick(mouseX, mouseY);
+      } else if (isDragging) {
+        dragEndScreen = { x: mouseX, y: mouseY };
+      }
+    });
+
+    canvas.addEventListener('mouseup', (e) => {
+      if (e.button === 0) {
+        isMinimapDragging = false;
+        if (isDragging) {
+          isDragging = false;
+          const x1 = Math.min(dragStartScreen.x, dragEndScreen.x) + camX;
+          const x2 = Math.max(dragStartScreen.x, dragEndScreen.x) + camX;
+          const y1 = Math.min(dragStartScreen.y, dragEndScreen.y) + camY;
+          const y2 = Math.max(dragStartScreen.y, dragEndScreen.y) + camY;
+
+          const dragDist = Math.hypot(dragEndScreen.x - dragStartScreen.x, dragEndScreen.y - dragStartScreen.y);
+          const combatTypes = Object.keys(UNIT_SPECS);
+
+          if (dragDist > 8) {
+            selectedUnits = entities.filter(ent => 
+              ent.faction === 'player' && combatTypes.includes(ent.type) &&
+              ent.x >= x1 && ent.x <= x2 && ent.y >= y1 && ent.y <= y2
+            );
+          } else {
+            const clickedUnit = entities.find(ent => 
+              ent.faction === 'player' && combatTypes.includes(ent.type) &&
+              Math.hypot(ent.x - (dragStartScreen.x + camX), ent.y - (dragStartScreen.y + camY)) <= ent.radius + 6
+            );
+            selectedUnits = clickedUnit ? [clickedUnit] : [];
+          }
         }
       }
     });
 
-    // AI 유닛 -> 플레이어 본진으로 이동 및 공격
-    ai.units.forEach(u => {
-      const target = player.buildings[0]; // 플레이어 본진 타겟
-      if (target) {
-        const dist = Math.hypot(target.x - u.x, target.y - u.y);
-        if (dist > 35) {
-          u.x += ((target.x - u.x) / dist) * u.speed;
-          u.y += ((target.y - u.y) / dist) * u.speed;
-        } else {
-          target.hp -= u.attackPower * 0.05; // 공격
+    function toggleBuild(type) {
+      initAudio();
+      resetBuildButtons();
+      if (buildMode === type) { buildMode = null; } 
+      else { buildMode = type; document.getElementById(`btn-${type}`).classList.add('active-mode'); }
+    }
+
+    function resetBuildButtons() {
+      ['hq', 'depot', 'barracks', 'academy', 'refinery', 'factory', 'armory', 'starport', 'lab', 'bunker', 'turret'].forEach(t => {
+        const btn = document.getElementById(`btn-${t}`);
+        if (btn) btn.classList.remove('active-mode');
+      });
+    }
+
+    function handleBuild(wx, wy) {
+      const freeSCV = entities.find(e => e.faction === 'player' && e.type === 'scv' && !e.isBuildingSCV);
+      if (!freeSCV) {
+        showToast("⚠️ 건설 가능한 자유 SCV가 없습니다!");
+        buildMode = null; resetBuildButtons(); return;
+      }
+
+      const buildTimes = { hq: 400, depot: 150, barracks: 200, academy: 220, refinery: 150, factory: 280, armory: 300, starport: 340, lab: 380, bunker: 180, turret: 160 };
+
+      if (buildMode === 'hq' && resources.min >= 150) {
+        resources.min -= 150; startBuildingConstruction('hq', 'player', wx, wy, freeSCV, buildTimes.hq);
+      } else if (buildMode === 'depot' && resources.min >= 30) {
+        resources.min -= 30; startBuildingConstruction('depot', 'player', wx, wy, freeSCV, buildTimes.depot);
+      } else if (buildMode === 'barracks' && resources.min >= 40) {
+        resources.min -= 40; startBuildingConstruction('barracks', 'player', wx, wy, freeSCV, buildTimes.barracks);
+      } else if (buildMode === 'academy' && resources.min >= 50) {
+        resources.min -= 50; startBuildingConstruction('academy', 'player', wx, wy, freeSCV, buildTimes.academy);
+      } else if (buildMode === 'refinery' && resources.min >= 30) {
+        const gasNode = entities.find(e => e.type === 'resource_gas' && Math.hypot(e.x - wx, e.y - wy) < 50);
+        if (gasNode && !gasNode.hasRefinery) {
+          resources.min -= 30; gasNode.hasRefinery = true;
+          startBuildingConstruction('refinery', 'player', gasNode.x, gasNode.y, freeSCV, buildTimes.refinery);
+        } else { showToast("⚠️ 가스 간헐천 위에만 제련소를 건설할 수 있습니다!"); }
+      } else if (buildMode === 'factory' && resources.min >= 60 && resources.gas >= 20) {
+        resources.min -= 60; resources.gas -= 20; startBuildingConstruction('factory', 'player', wx, wy, freeSCV, buildTimes.factory);
+      } else if (buildMode === 'armory' && resources.min >= 70 && resources.gas >= 30) {
+        resources.min -= 70; resources.gas -= 30; startBuildingConstruction('armory', 'player', wx, wy, freeSCV, buildTimes.armory);
+      } else if (buildMode === 'starport' && resources.min >= 80 && resources.gas >= 40) {
+        resources.min -= 80; resources.gas -= 40; startBuildingConstruction('starport', 'player', wx, wy, freeSCV, buildTimes.starport);
+      } else if (buildMode === 'lab' && resources.min >= 100 && resources.gas >= 50) {
+        resources.min -= 100; resources.gas -= 50; startBuildingConstruction('lab', 'player', wx, wy, freeSCV, buildTimes.lab);
+      } else if (buildMode === 'bunker' && resources.min >= 45) {
+        resources.min -= 45; startBuildingConstruction('bunker', 'player', wx, wy, freeSCV, buildTimes.bunker);
+      } else if (buildMode === 'turret' && resources.min >= 35) {
+        resources.min -= 35; startBuildingConstruction('turret', 'player', wx, wy, freeSCV, buildTimes.turret);
+      }
+
+      buildMode = null; resetBuildButtons(); updateUI();
+    }
+
+    function startBuildingConstruction(type, faction, x, y, scv, maxTime) {
+      const b = spawnEntity(type, faction, x, y);
+      b.isUnderConstruction = true; b.buildProgress = 0; b.buildMaxTime = maxTime;
+      b.builderSCVId = scv ? scv.id : null;
+      if (scv) {
+        scv.isBuildingSCV = true; scv.isManualMove = false;
+        scv.moveTarget = { x: x, y: y }; scv.cargo = null; scv.mineTimer = 0;
+      }
+    }
+
+    function produce(unitType) {
+      initAudio();
+      const c = UNIT_SPECS[unitType];
+      if (!c) return;
+
+      const pSupply = getSupplyInfo('player');
+      if (pSupply.current + c.supply > pSupply.max) {
+        showToast("⚠️ 인구수가 부족합니다! 보급고(Depot)를 건설하세요!");
+        return;
+      }
+
+      const reqMet = (c.req === true) || (typeof c.req === 'string' && tech[c.req]);
+      if (!reqMet || resources.min < c.min || resources.gas < c.gas) return;
+
+      const prodBuilding = entities.find(e => e.faction === 'player' && e.type === c.bType && !e.isUnderConstruction && (!e.productionQueue || e.productionQueue.length < 5));
+      if (prodBuilding) {
+        resources.min -= c.min; resources.gas -= c.gas;
+        if (!prodBuilding.productionQueue) prodBuilding.productionQueue = [];
+        prodBuilding.productionQueue.push({ unitType: unitType, progress: 0, maxTime: c.time });
+        showToast(`🛠️ ${c.name} 생산 예약됨`);
+        playSound('produce');
+        updateUI();
+      } else {
+        showToast("⚠️ 생산 건물이 부족하거나 대기열이 가득 찼습니다!");
+      }
+    }
+
+    function updateUI() {
+      document.getElementById('res-min').innerText = Math.floor(resources.min);
+      document.getElementById('res-gas').innerText = Math.floor(resources.gas);
+      document.getElementById('wave-num').innerText = wave;
+
+      const pSupply = getSupplyInfo('player');
+      document.getElementById('p-supply').innerText = `${pSupply.current}/${pSupply.max}`;
+
+      const aiSupply = getSupplyInfo('enemy');
+      document.getElementById('ai-supply').innerText = `${aiSupply.current}/${aiSupply.max}`;
+
+      const playerHQs = entities.filter(e => e.type === 'hq' && e.faction === 'player' && !e.isUnderConstruction);
+      document.getElementById('hq-count').innerText = playerHQs.length;
+
+      const enemySquad = entities.filter(e => e.faction === 'enemy' && Object.keys(UNIT_SPECS).includes(e.type));
+      document.getElementById('ai-squad').innerText = enemySquad.length;
+      
+      let stateLabel = '🛡️ 자원 탐색 및 주둔';
+      if (aiStateMode === 'expand') stateLabel = '🏰 멀티 확장 중';
+      else if (aiStateMode === 'attack') stateLabel = '💥 총공격 공세';
+      else if (aiStateMode === 'harass') stateLabel = '⚡ 자원 기습 게릴라';
+      document.getElementById('ai-state-text').innerText = stateLabel;
+
+      Object.keys(UNIT_SPECS).forEach(uType => {
+        const btn = document.getElementById(`btn-${uType}`);
+        if (btn) {
+          const spec = UNIT_SPECS[uType];
+          const reqOk = (spec.req === true) || tech[spec.req];
+          const resOk = resources.min >= spec.min && resources.gas >= spec.gas;
+          const supplyOk = (pSupply.current + spec.supply <= pSupply.max);
+          btn.disabled = !reqOk || !resOk || !supplyOk;
+        }
+      });
+    }
+
+    function spawnEntity(type, faction, x, y) {
+      let e = {
+        id: Math.random().toString(), type: type, faction: faction, x: x, y: y,
+        hp: 100, maxHp: 100, speed: 0, radius: 15, emoji: '🛸',
+        cooldown: 0, cooldownMax: 40, attackRange: 0, damage: 10,
+        splash: false, splashRadius: 0, isHealer: false,
+        cargo: null, mineTimer: 0, moveTarget: null, forcedTarget: null,
+        isUnderConstruction: false, buildProgress: 0, buildMaxTime: 0,
+        productionQueue: [], isBuildingSCV: false, isManualMove: false, assignedRes: null,
+        amount: 0, maxAmount: 0
+      };
+
+      if (type === 'hq') { e.hp = e.maxHp = 700; e.radius = 35; e.emoji = (faction === 'player') ? '🏰' : '🏯'; }
+      else if (type === 'depot') { e.hp = e.maxHp = 300; e.radius = 20; e.emoji = '🏠'; }
+      else if (type === 'barracks') { e.hp = e.maxHp = 320; e.radius = 26; e.emoji = '🏭'; }
+      else if (type === 'academy') { e.hp = e.maxHp = 280; e.radius = 24; e.emoji = '🎓'; }
+      else if (type === 'factory') { e.hp = e.maxHp = 380; e.radius = 28; e.emoji = '⚙️'; }
+      else if (type === 'armory') { e.hp = e.maxHp = 350; e.radius = 26; e.emoji = '⚔️'; }
+      else if (type === 'starport') { e.hp = e.maxHp = 420; e.radius = 30; e.emoji = '🛫'; }
+      else if (type === 'lab') { e.hp = e.maxHp = 450; e.radius = 32; e.emoji = '🔬'; }
+      else if (type === 'refinery') { e.hp = e.maxHp = 260; e.radius = 22; e.emoji = '🌋'; }
+      else if (type === 'bunker') { e.hp = e.maxHp = 400; e.radius = 22; e.emoji = '🛡️'; e.attackRange = 160; e.cooldownMax = 25; e.damage = 12; }
+      else if (type === 'turret') { e.hp = e.maxHp = 260; e.radius = 18; e.emoji = '📡'; e.attackRange = 190; e.cooldownMax = 30; e.damage = 22; }
+      
+      else if (type === 'resource_min') { e.radius = 18; e.emoji = '💎'; e.resType = 'min'; e.amount = e.maxAmount = 2000; }
+      else if (type === 'resource_gas') { e.radius = 20; e.emoji = '🌋'; e.resType = 'gas'; e.hasRefinery = false; e.amount = e.maxAmount = 3000; }
+      
+      else if (type === 'scv') { e.hp = e.maxHp = 60; e.speed = 2.5; e.radius = 12; e.emoji = '🛸'; }
+      else if (type === 'marine') { e.hp = e.maxHp = 70; e.speed = 2.2; e.radius = 11; e.emoji = '🪖'; e.attackRange = 120; e.cooldownMax = 22; e.damage = 10; }
+      else if (type === 'medic') { e.hp = e.maxHp = 80; e.speed = 2.3; e.radius = 11; e.emoji = '🏥'; e.attackRange = 100; e.cooldownMax = 20; e.damage = 8; e.isHealer = true; }
+      else if (type === 'fighter') { e.hp = e.maxHp = 100; e.speed = 2.4; e.radius = 14; e.emoji = '🚀'; e.attackRange = 140; e.cooldownMax = 30; e.damage = 15; }
+      else if (type === 'scout') { e.hp = e.maxHp = 75; e.speed = 3.2; e.radius = 11; e.emoji = '🥷'; e.attackRange = 115; e.cooldownMax = 20; e.damage = 9; }
+      else if (type === 'tank') { e.hp = e.maxHp = 220; e.speed = 1.1; e.radius = 19; e.emoji = '🚜'; e.attackRange = 200; e.cooldownMax = 70; e.damage = 45; e.splash = true; e.splashRadius = 40; }
+      else if (type === 'siegetank') { e.hp = e.maxHp = 280; e.speed = 0.8; e.radius = 21; e.emoji = '💥'; e.attackRange = 320; e.cooldownMax = 110; e.damage = 85; e.splash = true; e.splashRadius = 60; }
+      else if (type === 'mech') { e.hp = e.maxHp = 250; e.speed = 1.4; e.radius = 18; e.emoji = '🤖'; e.attackRange = 150; e.cooldownMax = 35; e.damage = 24; }
+      else if (type === 'cruiser') { e.hp = e.maxHp = 340; e.speed = 1.1; e.radius = 22; e.emoji = '🛩️'; e.attackRange = 185; e.cooldownMax = 55; e.damage = 38; e.splash = true; e.splashRadius = 35; }
+      else if (type === 'carrier') { e.hp = e.maxHp = 450; e.speed = 0.9; e.radius = 25; e.emoji = '🛸'; e.attackRange = 240; e.cooldownMax = 45; e.damage = 50; e.splash = true; e.splashRadius = 50; }
+      else if (type === 'titan') { e.hp = e.maxHp = 700; e.speed = 0.7; e.radius = 30; e.emoji = '🛡️'; e.attackRange = 280; e.cooldownMax = 60; e.damage = 90; e.splash = true; e.splashRadius = 70; }
+
+      entities.push(e);
+      return e;
+    }
+
+    function spawnCurvedResources(hqX, hqY, startAngle, endAngle, radius = 140) {
+      const count = 7;
+      for (let i = 0; i < count; i++) {
+        let angle = startAngle + (endAngle - startAngle) * (i / (count - 1));
+        let rx = hqX + Math.cos(angle) * radius;
+        let ry = hqY + Math.sin(angle) * radius;
+        spawnEntity('resource_min', 'neutral', rx, ry);
+      }
+      let gasAngle = startAngle - 0.3;
+      let gx = hqX + Math.cos(gasAngle) * (radius + 20);
+      let gy = hqY + Math.sin(gasAngle) * (radius + 20);
+      spawnEntity('resource_gas', 'neutral', gx, gy);
+    }
+
+    function restartGame() {
+      document.getElementById('game-over-modal').style.display = 'none';
+      initGame();
+    }
+
+    function initGame() {
+      entities = []; bullets = []; particles = []; selectedUnits = [];
+      resources = { min: 200, gas: 0, enemyMin: 250, enemyGas: 0 };
+      wave = 1; waveTimer = 0; gameOver = false;
+      tech = { barracks: false, academy: false, factory: false, armory: false, starport: false, lab: false };
+
+      const pX = 350, pY = WORLD_H - 350;
+      spawnEntity('hq', 'player', pX, pY);
+      spawnCurvedResources(pX, pY, -Math.PI * 0.45, Math.PI * 0.05, 140);
+      for (let i = 0; i < 5; i++) spawnEntity('scv', 'player', pX - 50 + (i * 22), pY - 60);
+
+      const eX = WORLD_W - 350, eY = 350;
+      spawnEntity('hq', 'enemy', eX, eY);
+      spawnCurvedResources(eX, eY, Math.PI * 0.55, Math.PI * 1.05, 140);
+      const eGas = entities.find(e => e.type === 'resource_gas' && Math.hypot(e.x - eX, e.y - eY) < 220);
+      if (eGas) { eGas.hasRefinery = true; spawnEntity('refinery', 'enemy', eGas.x, eGas.y); }
+      for (let i = 0; i < 5; i++) spawnEntity('scv', 'enemy', eX - 50 + (i * 22), eY + 60);
+
+      spawnCurvedResources(400, 500, 0, Math.PI * 0.5, 120);
+      spawnCurvedResources(WORLD_W - 400, WORLD_H - 500, Math.PI, Math.PI * 1.5, 120);
+      spawnCurvedResources(WORLD_W / 2 - 300, WORLD_H / 2 - 200, -Math.PI * 0.25, Math.PI * 0.25, 130);
+      spawnCurvedResources(WORLD_W / 2 + 300, WORLD_H / 2 + 200, Math.PI * 0.75, Math.PI * 1.25, 130);
+      spawnCurvedResources(1100, 1500, Math.PI * 0.2, Math.PI * 0.7, 120);
+      spawnCurvedResources(2100, 900, -Math.PI * 0.8, -Math.PI * 0.3, 120);
+
+      updateUI();
+    }
+
+    function updateCamera() {
+      const speed = 14;
+      if (keys['ArrowLeft'] || keys['KeyA']) camX -= speed;
+      if (keys['ArrowRight'] || keys['KeyD']) camX += speed;
+      if (keys['ArrowUp'] || keys['KeyW']) camY -= speed;
+      if (keys['ArrowDown'] || keys['KeyS']) camY += speed;
+
+      camX = Math.max(0, Math.min(WORLD_W - VIEW_W, camX));
+      camY = Math.max(0, Math.min(WORLD_H - VIEW_H, camY));
+    }
+
+    // 1단계 & 2단계: AI 인구 제한 및 자원 알고리즘
+    let aiTimer = 0;
+    function updateHumanlikeAI() {
+      aiTimer++;
+      if (aiTimer % currentDifficulty.buildInterval !== 0) return;
+
+      const enemyHQs = entities.filter(e => e.type === 'hq' && e.faction === 'enemy' && !e.isUnderConstruction);
+      if (enemyHQs.length === 0) return;
+
+      const enemySquad = entities.filter(e => e.faction === 'enemy' && Object.keys(UNIT_SPECS).includes(e.type));
+      const playerHQs = entities.filter(e => e.type === 'hq' && e.faction === 'player');
+      const aiSupply = getSupplyInfo('enemy');
+
+      // AI 인구수 부족 시 보급고(Depot) 건설
+      if (aiSupply.current + 3 >= aiSupply.max && resources.enemyMin >= 30 && aiSupply.max < 200) {
+        const freeAISCV = entities.find(e => e.faction === 'enemy' && e.type === 'scv' && !e.isBuildingSCV);
+        if (freeAISCV) {
+          const mainHQ = enemyHQs[0];
+          resources.enemyMin -= 30;
+          startBuildingConstruction('depot', 'enemy', mainHQ.x + (Math.random()-0.5)*160, mainHQ.y + (Math.random()-0.5)*160, freeAISCV, 150);
+          return;
         }
       }
-    });
 
-    // 파괴된 건물 제거 판정
-    player.buildings = player.buildings.filter(b => b.hp > 0);
-    ai.buildings = ai.buildings.filter(b => b.hp > 0);
+      // AI 멀티 확장
+      if (resources.enemyMin >= 150) {
+        const freeAISCV = entities.find(e => e.faction === 'enemy' && e.type === 'scv' && !e.isBuildingSCV);
+        if (freeAISCV) {
+          const neutralNodes = entities.filter(e => e.type === 'resource_min' && e.amount > 500);
+          const unownedSpot = neutralNodes.find(node => !entities.some(b => b.type === 'hq' && Math.hypot(b.x - node.x, b.y - node.y) < 350));
 
-    // 승패 체크
-    if (player.buildings.length === 0) {
-      alert("모든 사령부가 전멸했습니다! 패배!");
-      location.reload();
-    } else if (ai.buildings.length === 0) {
-      alert("적의 모든 사령부를 파괴했습니다! 승리!");
-      location.reload();
+          if (unownedSpot) {
+            aiStateMode = 'expand';
+            resources.enemyMin -= 150;
+            startBuildingConstruction('hq', 'enemy', unownedSpot.x - 70, unownedSpot.y - 70, freeAISCV, 400);
+          }
+        }
+      }
+
+      // AI 총공격 & 게릴라
+      if (enemySquad.length >= 8) {
+        aiStateMode = 'attack';
+        const target = playerHQs[Math.floor(Math.random() * playerHQs.length)] || entities.find(e => e.faction === 'player');
+        if (target) {
+          enemySquad.forEach(u => {
+            if (!u.moveTarget) u.moveTarget = { x: target.x + (Math.random()-0.5)*100, y: target.y + (Math.random()-0.5)*100 };
+          });
+        }
+      } else if (enemySquad.length >= 4 && Math.random() < 0.3) {
+        aiStateMode = 'harass';
+        const targetSCV = entities.find(e => e.faction === 'player' && e.type === 'scv');
+        if (targetSCV) {
+          enemySquad.forEach(u => { u.moveTarget = { x: targetSCV.x, y: targetSCV.y }; });
+        }
+      }
+
+      // AI 일꾼 생산 (인구 수용량 체크)
+      const eSCVs = entities.filter(e => e.type === 'scv' && e.faction === 'enemy');
+      if (eSCVs.length < enemyHQs.length * 6 && resources.enemyMin >= 20 && aiSupply.current + 1 <= aiSupply.max) {
+        let spawnHQ = enemyHQs[Math.floor(Math.random() * enemyHQs.length)];
+        resources.enemyMin -= 20;
+        spawnEntity('scv', 'enemy', spawnHQ.x - 30, spawnHQ.y + 30);
+      }
+
+      // AI 건물 테크트리
+      const freeAISCV = eSCVs.find(s => !s.isBuildingSCV);
+      const mainHQ = enemyHQs[0];
+      const eBarracks = entities.find(e => e.type === 'barracks' && e.faction === 'enemy');
+      const eFactory = entities.find(e => e.type === 'factory' && e.faction === 'enemy');
+      const eStarport = entities.find(e => e.type === 'starport' && e.faction === 'enemy');
+
+      if (freeAISCV) {
+        if (!eBarracks && resources.enemyMin >= 40) {
+          resources.enemyMin -= 40; startBuildingConstruction('barracks', 'enemy', mainHQ.x - 100, mainHQ.y + 80, freeAISCV, 200);
+        } else if (eBarracks && !eFactory && resources.enemyMin >= 60 && resources.enemyGas >= 20) {
+          resources.enemyMin -= 60; resources.enemyGas -= 20; startBuildingConstruction('factory', 'enemy', mainHQ.x + 100, mainHQ.y + 80, freeAISCV, 280);
+        } else if (eFactory && !eStarport && resources.enemyMin >= 80 && resources.enemyGas >= 40) {
+          resources.enemyMin -= 80; resources.enemyGas -= 40; startBuildingConstruction('starport', 'enemy', mainHQ.x - 120, mainHQ.y - 80, freeAISCV, 340);
+        }
+      }
+
+      // AI 고급 병력 생산 (인구수 strict 체크)
+      if (eStarport && resources.enemyMin >= 100 && resources.enemyGas >= 60 && aiSupply.current + 6 <= aiSupply.max) {
+        resources.enemyMin -= 100; resources.enemyGas -= 60; spawnEntity('carrier', 'enemy', eStarport.x - 30, eStarport.y + 30);
+      } else if (eFactory && resources.enemyMin >= 60 && resources.enemyGas >= 10 && aiSupply.current + 3 <= aiSupply.max) {
+        resources.enemyMin -= 60; resources.enemyGas -= 10; spawnEntity('tank', 'enemy', eFactory.x - 30, eFactory.y + 30);
+      } else if (eBarracks && resources.enemyMin >= 15 && aiSupply.current + 1 <= aiSupply.max) {
+        resources.enemyMin -= 15; spawnEntity(Math.random() < 0.6 ? 'marine' : 'fighter', 'enemy', eBarracks.x - 30, eBarracks.y + 30);
+      }
+
+      updateUI();
     }
-  }
 
-  // ==========================================
-  // 6. 렌더링 (Canvas 렌더링)
-  // ==========================================
-  function render() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // 엔티티 업데이트 루프
+    function updateEntities() {
+      waveTimer++;
+      if (waveTimer % 1200 === 0) { wave++; updateUI(); }
 
-    // 그리드 배경
-    ctx.strokeStyle = '#1e1e1e';
-    for(let i=0; i<canvas.width; i+=40) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,canvas.height); ctx.stroke(); }
-    for(let i=0; i<canvas.height; i+=40) { ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(canvas.width,i); ctx.stroke(); }
+      for (let i = entities.length - 1; i >= 0; i--) {
+        let e = entities[i];
 
-    // 건물 및 유닛 그리기 함수
-    function drawFaction(faction) {
-      // 건물
-      faction.buildings.forEach(b => {
-        ctx.fillStyle = faction.color;
-        if (b.type === 'HQ') {
-          ctx.fillRect(b.x - 25, b.y - 25, 50, 50);
-          ctx.fillStyle = '#fff';
-          ctx.fillText("HQ", b.x - 8, b.y + 4);
-        } else if (b.type === 'SUPPLY_DEPOT') {
-          ctx.fillRect(b.x - 15, b.y - 15, 30, 30);
-          ctx.fillStyle = '#fff';
-          ctx.fillText("DEPOT", b.x - 18, b.y + 4);
+        // 사망 처리
+        if (e.hp <= 0) {
+          for (let p = 0; p < 6; p++) {
+            particles.push({ x: e.x, y: e.y, vx: (Math.random() - 0.5) * 5, vy: (Math.random() - 0.5) * 5, life: 22, text: '💥' });
+          }
+          playSound('explode');
+          selectedUnits = selectedUnits.filter(u => u.id !== e.id);
+          
+          if (e.faction === 'player') {
+            if (e.type === 'barracks') tech.barracks = entities.some(b => b.faction === 'player' && b.type === 'barracks' && !b.isUnderConstruction && b.id !== e.id);
+            if (e.type === 'academy') tech.academy = entities.some(b => b.faction === 'player' && b.type === 'academy' && !b.isUnderConstruction && b.id !== e.id);
+            if (e.type === 'factory') tech.factory = entities.some(b => b.faction === 'player' && b.type === 'factory' && !b.isUnderConstruction && b.id !== e.id);
+            if (e.type === 'armory') tech.armory = entities.some(b => b.faction === 'player' && b.type === 'armory' && !b.isUnderConstruction && b.id !== e.id);
+            if (e.type === 'starport') tech.starport = entities.some(b => b.faction === 'player' && b.type === 'starport' && !b.isUnderConstruction && b.id !== e.id);
+            if (e.type === 'lab') tech.lab = entities.some(b => b.faction === 'player' && b.type === 'lab' && !b.isUnderConstruction && b.id !== e.id);
+          }
+
+          entities.splice(i, 1);
+          updateUI();
+          continue;
         }
 
-        // 체력바
-        ctx.fillStyle = 'red';
-        ctx.fillRect(b.x - 25, b.y - 32, 50, 4);
-        ctx.fillStyle = '#00ff00';
-        ctx.fillRect(b.x - 25, b.y - 32, (b.hp / b.maxHp) * 50, 4);
-      });
+        // 1. 건물 건설 진척도 처리
+        if (e.isUnderConstruction) {
+          e.buildProgress++;
+          e.hp = Math.min(e.maxHp, (e.buildProgress / e.buildMaxTime) * e.maxHp);
+          if (e.buildProgress >= e.buildMaxTime) {
+            e.isUnderConstruction = false;
+            e.hp = e.maxHp;
+            const builder = entities.find(s => s.id === e.builderSCVId);
+            if (builder) builder.isBuildingSCV = false;
 
-      // 유닛
-      faction.units.forEach(u => {
-        ctx.fillStyle = faction.color;
-        ctx.beginPath();
-        ctx.arc(u.x, u.y, 8, 0, Math.PI * 2);
-        ctx.fill();
-      });
+            if (e.faction === 'player') {
+              if (e.type === 'barracks') tech.barracks = true;
+              if (e.type === 'academy') tech.academy = true;
+              if (e.type === 'factory') tech.factory = true;
+              if (e.type === 'armory') tech.armory = true;
+              if (e.type === 'starport') tech.starport = true;
+              if (e.type === 'lab') tech.lab = true;
+              showToast(`✅ ${e.type.toUpperCase()} 건설 완료!`);
+            }
+            updateUI();
+          }
+          continue;
+        }
+
+        // 2. 생산 대기열 처리
+        if (e.productionQueue && e.productionQueue.length > 0) {
+          const item = e.productionQueue[0];
+          item.progress++;
+          if (item.progress >= item.maxTime) {
+            spawnEntity(item.unitType, e.faction, e.x + (Math.random()-0.5)*30, e.y + e.radius + 15);
+            e.productionQueue.shift();
+            playSound('produce');
+            updateUI();
+          }
+        }
+
+        // 3. SCV 자원 채굴 로직
+        if (e.type === 'scv' && !e.isBuildingSCV) {
+          if (!e.isManualMove) {
+            let nearestHQ = entities.find(h => h.type === 'hq' && h.faction === e.faction && !h.isUnderConstruction);
+            
+            if (e.cargo) {
+              if (nearestHQ) {
+                const distHQ = Math.hypot(nearestHQ.x - e.x, nearestHQ.y - e.y);
+                if (distHQ > nearestHQ.radius + 10) {
+                  e.x += ((nearestHQ.x - e.x) / distHQ) * e.speed;
+                  e.y += ((nearestHQ.y - e.y) / distHQ) * e.speed;
+                } else {
+                  if (e.faction === 'player') {
+                    if (e.cargo.type === 'min') resources.min += e.cargo.amount;
+                    else resources.gas += e.cargo.amount;
+                  } else {
+                    if (e.cargo.type === 'min') resources.enemyMin += e.cargo.amount * currentDifficulty.aiGatherRate;
+                    else resources.enemyGas += e.cargo.amount * currentDifficulty.aiGatherRate;
+                  }
+                  e.cargo = null;
+                  updateUI();
+                }
+              }
+            } else {
+              let resNode = e.assignedRes || entities.find(r => (r.type === 'resource_min' || (r.type === 'resource_gas' && r.hasRefinery)) && Math.hypot(r.x - e.x, r.y - e.y) < 300);
+              if (resNode) {
+                const distRes = Math.hypot(resNode.x - e.x, resNode.y - e.y);
+                if (distRes > resNode.radius + 5) {
+                  e.x += ((resNode.x - e.x) / distRes) * e.speed;
+                  e.y += ((resNode.y - e.y) / distRes) * e.speed;
+                } else {
+                  e.mineTimer++;
+                  if (e.mineTimer >= 50) {
+                    e.mineTimer = 0;
+                    const amount = resNode.type === 'resource_min' ? 8 : 6;
+                    resNode.amount -= amount;
+                    e.cargo = { type: resNode.resType, amount: amount };
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        // 4. 일반 이동 처리
+        if (e.moveTarget) {
+          const dist = Math.hypot(e.moveTarget.x - e.x, e.moveTarget.y - e.y);
+          if (dist > 5) {
+            e.x += ((e.moveTarget.x - e.x) / dist) * e.speed;
+            e.y += ((e.moveTarget.y - e.y) / dist) * e.speed;
+          } else {
+            e.moveTarget = null;
+          }
+        }
+
+        // 5. 공격 & 치료 전투 로직
+        if (e.attackRange > 0) {
+          if (e.cooldown > 0) e.cooldown--;
+
+          let target = e.forcedTarget;
+          if (!target || target.hp <= 0) {
+            const targets = entities.filter(other => 
+              other.hp > 0 && other.faction !== 'neutral' &&
+              (e.isHealer ? (other.faction === e.faction && UNIT_SPECS[other.type]) : (other.faction !== e.faction)) &&
+              Math.hypot(other.x - e.x, other.y - e.y) <= e.attackRange
+            );
+            target = targets[0] || null;
+          }
+
+          if (target && e.cooldown <= 0) {
+            e.cooldown = e.cooldownMax;
+            if (e.isHealer) {
+              target.hp = Math.min(target.maxHp, target.hp + e.damage * 2);
+              particles.push({ x: target.x, y: target.y, vx: 0, vy: -1, life: 15, text: '✨' });
+            } else {
+              bullets.push({
+                x: e.x, y: e.y, targetX: target.x, targetY: target.y, targetEnt: target,
+                damage: e.damage, splash: e.splash, splashRadius: e.splashRadius, faction: e.faction, speed: 8
+              });
+              playSound('laser');
+            }
+          }
+        }
+      }
+
+      // 게임 승패 검사
+      const playerHQs = entities.filter(h => h.type === 'hq' && h.faction === 'player');
+      const enemyHQs = entities.filter(h => h.type === 'hq' && h.faction === 'enemy');
+
+      if (!gameOver) {
+        if (playerHQs.length === 0) {
+          gameOver = true;
+          document.getElementById('game-over-title').innerText = "💀 패배했습니다! 사령부가 전멸했습니다.";
+          document.getElementById('game-over-modal').style.display = 'block';
+        } else if (enemyHQs.length === 0) {
+          gameOver = true;
+          document.getElementById('game-over-title').innerText = "🏆 승리했습니다! 적의 진영을 완전히 소탕했습니다.";
+          document.getElementById('game-over-modal').style.display = 'block';
+        }
+      }
     }
 
-    drawFaction(player);
-    drawFaction(ai);
+    function updateBullets() {
+      for (let i = bullets.length - 1; i >= 0; i--) {
+        let b = bullets[i];
+        let targetX = b.targetEnt && b.targetEnt.hp > 0 ? b.targetEnt.x : b.targetX;
+        let targetY = b.targetEnt && b.targetEnt.hp > 0 ? b.targetEnt.y : b.targetY;
 
-    // UI 텍스트 업데이트
-    document.getElementById('p-mineral').innerText = Math.floor(player.minerals);
-    document.getElementById('p-supply').innerText = `${player.currentSupply} / ${player.maxSupply}`;
-    document.getElementById('ai-mineral').innerText = Math.floor(ai.minerals);
-    document.getElementById('ai-supply').innerText = `${ai.currentSupply} / ${ai.maxSupply}`;
-  }
+        let dist = Math.hypot(targetX - b.x, targetY - b.y);
+        if (dist <= b.speed) {
+          if (b.splash) {
+            entities.forEach(ent => {
+              if (ent.faction !== b.faction && ent.faction !== 'neutral' && Math.hypot(ent.x - targetX, ent.y - targetY) <= b.splashRadius) {
+                ent.hp -= b.damage;
+              }
+            });
+            particles.push({ x: targetX, y: targetY, vx: 0, vy: 0, life: 10, text: '💥' });
+          } else if (b.targetEnt && b.targetEnt.hp > 0) {
+            b.targetEnt.hp -= b.damage;
+          }
+          bullets.splice(i, 1);
+        } else {
+          b.x += ((targetX - b.x) / dist) * b.speed;
+          b.y += ((targetY - b.y) / dist) * b.speed;
+        }
+      }
+    }
 
-  // 메인 게임 루프
-  function gameLoop() {
-    gameUpdate();
-    render();
-    requestAnimationFrame(gameLoop);
-  }
+    function updateParticles() {
+      for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        p.x += p.vx; p.y += p.vy; p.life--;
+        if (p.life <= 0) particles.splice(i, 1);
+      }
+    }
 
-  // 게임 시작
-  log("게임을 시작합니다. 난이도를 선택하거나 유닛을 생산하세요.");
-  updateSupply(player);
-  updateSupply(ai);
-  gameLoop();
-</script>
+    function draw() {
+      ctx.clearRect(0, 0, VIEW_W, VIEW_H);
 
+      // 그리드 타일 렌더링
+      ctx.strokeStyle = '#111827';
+      ctx.lineWidth = 1;
+      const startX = Math.floor(camX / 50) * 50;
+      const startY = Math.floor(camY / 50) * 50;
+      for (let x = startX; x < camX + VIEW_W; x += 50) {
+        ctx.beginPath(); ctx.moveTo(x - camX, 0); ctx.lineTo(x - camX, VIEW_H); ctx.stroke();
+      }
+      for (let y = startY; y < camY + VIEW_H; y += 50) {
+        ctx.beginPath(); ctx.moveTo(0, y - camY); ctx.lineTo(VIEW_W, y - camY); ctx.stroke();
+      }
+
+      // 엔티티 렌더링
+      entities.forEach(e => {
+        const screenX = e.x - camX;
+        const screenY = e.y - camY;
+
+        if (screenX + e.radius < 0 || screenX - e.radius > VIEW_W || screenY + e.radius < 0 || screenY - e.radius > VIEW_H) return;
+
+        // 선택 동그라미
+        if (selectedUnits.some(u => u.id === e.id)) {
+          ctx.strokeStyle = '#00ff66'; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(screenX, screenY, e.radius + 4, 0, Math.PI * 2); ctx.stroke();
+        }
+
+        // 이모지 & 그래픽
+        ctx.font = `${e.radius * 1.5}px sans-serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(e.emoji, screenX, screenY);
+
+        // HP 바
+        if (e.hp < e.maxHp || e.isUnderConstruction) {
+          ctx.fillStyle = 'rgba(255,0,0,0.7)';
+          ctx.fillRect(screenX - e.radius, screenY - e.radius - 8, e.radius * 2, 4);
+          ctx.fillStyle = e.isUnderConstruction ? '#fcc419' : '#00ff66';
+          ctx.fillRect(screenX - e.radius, screenY - e.radius - 8, (e.hp / e.maxHp) * e.radius * 2, 4);
+        }
+      });
+
+      // 총알 렌더링
+      bullets.forEach(b => {
+        ctx.fillStyle = '#ffcc00';
+        ctx.beginPath(); ctx.arc(b.x - camX, b.y - camY, 3, 0, Math.PI * 2); ctx.fill();
+      });
+
+      // 파티클 렌더링
+      particles.forEach(p => {
+        ctx.font = '12px sans-serif';
+        ctx.fillText(p.text, p.x - camX, p.y - camY);
+      });
+
+      // 드래그 선택 영역 박스
+      if (isDragging) {
+        ctx.strokeStyle = '#4dadf7'; ctx.fillStyle = 'rgba(77, 173, 247, 0.15)'; ctx.lineWidth = 1;
+        const w = dragEndScreen.x - dragStartScreen.x;
+        const h = dragEndScreen.y - dragStartScreen.y;
+        ctx.fillRect(dragStartScreen.x, dragStartScreen.y, w, h);
+        ctx.strokeRect(dragStartScreen.x, dragStartScreen.y, w, h);
+      }
+
+      // 미니맵 렌더링
+      const mmW = 160, mmH = 120;
+      const mmX = VIEW_W - mmW - 10;
+      const mmY = VIEW_H - mmH - 10;
+
+      ctx.fillStyle = 'rgba(5, 7, 10, 0.85)';
+      ctx.fillRect(mmX, mmY, mmW, mmH);
+      ctx.strokeStyle = '#30363d'; ctx.lineWidth = 2;
+      ctx.strokeRect(mmX, mmY, mmW, mmH);
+
+      entities.forEach(e => {
+        const mx = mmX + (e.x / WORLD_W) * mmW;
+        const my = mmY + (e.y / WORLD_H) * mmH;
+        ctx.fillStyle = e.faction === 'player' ? '#4dadf7' : (e.faction === 'enemy' ? '#ff6b6b' : '#fcc419');
+        ctx.fillRect(mx - 1, my - 1, 3, 3);
+      });
+
+      // 미니맵 카메라 시야 사각형
+      const camMmX = mmX + (camX / WORLD_W) * mmW;
+      const camMmY = mmY + (camY / WORLD_H) * mmH;
+      const camMmW = (VIEW_W / WORLD_W) * mmW;
+      const camMmH = (VIEW_H / WORLD_H) * mmH;
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1;
+      ctx.strokeRect(camMmX, camMmY, camMmW, camMmH);
+    }
+
+    function gameLoop() {
+      updateCamera();
+      updateHumanlikeAI();
+      updateEntities();
+      updateBullets();
+      updateParticles();
+      draw();
+      requestAnimationFrame(gameLoop);
+    }
+
+    // 실행 시작
+    initGame();
+    gameLoop();
+  </script>
 </body>
 </html>
