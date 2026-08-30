@@ -37,7 +37,7 @@
   </style>
 </head>
 <body>
-  <h1>⚔️ 우주 전쟁: 지능형 RTS (스마트 AI & 이동 컨트롤 개선)</h1>
+  <h1>⚔️ 우주 전쟁: 지능형 RTS</h1>
   
   <div id="rts-panel">
     💎 <span id="res-min">50</span> | 🌋 <span id="res-gas">0</span> | 🌊 웨이브: <span id="wave-num">1</span> | 🏰 <span id="hp-player">500</span> | 🏯 <span id="hp-enemy">500</span> | ⚔️ 적 부대: <span id="ai-squad">0</span> (<span id="ai-state-text">방어 모드</span>)
@@ -69,7 +69,7 @@
     </div>
   </div>
 
-  <div class="help-text">마우스 드래그: 다중 선택 | 우클릭: 강제 이동/공격 | 이동 중 무조건 목적지 우선 이동 | 근처 손상 건물 자동 수리</div>
+  <div class="help-text">마우스 드래그: 다중 선택 | 우클릭: 강제 이동/공격 | 방향키/WASD: 화면 이동</div>
 
   <script>
     window.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -495,27 +495,23 @@
       const playerSquad = entities.filter(e => e.faction === 'player' && ['fighter','scout','tank','mech','cruiser','carrier'].includes(e.type));
       const playerSCVs = entities.filter(e => e.faction === 'player' && e.type === 'scv');
 
-      // 1. 사람처럼 상황 파악 및 전술 변경 (퇴각, 견제, 전면전)
       if (aiRetreatTimer > 0) {
         aiRetreatTimer--;
         aiStateMode = 'retreat';
       } else {
         let totalHpPercent = enemySquad.reduce((acc, u) => acc + (u.hp / u.maxHp), 0) / (enemySquad.length || 1);
-        
-        // 교전 중 체력이 너무 떨어지면 본진으로 후퇴
         if (enemySquad.length > 0 && totalHpPercent < 0.38 && enemySquad.length < playerSquad.length) {
-          aiRetreatTimer = 8; // 8주기 동안 후퇴
+          aiRetreatTimer = 8;
           aiStateMode = 'retreat';
         } else if (enemySquad.length >= 7) {
           aiStateMode = 'attack';
         } else if (enemySquad.length >= 3 && Math.random() < 0.4) {
-          aiStateMode = 'harass'; // 일꾼 게릴라 습격
+          aiStateMode = 'harass';
         } else {
           aiStateMode = 'defend';
         }
       }
 
-      // 2. 유닛 행동 지시
       if (aiStateMode === 'retreat') {
         enemySquad.forEach(u => {
           u.moveTarget = { x: mainHQ.x - 100 + (Math.random() * 60), y: mainHQ.y + 100 + (Math.random() * 60) };
@@ -536,7 +532,7 @@
             if (!u.moveTarget) u.moveTarget = { x: targetBuilding.x, y: targetBuilding.y };
           });
         }
-      } else { // 방어
+      } else {
         enemySquad.forEach((u, idx) => {
           if (!u.moveTarget) {
             u.moveTarget = { x: mainHQ.x - 150 + (idx % 3) * 30, y: mainHQ.y + 100 + Math.floor(idx / 3) * 30 };
@@ -544,7 +540,6 @@
         });
       }
 
-      // 3. 자원 관리 및 카운터 테크 구축
       resources.enemyMin += 1.2;
       resources.enemyGas += 0.5;
 
@@ -572,7 +567,6 @@
         }
       }
 
-      // 4. 상대 유닛 조합을 보고 스마트 맞춤 생산 (카운터 픽)
       const playerAirCount = playerSquad.filter(u => u.type === 'cruiser' || u.type === 'carrier').length;
       if (eStarport && playerAirCount > 1 && resources.enemyMin >= 100 && resources.enemyGas >= 60) {
         resources.enemyMin -= 100; resources.enemyGas -= 60;
@@ -621,7 +615,6 @@
           continue;
         }
 
-        // 건설 중인 건물
         if (e.isUnderConstruction) {
           const builder = entities.find(scv => scv.id === e.builderSCVId);
           if (builder) {
@@ -658,7 +651,6 @@
           continue;
         }
 
-        // 유닛 생산 대기열
         if (e.productionQueue && e.productionQueue.length > 0) {
           let item = e.productionQueue[0];
           item.progress++;
@@ -669,7 +661,6 @@
           }
         }
 
-        // 터렛 자동 공격
         if (e.type === 'turret') {
           if (e.cooldown > 0) e.cooldown--;
           let targets = entities.filter(t => t.faction !== 'neutral' && t.faction !== e.faction && !t.isUnderConstruction);
@@ -681,16 +672,14 @@
           }
         }
 
-        // SCV AI 개선 (수리 버그 및 채광 멈춤 현상 완전 해결)
+        // SCV AI (자원 반납 각도 오류 수정됨)
         if (e.type === 'scv' && !e.isBuildingSCV) {
           if (e.moveTarget) {
-            // 수동 이동 명령 시 최우선 이동
             let angle = Math.atan2(e.moveTarget.y - e.y, e.moveTarget.x - e.x);
             e.x += Math.cos(angle) * e.speed;
             e.y += Math.sin(angle) * e.speed;
             if (Math.hypot(e.moveTarget.x - e.x, e.moveTarget.y - e.y) < 4) e.moveTarget = null;
           } else {
-            // 근처(120px 이내)의 손상된 건물만 자동 수리
             const nearbyDamaged = entities.find(b => 
               b.faction === e.faction && 
               ['hq','barracks','factory','starport','refinery','turret'].includes(b.type) &&
@@ -709,7 +698,6 @@
                 if (Math.random() < 0.2) particles.push({ x: e.x, y: e.y, vx: 0, vy: -1, life: 10, text: '🔧' });
               }
             } else if (!e.cargo) {
-              // 자원 채굴 루프
               let targetRes = entities.filter(node => 
                 node.type === 'resource_min' || (node.type === 'resource_gas' && node.hasRefinery)
               ).reduce((closest, node) => {
@@ -727,7 +715,7 @@
                 }
               }
             } else {
-              // 자원 반납 루프
+              // 본진 복귀 각도 오류(e.y) 수정 완료
               let myHQ = entities.find(h => h.type === 'hq' && h.faction === e.faction && !h.isUnderConstruction);
               if (myHQ) {
                 let d = Math.hypot(myHQ.x - e.x, myHQ.y - e.y);
@@ -742,7 +730,7 @@
                   }
                   e.cargo = null;
                 } else {
-                  let angle = Math.atan2(myHQ.y - e.x, myHQ.x - e.x);
+                  let angle = Math.atan2(myHQ.y - e.y, myHQ.x - e.x);
                   e.x += Math.cos(angle) * e.speed;
                   e.y += Math.sin(angle) * e.speed;
                 }
@@ -751,7 +739,6 @@
           }
         }
 
-        // 전투 유닛 컨트롤 개선 (유저의 이동 명령을 강제로 취소하고 공격하는 버그 해결)
         if (['fighter','scout','tank','mech','cruiser','carrier'].includes(e.type)) {
           if (e.cooldown > 0) e.cooldown--;
 
@@ -766,7 +753,6 @@
             target = closest;
           }
 
-          // 사거리 안이면 공격
           if (target && Math.hypot(target.x - e.x, target.y - e.y) <= e.attackRange) {
             if (e.cooldown <= 0) {
               bullets.push({
@@ -779,7 +765,6 @@
             }
           }
 
-          // [핵심 해결] 이동 명령(moveTarget)이 없을 때만 적을 추적하며 자동 이동!
           if (e.moveTarget) {
             let angle = Math.atan2(e.moveTarget.y - e.y, e.moveTarget.x - e.x);
             e.x += Math.cos(angle) * e.speed;
@@ -796,7 +781,6 @@
         }
       }
 
-      // 탄환 처리
       for (let i = bullets.length - 1; i >= 0; i--) {
         let b = bullets[i];
         let t = entities.find(en => en.id === b.targetId);
