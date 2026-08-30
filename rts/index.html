@@ -41,8 +41,6 @@
     <span>🌊 웨이브: <span id="wave-num">1</span></span>
     <span>🏰 사령부: <span id="hq-count">1</span>개</span>
     <span>⚔️ 적: <span id="ai-squad">0</span> (<span id="ai-supply">0/10</span>)</span>
-    <span>💎 적 자원: <span id="ai-res-min">20</span> | 🌋 <span id="ai-res-gas">0</span></span>
-    <span>🎯 AI: <span id="ai-state-text">🟢 활성화됨</span></span>
     <select id="diff-select" class="diff-select" onchange="changeDifficulty(this.value)">
       <option value="EASY">난이도: 쉬움</option>
       <option value="NORMAL" selected>난이도: 보통</option>
@@ -393,43 +391,70 @@ function assignBestResource(scv) {
     }
 
     function handleBuild(wx, wy) {
-      const freeSCV = entities.find(e => e.faction === 'player' && e.type === 'scv' && !e.isBuildingSCV);
+      const freeSCV = entities.find(e =>
+        e.faction === 'player' &&
+        e.type === 'scv' &&
+        !e.isBuildingSCV
+      );
+
       if (!freeSCV) {
         showToast("⚠️ 건설 가능한 자유 SCV가 없습니다!");
-        buildMode = null; resetBuildButtons(); return;
+        buildMode = null;
+        resetBuildButtons();
+        return;
       }
 
-      const buildTimes = { hq: 1200, depot: 450, barracks: 600, academy: 650, refinery: 450, factory: 850, armory: 900, starport: 1000, lab: 1100, bunker: 550, turret: 500 };
+      const buildTimes = {
+        hq: 1200, depot: 450, barracks: 600, academy: 650,
+        refinery: 450, factory: 850, armory: 900, starport: 1000,
+        lab: 1100, bunker: 550, turret: 500
+      };
 
-      if (buildMode === 'hq' && resources.min >= 150) {
-        resources.min -= 150; startBuildingConstruction('hq', 'player', wx, wy, freeSCV, buildTimes.hq);
-      } else if (buildMode === 'depot' && resources.min >= 30) {
-        resources.min -= 30; startBuildingConstruction('depot', 'player', wx, wy, freeSCV, buildTimes.depot);
-      } else if (buildMode === 'barracks' && resources.min >= 40) {
-        resources.min -= 40; startBuildingConstruction('barracks', 'player', wx, wy, freeSCV, buildTimes.barracks);
-      } else if (buildMode === 'academy' && resources.min >= 50) {
-        resources.min -= 50; startBuildingConstruction('academy', 'player', wx, wy, freeSCV, buildTimes.academy);
-      } else if (buildMode === 'refinery' && resources.min >= 30) {
-        const gasNode = entities.find(e => e.type === 'resource_gas' && Math.hypot(e.x - wx, e.y - wy) < 50);
-        if (gasNode && !gasNode.hasRefinery) {
-          resources.min -= 30; gasNode.hasRefinery = true;
-          startBuildingConstruction('refinery', 'player', gasNode.x, gasNode.y, freeSCV, buildTimes.refinery);
-        } else { showToast("⚠️ 가스 간헐천 위에만 제련소를 건설할 수 있습니다!"); }
-      } else if (buildMode === 'factory' && resources.min >= 60 && resources.gas >= 20) {
-        resources.min -= 60; resources.gas -= 20; startBuildingConstruction('factory', 'player', wx, wy, freeSCV, buildTimes.factory);
-      } else if (buildMode === 'armory' && resources.min >= 70 && resources.gas >= 30) {
-        resources.min -= 70; resources.gas -= 30; startBuildingConstruction('armory', 'player', wx, wy, freeSCV, buildTimes.armory);
-      } else if (buildMode === 'starport' && resources.min >= 80 && resources.gas >= 40) {
-        resources.min -= 80; resources.gas -= 40; startBuildingConstruction('starport', 'player', wx, wy, freeSCV, buildTimes.starport);
-      } else if (buildMode === 'lab' && resources.min >= 100 && resources.gas >= 50) {
-        resources.min -= 100; resources.gas -= 50; startBuildingConstruction('lab', 'player', wx, wy, freeSCV, buildTimes.lab);
-      } else if (buildMode === 'bunker' && resources.min >= 45) {
-        resources.min -= 45; startBuildingConstruction('bunker', 'player', wx, wy, freeSCV, buildTimes.bunker);
-      } else if (buildMode === 'turret' && resources.min >= 35) {
-        resources.min -= 35; startBuildingConstruction('turret', 'player', wx, wy, freeSCV, buildTimes.turret);
+      const buildCosts = {
+        hq: [150, 0], depot: [30, 0], barracks: [40, 0], academy: [50, 0],
+        refinery: [30, 0], factory: [60, 20], armory: [70, 30],
+        starport: [80, 40], lab: [100, 50], bunker: [45, 0], turret: [35, 0]
+      };
+
+      const cost = buildCosts[buildMode];
+      if (!cost) {
+        buildMode = null;
+        resetBuildButtons();
+        return;
       }
 
-      buildMode = null; resetBuildButtons(); updateUI();
+      if (resources.min < cost[0] || resources.gas < cost[1]) {
+        showToast(`⚠️ 자원이 부족합니다! 필요: 💎${cost[0]} / 🌋${cost[1]}`);
+        buildMode = null;
+        resetBuildButtons();
+        return;
+      }
+
+      if (buildMode === 'refinery') {
+        const gasNode = entities.find(e =>
+          e.type === 'resource_gas' &&
+          Math.hypot(e.x - wx, e.y - wy) < 50
+        );
+
+        if (!gasNode || gasNode.hasRefinery) {
+          showToast("⚠️ 가스 간헐천 위에만 제련소를 건설할 수 있습니다!");
+          buildMode = null;
+          resetBuildButtons();
+          return;
+        }
+
+        resources.min -= cost[0];
+        gasNode.hasRefinery = true;
+        startBuildingConstruction('refinery', 'player', gasNode.x, gasNode.y, freeSCV, buildTimes.refinery);
+      } else {
+        resources.min -= cost[0];
+        resources.gas -= cost[1];
+        startBuildingConstruction(buildMode, 'player', wx, wy, freeSCV, buildTimes[buildMode]);
+      }
+
+      buildMode = null;
+      resetBuildButtons();
+      updateUI();
     }
 
     function startBuildingConstruction(type, faction, x, y, scv, maxTime) {
@@ -438,7 +463,7 @@ function assignBestResource(scv) {
       b.buildProgress = 0; 
       b.buildMaxTime = maxTime;
       b.builderSCVId = scv ? scv.id : null;
-      b.hp = 1;
+      b.hp = Math.max(1, b.hp || 1);
 
       if (scv) {
         scv.isBuildingSCV = true; 
@@ -500,8 +525,10 @@ function assignBestResource(scv) {
 
       const aiSupply = getSupplyInfo('enemy');
       document.getElementById('ai-supply').innerText = `${aiSupply.current}/${aiSupply.max}`;
-      document.getElementById('ai-res-min').innerText = Math.floor(resources.enemyMin);
-      document.getElementById('ai-res-gas').innerText = Math.floor(resources.enemyGas);
+      const aiResMinEl = document.getElementById('ai-res-min');
+      const aiResGasEl = document.getElementById('ai-res-gas');
+      if (aiResMinEl) aiResMinEl.innerText = Math.floor(resources.enemyMin);
+      if (aiResGasEl) aiResGasEl.innerText = Math.floor(resources.enemyGas);
 
       const playerHQs = entities.filter(e => e.type === 'hq' && e.faction === 'player' && !e.isUnderConstruction);
       document.getElementById('hq-count').innerText = playerHQs.length;
@@ -603,6 +630,7 @@ function assignBestResource(scv) {
       entities = []; bullets = []; particles = []; sparks = []; selectedUnits = [];
       resources = { min: 20, gas: 0, enemyMin: 20, enemyGas: 0 };
       wave = 1; waveTimer = 0; gameOver = false; window.enemyAITimer = 0;
+      enemyAI.initialized = false; enemyAI.phase = 'OPENING'; enemyAI.timer = 0; enemyAI.attackTimer = 0; enemyAI.rallyTimer = 0; enemyAI.attackCount = 0; enemyAI.threatened = false; enemyAI.attackTarget = null;
       tech = { barracks: false, academy: false, factory: false, armory: false, starport: false, lab: false };
 
       const pX = 350, pY = WORLD_H - 350;
@@ -645,19 +673,29 @@ function assignBestResource(scv) {
       camY = Math.max(0, Math.min(WORLD_H - VIEW_H, camY));
     }
 
-    function updateHumanlikeAI() {
-      // 적 AI는 실제로 계속 동작한다.
-      // - enemyMin / enemyGas를 자체 자원으로 사용
-      // - 시작 SCV는 적 기지 주변 자원만 채굴
-      // - 자원이 모이면 SCV -> 병영 -> 보병 순으로 확장
-      // - 병력이 모이면 플레이어 기지를 공격
-      const enemyHQ = entities.find(e =>
-        e.faction === 'enemy' && e.type === 'hq' && !e.isUnderConstruction
-      );
-      if (!enemyHQ) return;
+    // =========================
+    // 고전 SC1 스타일 적 AI
+    // =========================
+    // 실제 스타크래프트 1의 내부 스크립트를 복제하지 않고,
+    // "빌드오더 + 상황판단 + 웨이브 공격 + 방어 + 확장" 구조를 재현한다.
+    const enemyAI = {
+      initialized: false,
+      mode: 'BIO_PRESSURE',
+      phase: 'OPENING',
+      timer: 0,
+      attackTimer: 0,
+      rallyTimer: 0,
+      scoutTimer: 0,
+      expansionTimer: 0,
+      attackCount: 0,
+      lastAttackSize: 0,
+      threatened: false,
+      rallyPoint: null,
+      attackTarget: null
+    };
 
-      // AI 전용 기술 상태
-      const enemyTech = {
+    function enemyTechState() {
+      return {
         barracks: entities.some(e => e.faction === 'enemy' && e.type === 'barracks' && !e.isUnderConstruction),
         academy: entities.some(e => e.faction === 'enemy' && e.type === 'academy' && !e.isUnderConstruction),
         factory: entities.some(e => e.faction === 'enemy' && e.type === 'factory' && !e.isUnderConstruction),
@@ -665,104 +703,528 @@ function assignBestResource(scv) {
         starport: entities.some(e => e.faction === 'enemy' && e.type === 'starport' && !e.isUnderConstruction),
         lab: entities.some(e => e.faction === 'enemy' && e.type === 'lab' && !e.isUnderConstruction)
       };
+    }
 
-      // AI 행동 타이머
-      if (!window.enemyAITimer) window.enemyAITimer = 0;
-      window.enemyAITimer++;
+    function enemyFreeSCV() {
+      return entities.find(e =>
+        e.faction === 'enemy' &&
+        e.type === 'scv' &&
+        !e.isBuildingSCV &&
+        !e.isManualMove
+      );
+    }
 
-      // 1. 적 SCV는 언제나 자기 기지 주변 자원을 우선 채굴
+    function enemyBuildings(type) {
+      return entities.filter(e =>
+        e.faction === 'enemy' &&
+        e.type === type &&
+        !e.isUnderConstruction
+      );
+    }
+
+    function enemyUnits(type) {
+      return entities.filter(e =>
+        e.faction === 'enemy' && e.type === type
+      );
+    }
+
+    function enemyCombatUnits() {
+      return entities.filter(e =>
+        e.faction === 'enemy' &&
+        e.speed > 0 &&
+        e.type !== 'scv' &&
+        Object.prototype.hasOwnProperty.call(UNIT_SPECS, e.type)
+      );
+    }
+
+    function playerCombatUnits() {
+      return entities.filter(e =>
+        e.faction === 'player' &&
+        e.speed > 0 &&
+        e.type !== 'scv' &&
+        Object.prototype.hasOwnProperty.call(UNIT_SPECS, e.type)
+      );
+    }
+
+    function enemyGetPlayerHQ() {
+      return entities.find(e =>
+        e.faction === 'player' &&
+        e.type === 'hq' &&
+        !e.isUnderConstruction
+      );
+    }
+
+    function enemyBaseHQ() {
+      return entities.find(e =>
+        e.faction === 'enemy' &&
+        e.type === 'hq' &&
+        !e.isUnderConstruction
+      );
+    }
+
+    function enemyCountNear(x, y, radius, faction, combatOnly = false) {
+      return entities.filter(e => {
+        if (e.faction !== faction) return false;
+        if (combatOnly && (e.speed <= 0 || e.type === 'scv')) return false;
+        return Math.hypot(e.x - x, e.y - y) <= radius;
+      }).length;
+    }
+
+    function enemySetState(text) {
+      const el = document.getElementById('ai-state-text');
+      if (el) el.innerText = text;
+    }
+
+    function enemyResetAttackOrders() {
+      enemyCombatUnits().forEach(u => {
+        u.forcedTarget = null;
+        if (u.faction === 'enemy') u.moveTarget = null;
+      });
+    }
+
+    function enemyAssignRally(point) {
+      enemyCombatUnits().forEach(u => {
+        u.forcedTarget = null;
+        u.moveTarget = { x: point.x, y: point.y };
+      });
+      enemyAI.rallyPoint = point;
+    }
+
+    function enemyLaunchAttack() {
+      const targetHQ = enemyGetPlayerHQ();
+      if (!targetHQ) return false;
+
+      const army = enemyCombatUnits();
+      const minArmy =
+        enemyAI.mode === 'RUSH' ? 4 :
+        enemyAI.mode === 'MECH' ? 6 :
+        enemyAI.mode === 'AIR' ? 6 : 8;
+
+      if (army.length < minArmy) return false;
+
+      const rally = {
+        x: (350 + (WORLD_W - 350)) / 2,
+        y: (WORLD_H - 350 + 350) / 2
+      };
+
+      // First gather at the same rally point, then commit as a wave.
+      enemyAssignRally(rally);
+
+      const commitDelay =
+        enemyAI.mode === 'RUSH' ? 45 :
+        enemyAI.mode === 'MECH' ? 100 : 70;
+
+      enemyAI.rallyTimer = commitDelay;
+      enemyAI.phase = 'RALLY';
+      enemyAI.attackCount++;
+      enemyAI.lastAttackSize = army.length;
+      enemyAI.attackTimer = 0;
+      return true;
+    }
+
+    function enemyCommitAttack() {
+      const targetHQ = enemyGetPlayerHQ();
+      if (!targetHQ) return;
+
+      const army = enemyCombatUnits();
+      if (!army.length) return;
+
+      army.forEach(u => {
+        u.forcedTarget = targetHQ;
+        u.moveTarget = { x: targetHQ.x, y: targetHQ.y };
+      });
+
+      enemyAI.phase = 'ATTACK';
+      enemyAI.attackTimer = 0;
+      enemyAI.rallyTimer = 0;
+      enemyAI.attackTarget = targetHQ;
+      enemySetState(`🟠 공격 웨이브 #${enemyAI.attackCount}`);
+    }
+
+    function enemyDefendBase() {
+      const hq = enemyBaseHQ();
+      if (!hq) return;
+
+      const threats = playerCombatUnits()
+        .filter(u => Math.hypot(u.x - hq.x, u.y - hq.y) <= 600);
+
+      enemyAI.threatened = threats.length > 0;
+      if (!enemyAI.threatened) return;
+
+      const defenders = enemyCombatUnits()
+        .sort((a, b) =>
+          Math.hypot(a.x - hq.x, a.y - hq.y) -
+          Math.hypot(b.x - hq.x, b.y - hq.y)
+        )
+        .slice(0, Math.max(4, Math.ceil(enemyCombatUnits().length * 0.65)));
+
+      const target = threats[0];
+      defenders.forEach(u => {
+        u.forcedTarget = target;
+        u.moveTarget = { x: target.x, y: target.y };
+      });
+
+      enemyAI.phase = 'DEFEND';
+      enemySetState('🔵 기지 방어');
+    }
+
+    function enemyCanStartBuilding(type) {
+      const hq = enemyBaseHQ();
+      const scv = enemyFreeSCV();
+      if (!hq || !scv) return null;
+
+      const spots = {
+        depot: { x: hq.x - 80, y: hq.y + 90 },
+        barracks: { x: hq.x - 115, y: hq.y + 70 },
+        academy: { x: hq.x - 125, y: hq.y - 55 },
+        factory: { x: hq.x - 135, y: hq.y - 105 },
+        armory: { x: hq.x - 200, y: hq.y - 30 },
+        starport: { x: hq.x - 190, y: hq.y + 105 },
+        lab: { x: hq.x - 210, y: hq.y + 155 },
+        bunker: { x: hq.x - 65, y: hq.y + 150 },
+        turret: { x: hq.x - 55, y: hq.y + 185 }
+      };
+
+      return spots[type] ? { scv, pos: spots[type] } : null;
+    }
+
+    function enemyBuild(type, minCost, gasCost = 0, time = 500) {
+      if (resources.enemyMin < minCost || resources.enemyGas < gasCost) return false;
+
+      const plan = enemyCanStartBuilding(type);
+      if (!plan) return false;
+
+      // Avoid stacking duplicate construction orders.
+      const already = entities.some(e =>
+        e.faction === 'enemy' &&
+        e.type === type &&
+        e.isUnderConstruction
+      );
+      if (already) return false;
+
+      resources.enemyMin -= minCost;
+      resources.enemyGas -= gasCost;
+      startBuildingConstruction(type, 'enemy', plan.pos.x, plan.pos.y, plan.scv, time);
+      return true;
+    }
+
+    function enemyProduce(unitType, maxQueue = 2) {
+      const spec = UNIT_SPECS[unitType];
+      if (!spec) return false;
+
+      const supply = getSupplyInfo('enemy');
+      if (supply.current + spec.supply > supply.max) return false;
+      if (resources.enemyMin < spec.min || resources.enemyGas < spec.gas) return false;
+
+      const candidates = entities.filter(e =>
+        e.faction === 'enemy' &&
+        e.type === spec.bType &&
+        !e.isUnderConstruction &&
+        (!e.productionQueue || e.productionQueue.length < maxQueue)
+      );
+
+      if (!candidates.length) return false;
+
+      const b = candidates[0];
+      resources.enemyMin -= spec.min;
+      resources.enemyGas -= spec.gas;
+
+      if (!b.productionQueue) b.productionQueue = [];
+      b.productionQueue.push({
+        unitType,
+        progress: 0,
+        maxTime: spec.time
+      });
+      return true;
+    }
+
+    function enemyChooseMode() {
+      // Classic-style preset strategy selection:
+      // easy = safer bio, normal = pressure/mech mix, hard = aggressive opening.
+      const r = Math.random();
+
+      if (currentDifficulty === DIFFICULTY_SETTINGS.EASY) {
+        enemyAI.mode = r < 0.70 ? 'BIO_PRESSURE' : 'MECH';
+      } else if (currentDifficulty === DIFFICULTY_SETTINGS.HARD) {
+        enemyAI.mode = r < 0.45 ? 'RUSH' : (r < 0.80 ? 'MECH' : 'AIR');
+      } else {
+        enemyAI.mode = r < 0.50 ? 'BIO_PRESSURE' : (r < 0.82 ? 'MECH' : 'AIR');
+      }
+    }
+
+    function updateHumanlikeAI() {
+      const hq = enemyBaseHQ();
+      const playerHQ = enemyGetPlayerHQ();
+      if (!hq || !playerHQ) return;
+
+      if (!enemyAI.initialized) {
+        enemyAI.initialized = true;
+        enemyAI.timer = 0;
+        enemyAI.attackTimer = 0;
+        enemyAI.attackCount = 0;
+        enemyChooseMode();
+      }
+
+      enemyAI.timer++;
+
+      // Keep every free SCV working at the home mineral/gas line.
       entities.filter(e => e.faction === 'enemy' && e.type === 'scv').forEach(scv => {
-        if (scv.isBuildingSCV || scv.isManualMove) return;
-        if (!scv.assignedRes || scv.assignedRes.amount <= 0 ||
-            Math.hypot(scv.assignedRes.x - enemyHQ.x, scv.assignedRes.y - enemyHQ.y) > 360) {
+        if (scv.isBuildingSCV || scv.isManualMove || scv.isConstructing) return;
+        if (!scv.assignedRes ||
+            scv.assignedRes.amount <= 0 ||
+            Math.hypot(scv.assignedRes.x - hq.x, scv.assignedRes.y - hq.y) > 360) {
           assignEnemyBaseResource(scv);
         }
       });
 
-      // 2. 생산 대기열이 너무 자주 쌓이지 않도록 AI는 일정 간격으로 판단
-      const buildInterval = currentDifficulty.buildInterval;
-      if (window.enemyAITimer % buildInterval !== 0) return;
+      // React immediately to an early attack.
+      enemyDefendBase();
 
-      const enemySupply = getSupplyInfo('enemy');
-      const enemySCVs = entities.filter(e => e.faction === 'enemy' && e.type === 'scv').length;
-      const enemyBuildings = entities.filter(e => e.faction === 'enemy' && e.speed === 0 && !e.isUnderConstruction);
-
-      // 적 보급이 막히면 보급고 건설
-      if (enemySupply.current + 1 > enemySupply.max && resources.enemyMin >= 30) {
-        const buildSpot = { x: enemyHQ.x - 80, y: enemyHQ.y + 90 };
-        const freeSCV = entities.find(e => e.faction === 'enemy' && e.type === 'scv' && !e.isBuildingSCV && !e.isManualMove);
-        if (freeSCV) {
-          resources.enemyMin -= 30;
-          startBuildingConstruction('depot', 'enemy', buildSpot.x, buildSpot.y, freeSCV, 450);
-          return;
+      // The strategic controller thinks in chunky ticks, like a script-driven AI.
+      const thinkInterval = currentDifficulty.buildInterval;
+      if (enemyAI.timer % thinkInterval !== 0) {
+        if (enemyAI.phase === 'RALLY' && enemyAI.rallyTimer > 0) {
+          enemyAI.rallyTimer--;
+          if (enemyAI.rallyTimer === 0) enemyCommitAttack();
         }
-      }
-
-      // SCV를 최대 10기까지 확보
-      if (enemySCVs < 10 && resources.enemyMin >= UNIT_SPECS.scv.min &&
-          enemySupply.current + UNIT_SPECS.scv.supply <= enemySupply.max) {
-        const hqQueue = enemyHQ.productionQueue || [];
-        if (hqQueue.length < 2) {
-          resources.enemyMin -= UNIT_SPECS.scv.min;
-          if (!enemyHQ.productionQueue) enemyHQ.productionQueue = [];
-          enemyHQ.productionQueue.push({ unitType: 'scv', progress: 0, maxTime: UNIT_SPECS.scv.time });
-          return;
-        }
-      }
-
-      // 병영 건설
-      if (!enemyTech.barracks && resources.enemyMin >= 40) {
-        const freeSCV = entities.find(e => e.faction === 'enemy' && e.type === 'scv' && !e.isBuildingSCV && !e.isManualMove);
-        if (freeSCV) {
-          resources.enemyMin -= 40;
-          startBuildingConstruction('barracks', 'enemy', enemyHQ.x - 110, enemyHQ.y + 80, freeSCV, 600);
-          return;
-        }
-      }
-
-      // 보병 생산
-      const barracks = entities.find(e =>
-        e.faction === 'enemy' && e.type === 'barracks' && !e.isUnderConstruction &&
-        (!e.productionQueue || e.productionQueue.length < 3)
-      );
-      if (barracks && resources.enemyMin >= 15 &&
-          enemySupply.current + 1 <= enemySupply.max) {
-        resources.enemyMin -= 15;
-        if (!barracks.productionQueue) barracks.productionQueue = [];
-        barracks.productionQueue.push({ unitType: 'marine', progress: 0, maxTime: UNIT_SPECS.marine.time });
         return;
       }
 
-      // 자원이 충분하면 상위 테크 건물을 단계적으로 건설
-      if (enemyTech.barracks && !enemyTech.factory && resources.enemyMin >= 60 && resources.enemyGas >= 20) {
-        const freeSCV = entities.find(e => e.faction === 'enemy' && e.type === 'scv' && !e.isBuildingSCV && !e.isManualMove);
-        if (freeSCV) {
-          resources.enemyMin -= 60;
-          resources.enemyGas -= 20;
-          startBuildingConstruction('factory', 'enemy', enemyHQ.x - 140, enemyHQ.y - 100, freeSCV, 850);
+      const tech = enemyTechState();
+      const supply = getSupplyInfo('enemy');
+      const scvCount = enemyUnits('scv').length;
+      const marines = enemyUnits('marine').length;
+      const medics = enemyUnits('medic').length;
+      const tanks = enemyUnits('tank').length;
+      const mechs = enemyUnits('mech').length;
+      const fighters = enemyUnits('fighter').length;
+      const combatCount = enemyCombatUnits().length;
+
+      // 1. Supply management — very high priority.
+      if (supply.current + 2 >= supply.max && resources.enemyMin >= 30) {
+        if (enemyBuild('depot', 30, 0, 450)) {
+          enemySetState('🏠 보급고 증설');
           return;
         }
       }
 
-      // 3. 공격 명령: 적 전투병력이 충분히 모이면 플레이어 기지로 진격
-      const attackGroup = entities.filter(e =>
-        e.faction === 'enemy' &&
-        Object.keys(UNIT_SPECS).includes(e.type) &&
-        e.type !== 'scv'
-      );
+      // 2. Worker production: maintain a growing economy.
+      const workerTarget =
+        enemyAI.mode === 'RUSH' ? 8 :
+        enemyAI.mode === 'BIO_PRESSURE' ? 14 :
+        enemyAI.mode === 'MECH' ? 16 : 18;
 
-      if (attackGroup.length >= 4) {
-        const playerHQ = entities.find(e =>
-          e.faction === 'player' && e.type === 'hq' && !e.isUnderConstruction
-        );
-        if (playerHQ) {
-          attackGroup.forEach(unit => {
-            if (!unit.forcedTarget || unit.forcedTarget.hp <= 0) {
-              unit.forcedTarget = playerHQ;
-              unit.moveTarget = { x: playerHQ.x, y: playerHQ.y };
-            }
+      if (scvCount < workerTarget && resources.enemyMin >= 20) {
+        if (enemyProduce('scv', 2)) {
+          enemySetState('⛏️ SCV 생산');
+          return;
+        }
+      }
+
+      // 3. Opening build order.
+      if (!tech.barracks && resources.enemyMin >= 40) {
+        if (enemyBuild('barracks', 40, 0, 600)) {
+          enemySetState('🏭 병영 건설');
+          return;
+        }
+      }
+
+      // 4. Defensive infrastructure when player is approaching.
+      if (enemyAI.threatened && resources.enemyMin >= 45) {
+        const bunkerCount = enemyBuildings('bunker').length +
+          entities.filter(e => e.faction === 'enemy' && e.type === 'bunker' && e.isUnderConstruction).length;
+        if (bunkerCount < 2) {
+          if (enemyBuild('bunker', 45, 0, 550)) {
+            enemySetState('🛡️ 방어선 구축');
+            return;
+          }
+        }
+      }
+
+      // 5. Bio path: academy, additional barracks, medics and sustained marines.
+      if (enemyAI.mode === 'BIO_PRESSURE' || enemyAI.mode === 'RUSH') {
+        if (tech.barracks && !tech.academy && resources.enemyMin >= 50) {
+          if (enemyBuild('academy', 50, 0, 650)) {
+            enemySetState('🎓 사관학교 건설');
+            return;
+          }
+        }
+
+        if (tech.barracks && enemyBuildings('barracks').length < 2 && resources.enemyMin >= 40) {
+          if (enemyBuild('barracks', 40, 0, 600)) {
+            enemySetState('🏭 추가 병영');
+            return;
+          }
+        }
+
+        if (tech.barracks && resources.enemyMin >= 15) {
+          if (enemyProduce('marine', 3)) {
+            enemySetState('🪖 보병 생산');
+            return;
+          }
+        }
+
+        if (tech.academy && marines >= 4 && medics < Math.max(1, Math.floor(marines / 5)) && resources.enemyMin >= 25) {
+          if (enemyProduce('medic', 2)) {
+            enemySetState('🏥 의무병 생산');
+            return;
+          }
+        }
+      }
+
+      // 6. Mech path: refinery is already present; transition through factory.
+      if (enemyAI.mode === 'MECH' || combatCount >= 10) {
+        if (tech.barracks && !tech.factory && resources.enemyMin >= 60 && resources.enemyGas >= 20) {
+          if (enemyBuild('factory', 60, 20, 850)) {
+            enemySetState('⚙️ 공장 전환');
+            return;
+          }
+        }
+
+        if (tech.factory && !tech.armory && resources.enemyMin >= 70 && resources.enemyGas >= 30) {
+          if (enemyBuild('armory', 70, 30, 900)) {
+            enemySetState('⚔️ 무기고 건설');
+            return;
+          }
+        }
+
+        if (tech.factory && resources.enemyMin >= 60 && resources.enemyGas >= 10) {
+          if (enemyProduce('tank', 2)) {
+            enemySetState('🚜 전차 생산');
+            return;
+          }
+        }
+
+        if (tech.factory && resources.enemyMin >= 50 && resources.enemyGas >= 15) {
+          if (enemyProduce('mech', 2)) {
+            enemySetState('🤖 메카 생산');
+            return;
+          }
+        }
+      }
+
+      // 7. Air transition in the late game.
+      if (enemyAI.mode === 'AIR' || (combatCount >= 18 && tech.factory)) {
+        if (tech.factory && !tech.starport && resources.enemyMin >= 80 && resources.enemyGas >= 40) {
+          if (enemyBuild('starport', 80, 40, 1000)) {
+            enemySetState('🛫 우주항 건설');
+            return;
+          }
+        }
+
+        if (tech.starport && resources.enemyMin >= 30) {
+          if (enemyProduce('fighter', 2)) {
+            enemySetState('🚀 전투기 생산');
+            return;
+          }
+        }
+      }
+
+      // 8. Defensive sensor/technology building in the late game.
+      if (tech.starport && !tech.lab && resources.enemyMin >= 100 && resources.enemyGas >= 50) {
+        if (enemyBuild('lab', 100, 50, 1100)) {
+          enemySetState('🔬 연구소 건설');
+          return;
+        }
+      }
+
+      // 9. Expansion when the first base becomes economically mature.
+      const hqCount = enemyBuildings('hq').length;
+      const underHQ = entities.filter(e =>
+        e.faction === 'enemy' && e.type === 'hq' && e.isUnderConstruction
+      ).length;
+
+      const shouldExpand =
+        hqCount < 2 &&
+        underHQ === 0 &&
+        resources.enemyMin >= 150 &&
+        scvCount >= 12 &&
+        combatCount >= (enemyAI.mode === 'RUSH' ? 6 : 8);
+
+      if (shouldExpand) {
+        const expansionSpots = [
+          { x: WORLD_W - 800, y: 500 },
+          { x: WORLD_W - 800, y: 900 },
+          { x: WORLD_W / 2 + 500, y: WORLD_H / 2 - 400 }
+        ];
+
+        const spot = expansionSpots[0];
+        const free = enemyFreeSCV();
+
+        if (free) {
+          resources.enemyMin -= 150;
+          startBuildingConstruction('hq', 'enemy', spot.x, spot.y, free, 1200);
+          enemySetState('🏰 멀티 확보');
+          return;
+        }
+      }
+
+      // 10. Attack scheduling — periodic waves, not constant unit-by-unit suicide.
+      if (!enemyAI.threatened) {
+        const army = enemyCombatUnits();
+        const minArmy =
+          enemyAI.mode === 'RUSH' ? 4 :
+          enemyAI.mode === 'MECH' ? 6 :
+          enemyAI.mode === 'AIR' ? 7 : 8;
+
+        const attackCooldown =
+          enemyAI.mode === 'RUSH' ? 520 :
+          enemyAI.mode === 'BIO_PRESSURE' ? 760 :
+          enemyAI.mode === 'MECH' ? 920 : 850;
+
+        if (enemyAI.phase !== 'RALLY' &&
+            enemyAI.phase !== 'ATTACK' &&
+            army.length >= minArmy &&
+            enemyAI.attackTimer >= attackCooldown) {
+          enemyLaunchAttack();
+          return;
+        }
+      }
+
+      // 11. Rally/attack lifecycle.
+      if (enemyAI.phase === 'ATTACK') {
+        enemyAI.attackTimer += thinkInterval;
+
+        const target = enemyGetPlayerHQ();
+        if (!target) return;
+
+        const remaining = enemyCombatUnits();
+
+        // If the initial wave is nearly gone, stop chasing and regroup.
+        if (remaining.length <= Math.max(2, Math.floor(enemyAI.lastAttackSize * 0.35))) {
+          enemyResetAttackOrders();
+          enemyAI.phase = 'OPENING';
+          enemyAI.attackTimer = Math.max(0, attackCooldown - 200);
+          enemySetState('🟡 병력 재편성');
+          return;
+        }
+
+        // Re-commit surviving units toward the HQ periodically.
+        if (enemyAI.attackTimer % 240 === 0) {
+          remaining.forEach(u => {
+            u.forcedTarget = target;
+            u.moveTarget = { x: target.x, y: target.y };
           });
         }
+      } else if (enemyAI.phase === 'RALLY') {
+        if (enemyAI.rallyTimer > 0) {
+          enemyAI.rallyTimer -= thinkInterval;
+          if (enemyAI.rallyTimer <= 0) enemyCommitAttack();
+        }
+      }
+
+      if (enemyAI.phase !== 'ATTACK') {
+        enemyAI.attackTimer += thinkInterval;
+      }
+
+      // 12. Keep the main state understandable in the UI.
+      if (enemyAI.phase === 'OPENING') {
+        enemySetState(
+          enemyAI.mode === 'RUSH' ? '🟢 러시 준비' :
+          enemyAI.mode === 'MECH' ? '🟢 메카 준비' :
+          enemyAI.mode === 'AIR' ? '🟢 공중 준비' :
+          '🟢 병력 준비'
+        );
       }
     }
 
@@ -818,6 +1280,22 @@ function assignBestResource(scv) {
                   b.hp = b.maxHp;
                   ent.isBuildingSCV = false;
                   ent.buildingTargetId = null;
+                  ent.moveTarget = null;
+                  ent.cargo = null;
+                  ent.mineTimer = 0;
+
+                  // 건설이 끝난 SCV는 즉시 기지 주변 자원 채굴로 복귀
+                  if (ent.faction === 'player') {
+                    const hq = entities.find(h =>
+                      h.faction === 'player' && h.type === 'hq' && !h.isUnderConstruction
+                    );
+                    ent.assignedRes = hq
+                      ? assignBaseResource(ent, hq.x, hq.y, 360)
+                      : assignBestResource(ent);
+                  } else {
+                    ent.assignedRes = assignEnemyBaseResource(ent);
+                  }
+
                   showToast("🏗️ 건물 건설 완료!");
                 }
               }
@@ -900,6 +1378,11 @@ function assignBestResource(scv) {
 
         if (ent.speed > 0 && ent.type !== 'scv') {
           let target = ent.forcedTarget;
+          if ((!target || target.hp <= 0) && ent.faction === 'enemy' &&
+              (enemyAI.phase === 'RALLY' || enemyAI.phase === 'ATTACK')) {
+            // Scripted AI controls movement during rally/attack.
+            target = null;
+          }
           if (!target || target.hp <= 0) {
             const opp = (ent.faction === 'player') ? 'enemy' : 'player';
             target = entities.find(e => e.faction === opp && Math.hypot(e.x - ent.x, e.y - ent.y) <= ent.attackRange + 50);
@@ -941,7 +1424,7 @@ function assignBestResource(scv) {
         if (p.life <= 0) sparks.splice(i, 1);
       }
 
-      entities = entities.filter(e => e.hp > 0 || e.type.startsWith('resource_') || e.type === 'obstacle');
+      entities = entities.filter(e => e.hp > 0 || e.isUnderConstruction || e.type.startsWith('resource_') || e.type === 'obstacle');
 
       const pMaxHQ = entities.some(e => e.faction === 'player' && e.type === 'hq');
       const eMaxHQ = entities.some(e => e.faction === 'enemy' && e.type === 'hq');
