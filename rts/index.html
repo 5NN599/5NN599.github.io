@@ -100,6 +100,66 @@
     let camX = 0;
     let camY = WORLD_H - VIEW_H;
 
+    // 전장의 안개(Fog of War)
+    const FOG_TILE = 80;
+    const FOG_COLS = Math.ceil(WORLD_W / FOG_TILE);
+    const FOG_ROWS = Math.ceil(WORLD_H / FOG_TILE);
+    let fogVisible = new Uint8Array(FOG_COLS * FOG_ROWS);
+    let fogExplored = new Uint8Array(FOG_COLS * FOG_ROWS);
+
+    function resetFogOfWar() {
+      fogVisible = new Uint8Array(FOG_COLS * FOG_ROWS);
+      fogExplored = new Uint8Array(FOG_COLS * FOG_ROWS);
+    }
+
+    function fogIndex(col, row) {
+      return row * FOG_COLS + col;
+    }
+
+    function markFogCircle(x, y, radius) {
+      const minCol = Math.max(0, Math.floor((x - radius) / FOG_TILE));
+      const maxCol = Math.min(FOG_COLS - 1, Math.floor((x + radius) / FOG_TILE));
+      const minRow = Math.max(0, Math.floor((y - radius) / FOG_TILE));
+      const maxRow = Math.min(FOG_ROWS - 1, Math.floor((y + radius) / FOG_TILE));
+
+      for (let row = minRow; row <= maxRow; row++) {
+        for (let col = minCol; col <= maxCol; col++) {
+          const cx = col * FOG_TILE + FOG_TILE / 2;
+          const cy = row * FOG_TILE + FOG_TILE / 2;
+          if (Math.hypot(cx - x, cy - y) <= radius + FOG_TILE * 0.45) {
+            const idx = fogIndex(col, row);
+            fogVisible[idx] = 1;
+            fogExplored[idx] = 1;
+          }
+        }
+      }
+    }
+
+    function updateFogOfWar() {
+      fogVisible.fill(0);
+
+      entities.forEach(e => {
+        if (e.faction !== 'player') return;
+
+        let vision = 190;
+        if (e.type === 'hq') vision = 420;
+        else if (e.type === 'scv') vision = 220;
+        else if (e.type === 'turret') vision = 300;
+        else if (e.type === 'bunker') vision = 270;
+        else if (e.speed > 0) vision = 240;
+
+        markFogCircle(e.x, e.y, vision);
+      });
+    }
+
+    function isVisibleToPlayer(e) {
+      if (e.faction === 'player') return true;
+      const col = Math.floor(e.x / FOG_TILE);
+      const row = Math.floor(e.y / FOG_TILE);
+      if (col < 0 || row < 0 || col >= FOG_COLS || row >= FOG_ROWS) return false;
+      return fogVisible[fogIndex(col, row)] === 1;
+    }
+
     const canvas = document.getElementById('game-canvas');
     const ctx = canvas.getContext('2d');
 
@@ -282,11 +342,49 @@
       return bestRes;
     }
 
+    function nearestFriendlyHQ(faction, x, y) {
+      let best = null;
+      let bestDist = Infinity;
+      entities.forEach(h => {
+        if (h.faction !== faction || h.type !== 'hq' || h.isUnderConstruction) return;
+        const d = Math.hypot(h.x - x, h.y - y);
+        if (d < bestDist) {
+          bestDist = d;
+          best = h;
+        }
+      });
+      return best;
+    }
+
+    function assignResourceForNearestBase(scv) {
+      const base = nearestFriendlyHQ(scv.faction, scv.x, scv.y);
+      if (!base) {
+        scv.assignedRes = null;
+        scv.assignedBaseId = null;
+        return null;
+      }
+
+      let res = assignBaseResource(scv, base.x, base.y, 380);
+      if (!res) res = assignBestResource(scv);
+
+      scv.assignedRes = res || null;
+      scv.assignedBaseId = res ? base.id : null;
+      return res;
+    }
+
     function assignEnemyBaseResource(scv) {
-      const baseX = WORLD_W - 350;
-      const baseY = 350;
-      const res = assignBaseResource(scv, baseX, baseY, 320);
-      if (res) scv.assignedRes = res;
+      const base = nearestFriendlyHQ('enemy', scv.x, scv.y);
+      if (!base) {
+        scv.assignedRes = null;
+        scv.assignedBaseId = null;
+        return null;
+      }
+
+      let res = assignBaseResource(scv, base.x, base.y, 380);
+      if (!res) res = assignBestResource(scv);
+
+      scv.assignedRes = res || null;
+      scv.assignedBaseId = res ? base.id : null;
       return res;
     }
 
@@ -613,6 +711,7 @@ function assignBestResource(scv) {
         cargo: null, mineTimer: 0, moveTarget: null, forcedTarget: null,
         isUnderConstruction: false, buildProgress: 0, buildMaxTime: 0,
         productionQueue: [], isBuildingSCV: false, buildingTargetId: null, isManualMove: false, assignedRes: null,
+        assignedBaseId: null,
         playerOrder: 'none', playerOrderTarget: null,
         amount: 0, maxAmount: 0
       };
@@ -683,6 +782,7 @@ function assignBestResource(scv) {
 
     function initGame() {
       entities = []; bullets = []; particles = []; sparks = []; selectedUnits = [];
+      resetFogOfWar();
       resources = { min: 20, gas: 0, enemyMin: 20, enemyGas: 0 };
       wave = 1; waveTimer = 0; gameOver = false; window.enemyAITimer = 0;
       enemyAI.initialized = false; enemyAI.phase = 'OPENING'; enemyAI.timer = 0; enemyAI.attackTimer = 0; enemyAI.rallyTimer = 0; enemyAI.attackCount = 0; enemyAI.threatened = false; enemyAI.attackTarget = null; enemyAI.lastAttackSize = 0; enemyAI.rallyPoint = null;
@@ -693,7 +793,7 @@ function assignBestResource(scv) {
       spawnCurvedResources(pX, pY, -Math.PI * 0.45, Math.PI * 0.05, 140);
       for (let i = 0; i < 5; i++) {
         const scv = spawnEntity('scv', 'player', pX - 50 + (i * 22), pY - 60);
-        scv.assignedRes = assignBaseResource(scv, pX, pY, 320);
+        scv.assignedRes = assignResourceForNearestBase(scv);
       }
 
       const eX = WORLD_W - 350, eY = 350;
@@ -714,6 +814,7 @@ function assignBestResource(scv) {
       spawnCurvedResources(2100, 900, -Math.PI * 0.8, -Math.PI * 0.3, 120);
 
       spawnObstacles();
+      updateFogOfWar();
       updateUI();
     }
 
@@ -1433,6 +1534,7 @@ function assignBestResource(scv) {
 
       updateCamera();
       updateHumanlikeAI();
+      updateFogOfWar();
 
       tech.barracks = entities.some(e => e.faction === 'player' && e.type === 'barracks' && !e.isUnderConstruction);
       tech.academy = entities.some(e => e.faction === 'player' && e.type === 'academy' && !e.isUnderConstruction);
@@ -1465,8 +1567,10 @@ function assignBestResource(scv) {
         if (ent.type === 'scv') {
           if (ent.isBuildingSCV && ent.buildingTargetId) {
             const b = entities.find(e => e.id === ent.buildingTargetId);
+
             if (b && b.isUnderConstruction) {
               const dist = Math.hypot(b.x - ent.x, b.y - ent.y);
+
               if (dist > b.radius + 10) {
                 const angle = Math.atan2(b.y - ent.y, b.x - ent.x);
                 ent.x += Math.cos(angle) * ent.speed;
@@ -1475,26 +1579,19 @@ function assignBestResource(scv) {
                 createSparks(ent.x, ent.y);
                 b.buildProgress++;
                 b.hp = Math.min(b.maxHp, Math.floor((b.buildProgress / b.buildMaxTime) * b.maxHp));
+
                 if (b.buildProgress >= b.buildMaxTime) {
                   b.isUnderConstruction = false;
                   b.hp = b.maxHp;
                   ent.isBuildingSCV = false;
                   ent.buildingTargetId = null;
+                  ent.isManualMove = false;
                   ent.moveTarget = null;
                   ent.cargo = null;
                   ent.mineTimer = 0;
 
-                  // 건설이 끝난 SCV는 즉시 기지 주변 자원 채굴로 복귀
-                  if (ent.faction === 'player') {
-                    const hq = entities.find(h =>
-                      h.faction === 'player' && h.type === 'hq' && !h.isUnderConstruction
-                    );
-                    ent.assignedRes = hq
-                      ? assignBaseResource(ent, hq.x, hq.y, 360)
-                      : assignBestResource(ent);
-                  } else {
-                    ent.assignedRes = assignEnemyBaseResource(ent);
-                  }
+                  if (ent.faction === 'player') assignResourceForNearestBase(ent);
+                  else assignEnemyBaseResource(ent);
 
                   showToast("🏗️ 건물 건설 완료!");
                 }
@@ -1502,70 +1599,78 @@ function assignBestResource(scv) {
             } else {
               ent.isBuildingSCV = false;
               ent.buildingTargetId = null;
+              ent.isManualMove = false;
+              if (ent.faction === 'player') assignResourceForNearestBase(ent);
+              else assignEnemyBaseResource(ent);
             }
           } else if (!ent.isManualMove) {
-            // 적 SCV가 플레이어 영역의 자원을 훔치지 못하도록 제한 (적 진영 반경 800 이내 자원만 채굴)
-            if (ent.faction === 'enemy') {
-              if (!ent.assignedRes || Math.hypot(ent.assignedRes.x - (WORLD_W - 350), ent.assignedRes.y - 350) > 800) {
-                ent.assignedRes = entities.find(r => 
-                  (r.type === 'resource_min' || (r.type === 'resource_gas' && r.hasRefinery)) &&
-                  r.amount > 0 && Math.hypot(r.x - (WORLD_W - 350), r.y - 350) <= 800
-                );
-              }
-            } else {
-              // 플레이어 SCV는 자원이 유효하지 않거나 한곳에 몰려 있을 때 가장 적절한 자원으로 분산 할당
-              if (!ent.assignedRes || ent.assignedRes.amount <= 0) {
-                const playerHQ = entities.find(h => h.faction === 'player' && h.type === 'hq' && !h.isUnderConstruction);
-                if (playerHQ) ent.assignedRes = assignBaseResource(ent, playerHQ.x, playerHQ.y, 360);
-                if (!ent.assignedRes) ent.assignedRes = assignBestResource(ent);
-              }
-            }
+            // SCV는 항상 현재 위치에서 가장 가까운 아군 사령부로 자원을 반납한다.
+            const nearestBase = nearestFriendlyHQ(ent.faction, ent.x, ent.y);
 
-            if (ent.assignedRes && ent.assignedRes.amount > 0) {
-              const res = ent.assignedRes;
-              if (!ent.cargo) {
+            if (!ent.cargo) {
+              let needsAssignment =
+                !ent.assignedRes ||
+                ent.assignedRes.amount <= 0 ||
+                !entities.includes(ent.assignedRes);
+
+              if (needsAssignment) {
+                if (ent.faction === 'enemy') assignEnemyBaseResource(ent);
+                else assignResourceForNearestBase(ent);
+              }
+
+              if (ent.assignedRes && ent.assignedRes.amount > 0) {
+                const res = ent.assignedRes;
                 const dist = Math.hypot(res.x - ent.x, res.y - ent.y);
+
                 if (dist > res.radius + 5) {
                   const angle = Math.atan2(res.y - ent.y, res.x - ent.x);
                   ent.x += Math.cos(angle) * ent.speed;
                   ent.y += Math.sin(angle) * ent.speed;
                 } else {
                   ent.mineTimer++;
+
                   if (ent.mineTimer >= 40) {
                     ent.cargo = res.resType;
-                    res.amount -= 8;
+                    res.amount = Math.max(0, res.amount - 8);
                     ent.mineTimer = 0;
                     playSound('mine', ent.x, ent.y);
                   }
                 }
-              } else {
-                const hq = entities.find(h => h.faction === ent.faction && h.type === 'hq' && !h.isUnderConstruction);
-                if (hq) {
-                  const dist = Math.hypot(hq.x - ent.x, hq.y - ent.y);
-                  if (dist > hq.radius + 5) {
-                    const angle = Math.atan2(hq.y - ent.y, hq.x - ent.x);
-                    ent.x += Math.cos(angle) * ent.speed;
-                    ent.y += Math.sin(angle) * ent.speed;
-                  } else {
-                    if (ent.cargo === 'min') {
-                      if (ent.faction === 'player') resources.min += 10;
-                      else resources.enemyMin += 10 * currentDifficulty.aiGatherRate;
-                    } else if (ent.cargo === 'gas') {
-                      if (ent.faction === 'player') resources.gas += 8;
-                      else resources.enemyGas += 8 * currentDifficulty.aiGatherRate;
-                    }
-                    ent.cargo = null;
-                    
-                    // 자원 납품 후 더 한가한 자원으로 자동 분산 재배치
-                    if (ent.faction === 'player') {
-                      ent.assignedRes = assignBestResource(ent);
-                    }
+              }
+            } else {
+              const hq = nearestBase;
+
+              if (hq) {
+                const dist = Math.hypot(hq.x - ent.x, hq.y - ent.y);
+
+                if (dist > hq.radius + 5) {
+                  const angle = Math.atan2(hq.y - ent.y, hq.x - ent.x);
+                  ent.x += Math.cos(angle) * ent.speed;
+                  ent.y += Math.sin(angle) * ent.speed;
+                } else {
+                  if (ent.cargo === 'min') {
+                    if (ent.faction === 'player') resources.min += 10;
+                    else resources.enemyMin += 10 * currentDifficulty.aiGatherRate;
+                  } else if (ent.cargo === 'gas') {
+                    if (ent.faction === 'player') resources.gas += 8;
+                    else resources.enemyGas += 8 * currentDifficulty.aiGatherRate;
                   }
+
+                  ent.cargo = null;
+                  ent.mineTimer = 0;
+
+                  if (ent.faction === 'player') assignResourceForNearestBase(ent);
+                  else assignEnemyBaseResource(ent);
                 }
+              } else {
+                ent.cargo = null;
+                ent.assignedRes = null;
+                ent.assignedBaseId = null;
               }
             }
           } else if (ent.moveTarget) {
             const dist = Math.hypot(ent.moveTarget.x - ent.x, ent.moveTarget.y - ent.y);
+
             if (dist > 3) {
               const angle = Math.atan2(ent.moveTarget.y - ent.y, ent.moveTarget.x - ent.x);
               ent.x += Math.cos(angle) * ent.speed;
@@ -1711,21 +1816,35 @@ function assignBestResource(scv) {
     function render() {
       ctx.clearRect(0, 0, VIEW_W, VIEW_H);
 
+      ctx.fillStyle = '#05070a';
+      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
       ctx.strokeStyle = 'rgba(255,255,255,0.03)';
       ctx.lineWidth = 1;
+
       const startX = -(camX % 40);
       const startY = -(camY % 40);
+
       for (let x = startX; x < VIEW_W; x += 40) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, VIEW_H); ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, VIEW_H);
+        ctx.stroke();
       }
+
       for (let y = startY; y < VIEW_H; y += 40) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(VIEW_W, y); ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(VIEW_W, y);
+        ctx.stroke();
       }
 
       const buildings = entities.filter(e => e.speed === 0);
       const units = entities.filter(e => e.speed > 0);
 
       buildings.forEach(e => {
+        if (e.faction !== 'player' && !isVisibleToPlayer(e)) return;
+
         const sx = e.x - camX;
         const sy = e.y - camY;
         if (sx < -50 || sx > VIEW_W + 50 || sy < -50 || sy > VIEW_H + 50) return;
@@ -1733,13 +1852,14 @@ function assignBestResource(scv) {
         ctx.font = `${e.radius * 1.5}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#ffffff';
         ctx.fillText(e.emoji, sx, sy);
 
         if (e.isUnderConstruction) {
           ctx.fillStyle = 'rgba(0,0,0,0.6)';
           ctx.fillRect(sx - 20, sy - e.radius - 12, 40, 6);
           ctx.fillStyle = '#4dadf7';
-          ctx.fillRect(sx - 20, sy - e.radius - 12, (e.buildProgress / e.buildMaxTime) * 40, 6);
+          ctx.fillRect(sx - 20, sy - e.radius - 12, 40 * (e.buildProgress / e.buildMaxTime), 6);
         } else if (e.maxHp && e.hp < e.maxHp) {
           ctx.fillStyle = 'rgba(0,0,0,0.6)';
           ctx.fillRect(sx - 15, sy - e.radius - 8, 30, 4);
@@ -1749,6 +1869,8 @@ function assignBestResource(scv) {
       });
 
       units.forEach(e => {
+        if (e.faction !== 'player' && !isVisibleToPlayer(e)) return;
+
         const sx = e.x - camX;
         const sy = e.y - camY;
         if (sx < -50 || sx > VIEW_W + 50 || sy < -50 || sy > VIEW_H + 50) return;
@@ -1764,7 +1886,13 @@ function assignBestResource(scv) {
         ctx.font = `${e.radius * 1.5}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#ffffff';
         ctx.fillText(e.emoji, sx, sy);
+
+        if (e.cargo) {
+          ctx.font = '11px sans-serif';
+          ctx.fillText(e.cargo === 'min' ? '💎' : '🌋', sx, sy - e.radius - 10);
+        }
 
         if (e.hp < e.maxHp) {
           ctx.fillStyle = 'rgba(0,0,0,0.6)';
@@ -1777,17 +1905,27 @@ function assignBestResource(scv) {
       sparks.forEach(p => {
         const sx = p.x - camX;
         const sy = p.y - camY;
+        if (sx < -5 || sx > VIEW_W + 5 || sy < -5 || sy > VIEW_H + 5) return;
         ctx.fillStyle = p.color;
         ctx.fillRect(sx, sy, 2.5, 2.5);
       });
 
       bullets.forEach((b, idx) => {
-        ctx.strokeStyle = '#ffec99';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(b.x - camX, b.y - camY);
-        ctx.lineTo(b.tx - camX, b.ty - camY);
-        ctx.stroke();
+        const visible =
+          entities.some(e =>
+            e.faction === 'player' &&
+            Math.hypot(e.x - b.x, e.y - b.y) <= 300
+          );
+
+        if (visible) {
+          ctx.strokeStyle = '#ffec99';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(b.x - camX, b.y - camY);
+          ctx.lineTo(b.tx - camX, b.ty - camY);
+          ctx.stroke();
+        }
+
         b.life--;
         if (b.life <= 0) bullets.splice(idx, 1);
       });
@@ -1802,19 +1940,63 @@ function assignBestResource(scv) {
         ctx.strokeRect(dragStartScreen.x, dragStartScreen.y, w, h);
       }
 
+      // 전장의 안개 오버레이
+      const col0 = Math.max(0, Math.floor(camX / FOG_TILE) - 1);
+      const col1 = Math.min(FOG_COLS - 1, Math.ceil((camX + VIEW_W) / FOG_TILE) + 1);
+      const row0 = Math.max(0, Math.floor(camY / FOG_TILE) - 1);
+      const row1 = Math.min(FOG_ROWS - 1, Math.ceil((camY + VIEW_H) / FOG_TILE) + 1);
+
+      for (let row = row0; row <= row1; row++) {
+        for (let col = col0; col <= col1; col++) {
+          const idx = fogIndex(col, row);
+          if (fogVisible[idx]) continue;
+
+          const sx = col * FOG_TILE - camX;
+          const sy = row * FOG_TILE - camY;
+
+          ctx.fillStyle = fogExplored[idx]
+            ? 'rgba(0,0,0,0.58)'
+            : 'rgba(0,0,0,0.94)';
+
+          ctx.fillRect(sx, sy, FOG_TILE + 1, FOG_TILE + 1);
+        }
+      }
+
+      // 미니맵
       const mmW = 160, mmH = 120;
       const mmX = VIEW_W - mmW - 10;
       const mmY = VIEW_H - mmH - 10;
 
-      ctx.fillStyle = 'rgba(5, 7, 10, 0.85)';
+      ctx.fillStyle = 'rgba(5, 7, 10, 0.92)';
       ctx.fillRect(mmX, mmY, mmW, mmH);
       ctx.strokeStyle = '#30363d';
       ctx.strokeRect(mmX, mmY, mmW, mmH);
 
+      // 미니맵에도 전장의 안개 반영
+      for (let row = 0; row < FOG_ROWS; row++) {
+        for (let col = 0; col < FOG_COLS; col++) {
+          const idx = fogIndex(col, row);
+          if (fogVisible[idx]) continue;
+
+          const mx = mmX + (col / FOG_COLS) * mmW;
+          const my = mmY + (row / FOG_ROWS) * mmH;
+          ctx.fillStyle = fogExplored[idx]
+            ? 'rgba(0,0,0,0.55)'
+            : 'rgba(0,0,0,0.92)';
+          ctx.fillRect(mx, my, mmW / FOG_COLS + 0.5, mmH / FOG_ROWS + 0.5);
+        }
+      }
+
       entities.forEach(e => {
+        if (e.faction !== 'player' && !isVisibleToPlayer(e)) return;
+
         const mx = mmX + (e.x / WORLD_W) * mmW;
         const my = mmY + (e.y / WORLD_H) * mmH;
-        ctx.fillStyle = (e.faction === 'player') ? '#4dadf7' : (e.faction === 'enemy') ? '#ff6b6b' : '#fcc419';
+
+        ctx.fillStyle =
+          e.faction === 'player' ? '#4dadf7' :
+          e.faction === 'enemy' ? '#ff6b6b' : '#fcc419';
+
         ctx.fillRect(mx - 1, my - 1, 2, 2);
       });
 
@@ -1822,6 +2004,7 @@ function assignBestResource(scv) {
       const vy = mmY + (camY / WORLD_H) * mmH;
       const vw = (VIEW_W / WORLD_W) * mmW;
       const vh = (VIEW_H / WORLD_H) * mmH;
+
       ctx.strokeStyle = '#ffffff';
       ctx.strokeRect(vx, vy, vw, vh);
     }
