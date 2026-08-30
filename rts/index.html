@@ -292,7 +292,7 @@
     function handleBuild(wx, wy) {
       const freeSCV = entities.find(e => e.faction === 'player' && e.type === 'scv' && !e.isBuildingSCV);
       if (!freeSCV) {
-        showToast("⚠️ 일을 쉬고 있거나 대기 중인 SCV가 없습니다!");
+        showToast("⚠️ 대기 중이거나 일하고 있는 SCV가 없습니다!");
         buildMode = null; resetBuildButtons(); return;
       }
 
@@ -635,19 +635,25 @@
           continue;
         }
 
+        // 건물의 건설 진행 및 SCV 건설 이동 로직
         if (e.isUnderConstruction) {
           const builder = entities.find(scv => scv.id === e.builderSCVId);
           if (builder) {
             let distToSite = Math.hypot(builder.x - e.x, builder.y - e.y);
-            if (distToSite > e.radius + 12) {
-              builder.moveTarget = { x: e.x, y: e.y };
+            if (distToSite > e.radius + 15) {
+              let angle = Math.atan2(e.y - builder.y, e.x - builder.x);
+              builder.x += Math.cos(angle) * builder.speed;
+              builder.y += Math.sin(angle) * builder.speed;
             } else {
-              builder.moveTarget = null;
               e.buildProgress++;
               if (Math.random() < 0.25) particles.push({ x: e.x + (Math.random()-0.5)*e.radius, y: e.y + (Math.random()-0.5)*e.radius, vx: (Math.random()-0.5)*2, vy: (Math.random()-0.5)*2, life: 12, text: '🛠️' });
 
               if (e.buildProgress >= e.buildMaxTime) {
-                e.isUnderConstruction = false; builder.isBuildingSCV = false; playSound('produce');
+                e.isUnderConstruction = false;
+                builder.isBuildingSCV = false;
+                builder.isManualMove = false;
+                builder.moveTarget = null;
+                playSound('produce');
                 if (e.faction === 'player') {
                   if (e.type === 'barracks') tech.barracks = true;
                   if (e.type === 'factory') tech.factory = true;
@@ -693,7 +699,7 @@
           }
         }
 
-        // SCV AI (수동 이동 지시 시 채굴 모드 해제 로직 구현 완료)
+        // SCV AI (자원 권역 제한 적용)
         if (e.type === 'scv' && !e.isBuildingSCV) {
           if (e.isManualMove) {
             if (e.moveTarget) {
@@ -701,7 +707,7 @@
               e.x += Math.cos(angle) * e.speed;
               e.y += Math.sin(angle) * e.speed;
               if (Math.hypot(e.moveTarget.x - e.x, e.moveTarget.y - e.y) < 4) {
-                e.moveTarget = null; // 도착 후 더이상 자동 채굴하지 않고 정지
+                e.moveTarget = null;
               }
             }
           } else {
@@ -729,12 +735,14 @@
                   if (Math.random() < 0.2) particles.push({ x: e.x, y: e.y, vx: 0, vy: -1, life: 10, text: '🔧' });
                 }
               } else if (!e.cargo) {
+                let myHQ = entities.find(h => h.type === 'hq' && h.faction === e.faction && !h.isUnderConstruction);
                 let targetRes = e.assignedRes || entities.filter(node => 
-                  node.type === 'resource_min' || (node.type === 'resource_gas' && node.hasRefinery)
+                  (node.type === 'resource_min' || (node.type === 'resource_gas' && node.hasRefinery)) &&
+                  (!myHQ || Math.hypot(node.x - myHQ.x, node.y - myHQ.y) <= 550)
                 ).reduce((closest, node) => {
                   let d = Math.hypot(node.x - e.x, node.y - e.y);
-                  return (!closest || d < closest.d) ? node : closest;
-                }, null);
+                  return (!closest || d < closest.d) ? { node, d } : closest;
+                }, null)?.node;
 
                 if (targetRes) {
                   let dist = Math.hypot(targetRes.x - e.x, targetRes.y - e.y);
@@ -771,10 +779,13 @@
           }
         }
 
+        // 전투 유닛 AI (자동 무단 침공 방지: 시야 거리 감지 추가)
         if (['fighter','scout','tank','mech','cruiser','carrier'].includes(e.type)) {
           if (e.cooldown > 0) e.cooldown--;
 
           let target = e.forcedTarget;
+          let aggroRange = 220; // 시야/어그로 인지 거리
+
           if (!target || target.hp <= 0) {
             let enemies = entities.filter(t => t.faction !== 'neutral' && t.faction !== e.faction && !t.isUnderConstruction);
             let closest = null; let minDist = 99999;
@@ -782,7 +793,9 @@
               let d = Math.hypot(en.x - e.x, en.y - e.y);
               if (d < minDist) { minDist = d; closest = en; }
             });
-            target = closest;
+            if (closest && minDist <= aggroRange) {
+              target = closest;
+            }
           }
 
           if (target && Math.hypot(target.x - e.x, target.y - e.y) <= e.attackRange) {
@@ -806,9 +819,11 @@
               if (e.forcedTarget) e.forcedTarget = null;
             }
           } else if (target && Math.hypot(target.x - e.x, target.y - e.y) > e.attackRange) {
-            let angle = Math.atan2(target.y - e.y, target.x - e.x);
-            e.x += Math.cos(angle) * (e.speed * 0.85);
-            e.y += Math.sin(angle) * (e.speed * 0.85);
+            if (Math.hypot(target.x - e.x, target.y - e.y) <= aggroRange) {
+              let angle = Math.atan2(target.y - e.y, target.x - e.x);
+              e.x += Math.cos(angle) * (e.speed * 0.85);
+              e.y += Math.sin(angle) * (e.speed * 0.85);
+            }
           }
         }
       }
@@ -878,7 +893,6 @@
           ctx.fillRect(e.x - 20, e.y + e.radius + 4, 40 * (e.buildProgress / e.buildMaxTime), 6);
         }
 
-        // 유닛 생산 진행바 시각화
         if (e.productionQueue && e.productionQueue.length > 0) {
           let item = e.productionQueue[0];
           ctx.fillStyle = 'rgba(0,0,0,0.7)';
