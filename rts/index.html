@@ -3,66 +3,72 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>미니지 - RTS</title>
+  <title>미니지 RTS - 광활한 전장</title>
   <style>
-    :root { --bg: #f8f9fa; --text: #333; --canvas-bg: #05070a; --border: #e9ecef; --btn-bg: #fff; }
+    :root { --bg: #f8f9fa; --text: #333; --canvas-bg: #05070a; --border: #30363d; --btn-bg: #fff; }
     [data-theme="dark"] { --bg: #0d1117; --text: #c9d1d9; --canvas-bg: #020305; --border: #30363d; --btn-bg: #21262d; }
-    [data-theme="beige"] { --bg: #f5ebe0; --text: #4e3d30; --canvas-bg: #14100c; --border: #ddcbbb; --btn-bg: #eddfd0; }
-    body { background-color: var(--bg) !important; color: var(--text) !important; text-align: center; font-family: sans-serif; padding-top: 8px; margin: 0; transition: 0.3s; user-select: none; overflow: hidden; }
-    button { background-color: var(--btn-bg) !important; color: var(--text) !important; border: 1px solid var(--border) !important; padding: 5px 10px; font-size: 0.8rem; border-radius: 6px; cursor: pointer; margin: 2px; font-weight: bold; }
-    button:disabled { opacity: 0.35; cursor: not-allowed; }
-    #rts-panel { font-size: 1.05rem; font-weight: bold; color: #fcc419; margin-bottom: 4px; }
-    .build-row { margin: 3px 0; display: flex; justify-content: center; flex-wrap: wrap; gap: 2px; }
+    body { background-color: var(--bg); color: var(--text); text-align: center; font-family: sans-serif; padding-top: 6px; margin: 0; user-select: none; overflow: hidden; }
+    button { background-color: var(--btn-bg); color: var(--text); border: 1px solid var(--border); padding: 4px 8px; font-size: 0.75rem; border-radius: 5px; cursor: pointer; margin: 1px; font-weight: bold; }
+    button:disabled { opacity: 0.3; cursor: not-allowed; }
+    #rts-panel { font-size: 0.95rem; font-weight: bold; color: #fcc419; margin-bottom: 3px; }
+    .build-row { margin: 2px 0; display: flex; justify-content: center; flex-wrap: wrap; gap: 2px; }
     .active-mode { border: 2px solid #4dadf7 !important; background-color: #183153 !important; color: #fff !important; }
     
     .canvas-container { position: relative; display: inline-block; }
     #game-canvas { background: var(--canvas-bg); border: 2px solid var(--border); border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); cursor: default; }
-    .help-text { font-size: 0.78rem; opacity: 0.85; margin-top: 3px; }
+    .help-text { font-size: 0.75rem; opacity: 0.8; margin-top: 2px; }
 
     #toast-msg {
-      position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
-      background: rgba(15, 23, 42, 0.9); color: #74c0fc; border: 1px solid #4dadf7;
-      padding: 8px 18px; border-radius: 20px; font-size: 0.88rem; font-weight: bold;
+      position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.92); color: #74c0fc; border: 1px solid #4dadf7;
+      padding: 6px 16px; border-radius: 20px; font-size: 0.82rem; font-weight: bold;
       pointer-events: none; opacity: 0; transition: opacity 0.3s ease; z-index: 100;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
     }
 
     #game-over-modal {
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
       background: rgba(10, 15, 26, 0.95); border: 2px solid #fcc419; padding: 25px 35px;
       border-radius: 12px; color: #fff; text-align: center; display: none; z-index: 200;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.8);
     }
-    #game-over-modal h2 { margin: 0 0 15px 0; font-size: 1.4rem; color: #fcc419; }
+    #game-over-modal h2 { margin: 0 0 15px 0; font-size: 1.3rem; color: #fcc419; }
   </style>
 </head>
 <body>
-  <h1>⚔️ 우주 전쟁: 지능형 RTS</h1>
-  
   <div id="rts-panel">
-    💎 <span id="res-min">200</span> | 🌋 <span id="res-gas">0</span> | 🌊 웨이브: <span id="wave-num">1</span> | 🏰 사령부: <span id="hq-count">1</span>개 | ⚔️ 적 부대: <span id="ai-squad">0</span> (<span id="ai-state-text">평화 수호</span>)
+    💎 <span id="res-min">200</span> | 🌋 <span id="res-gas">0</span> | 🌊 웨이브: <span id="wave-num">1</span> | 🏰 사령부: <span id="hq-count">1</span>개 | ⚔️ 적 부대: <span id="ai-squad">0</span> (<span id="ai-state-text">탐색 중</span>)
   </div>
 
+  <!-- 건물 버튼 (10종) -->
   <div class="build-row">
     <button id="btn-hq" onclick="toggleBuild('hq')">🏰 사령부(💎150)</button>
     <button id="btn-barracks" onclick="toggleBuild('barracks')">🏭 병영(💎40)</button>
+    <button id="btn-academy" onclick="toggleBuild('academy')">🎓 사관학교(💎50)</button>
     <button id="btn-refinery" onclick="toggleBuild('refinery')">🌋 제련소(💎30)</button>
     <button id="btn-factory" onclick="toggleBuild('factory')">⚙️ 공장(💎60/🌋20)</button>
+    <button id="btn-armory" onclick="toggleBuild('armory')">⚔️ 무기고(💎70/🌋30)</button>
     <button id="btn-starport" onclick="toggleBuild('starport')">🛫 우주항(💎80/🌋40)</button>
+    <button id="btn-lab" onclick="toggleBuild('lab')">🔬 연구소(💎100/🌋50)</button>
+    <button id="btn-bunker" onclick="toggleBuild('bunker')">🛡️ 벙커(💎45)</button>
     <button id="btn-turret" onclick="toggleBuild('turret')">📡 터렛(💎35)</button>
   </div>
+
+  <!-- 유닛 버튼 (11종) -->
   <div class="build-row">
     <button id="btn-scv" onclick="produce('scv')">🛸 SCV(💎20)</button>
+    <button id="btn-marine" onclick="produce('marine')" disabled>🪖 보병(💎15)</button>
+    <button id="btn-medic" onclick="produce('medic')" disabled>🏥 의무병(💎25)</button>
     <button id="btn-fighter" onclick="produce('fighter')" disabled>🚀 전투기(💎30)</button>
     <button id="btn-scout" onclick="produce('scout')" disabled>🥷 정찰기(💎25)</button>
     <button id="btn-tank" onclick="produce('tank')" disabled>🚜 전차(💎60/🌋10)</button>
+    <button id="btn-siegetank" onclick="produce('siegetank')" disabled>💥 공성전차(💎90/🌋30)</button>
     <button id="btn-mech" onclick="produce('mech')" disabled>🤖 메카(💎50/🌋15)</button>
     <button id="btn-cruiser" onclick="produce('cruiser')" disabled>🛩️ 중순양함(💎70/🌋30)</button>
     <button id="btn-carrier" onclick="produce('carrier')" disabled>🛸 항공모함(💎100/🌋60)</button>
+    <button id="btn-titan" onclick="produce('titan')" disabled>🛡️ 요새함(💎150/🌋100)</button>
   </div>
 
   <div class="canvas-container">
-    <canvas id="game-canvas" width="600" height="440"></canvas>
+    <canvas id="game-canvas" width="650" height="460"></canvas>
     <div id="toast-msg"></div>
     <div id="game-over-modal">
       <h2 id="game-over-title">게임 종료</h2>
@@ -70,18 +76,16 @@
     </div>
   </div>
 
-  <div class="help-text">마우스 드래그: 다중 선택 | 우클릭: 이동/채굴 지시 | 방향키/WASD: 화면 이동</div>
+  <div class="help-text">마우스 드래그: 다중 선택 | 우클릭: 이동/채굴/공격 | WASD/방향키: 화면 이동 (대형 맵 3200x2400)</div>
 
   <script>
     window.addEventListener('contextmenu', (e) => e.preventDefault());
 
-    const savedTheme = localStorage.getItem('minig-theme');
-    if (savedTheme && savedTheme !== 'white') { document.documentElement.setAttribute('data-theme', savedTheme); }
-
-    const WORLD_W = 1600;
-    const WORLD_H = 1200;
-    const VIEW_W = 600;
-    const VIEW_H = 440;
+    // 대형 전장 크기 설정
+    const WORLD_W = 3200;
+    const WORLD_H = 2400;
+    const VIEW_W = 650;
+    const VIEW_H = 460;
 
     let camX = 0;
     let camY = WORLD_H - VIEW_H;
@@ -89,13 +93,13 @@
     const canvas = document.getElementById('game-canvas');
     const ctx = canvas.getContext('2d');
 
-    let resources = { min: 200, gas: 0, enemyMin: 200, enemyGas: 0 };
+    let resources = { min: 200, gas: 0, enemyMin: 250, enemyGas: 0 };
     let wave = 1;
     let waveTimer = 0;
     let buildMode = null;
     let gameOver = false;
 
-    let tech = { barracks: false, factory: false, starport: false };
+    let tech = { barracks: false, academy: false, factory: false, armory: false, starport: false, lab: false };
 
     let entities = [];
     let bullets = [];
@@ -108,9 +112,8 @@
     let dragEndScreen = { x: 0, y: 0 };
     let isMinimapDragging = false;
 
-    let aiStateMode = 'defend';
-    let aiRetreatTimer = 0;
-    let aiAttackCooldown = 0; // AI 공격 후 휴식 쿨타임
+    let aiStateMode = 'expand';
+    let aiExpandTimer = 0;
 
     let toastTimer = null;
     function showToast(msg) {
@@ -118,36 +121,32 @@
       toast.innerText = msg;
       toast.style.opacity = '1';
       clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => { toast.style.opacity = '0'; }, 2200);
+      toastTimer = setTimeout(() => { toast.style.opacity = '0'; }, 2000);
     }
 
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
-
-    function initAudio() {
-      if (!audioCtx) audioCtx = new AudioCtx();
-    }
+    function initAudio() { if (!audioCtx) audioCtx = new AudioCtx(); }
 
     function playSound(type) {
       if (!audioCtx) return;
       try {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
+        osc.connect(gain); gain.connect(audioCtx.destination);
         const now = audioCtx.currentTime;
 
         if (type === 'produce') {
-          osc.type = 'sine'; osc.frequency.setValueAtTime(440, now); osc.frequency.exponentialRampToValueAtTime(880, now + 0.12);
-          gain.gain.setValueAtTime(0.15, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
-          osc.start(now); osc.stop(now + 0.12);
+          osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); osc.frequency.exponentialRampToValueAtTime(800, now + 0.1);
+          gain.gain.setValueAtTime(0.12, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+          osc.start(now); osc.stop(now + 0.1);
         } else if (type === 'laser') {
-          osc.type = 'sawtooth'; osc.frequency.setValueAtTime(700, now); osc.frequency.exponentialRampToValueAtTime(180, now + 0.08);
-          gain.gain.setValueAtTime(0.08, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
-          osc.start(now); osc.stop(now + 0.08);
+          osc.type = 'sawtooth'; osc.frequency.setValueAtTime(650, now); osc.frequency.exponentialRampToValueAtTime(150, now + 0.07);
+          gain.gain.setValueAtTime(0.06, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.07);
+          osc.start(now); osc.stop(now + 0.07);
         } else if (type === 'explode') {
-          osc.type = 'square'; osc.frequency.setValueAtTime(140, now); osc.frequency.exponentialRampToValueAtTime(30, now + 0.2);
-          gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+          osc.type = 'square'; osc.frequency.setValueAtTime(130, now); osc.frequency.exponentialRampToValueAtTime(25, now + 0.2);
+          gain.gain.setValueAtTime(0.18, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
           osc.start(now); osc.stop(now + 0.2);
         }
       } catch (e) {}
@@ -157,7 +156,7 @@
     window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
     function handleMinimapClick(mx, my) {
-      const mmW = 140, mmH = 100;
+      const mmW = 160, mmH = 120;
       const mmX = VIEW_W - mmW - 10;
       const mmY = VIEW_H - mmH - 10;
 
@@ -188,8 +187,7 @@
       if (e.button === 2) {
         if (selectedUnits.length > 0) {
           const targetEnemy = entities.find(ent => 
-            ent.faction === 'enemy' && 
-            Math.hypot(ent.x - worldX, ent.y - worldY) <= ent.radius + 12
+            ent.faction === 'enemy' && Math.hypot(ent.x - worldX, ent.y - worldY) <= ent.radius + 12
           );
 
           const targetRes = entities.find(ent => 
@@ -200,18 +198,14 @@
           selectedUnits.forEach((unit, idx) => {
             if (unit.isBuildingSCV) unit.isBuildingSCV = false;
             unit.mineTimer = 0;
-            const offsetX = (idx % 4 - 1.5) * 18;
-            const offsetY = (Math.floor(idx / 4) - 1.5) * 18;
+            const offsetX = (idx % 4 - 1.5) * 20;
+            const offsetY = (Math.floor(idx / 4) - 1.5) * 20;
 
             if (unit.type === 'scv') {
               if (targetRes) {
-                unit.isManualMove = false;
-                unit.moveTarget = null;
-                unit.assignedRes = targetRes;
+                unit.isManualMove = false; unit.moveTarget = null; unit.assignedRes = targetRes;
               } else {
-                unit.isManualMove = true;
-                unit.moveTarget = { x: worldX + offsetX, y: worldY + offsetY };
-                unit.assignedRes = null;
+                unit.isManualMove = true; unit.moveTarget = { x: worldX + offsetX, y: worldY + offsetY }; unit.assignedRes = null;
               }
             } else {
               unit.moveTarget = { x: worldX + offsetX, y: worldY + offsetY };
@@ -223,10 +217,7 @@
       }
 
       if (e.button === 0) {
-        if (buildMode) {
-          handleBuild(worldX, worldY);
-          return;
-        }
+        if (buildMode) { handleBuild(worldX, worldY); return; }
         isDragging = true;
         dragStartScreen = { x: mouseX, y: mouseY };
         dragEndScreen = { x: mouseX, y: mouseY };
@@ -256,16 +247,16 @@
           const y2 = Math.max(dragStartScreen.y, dragEndScreen.y) + camY;
 
           const dragDist = Math.hypot(dragEndScreen.x - dragStartScreen.x, dragEndScreen.y - dragStartScreen.y);
-          const isSelectable = (type) => ['scv','fighter','scout','tank','mech','cruiser','carrier'].includes(type);
+          const combatTypes = ['scv','marine','medic','fighter','scout','tank','siegetank','mech','cruiser','carrier','titan'];
 
           if (dragDist > 8) {
             selectedUnits = entities.filter(ent => 
-              ent.faction === 'player' && isSelectable(ent.type) &&
+              ent.faction === 'player' && combatTypes.includes(ent.type) &&
               ent.x >= x1 && ent.x <= x2 && ent.y >= y1 && ent.y <= y2
             );
           } else {
             const clickedUnit = entities.find(ent => 
-              ent.faction === 'player' && isSelectable(ent.type) &&
+              ent.faction === 'player' && combatTypes.includes(ent.type) &&
               Math.hypot(ent.x - (dragStartScreen.x + camX), ent.y - (dragStartScreen.y + camY)) <= ent.radius + 6
             );
             selectedUnits = clickedUnit ? [clickedUnit] : [];
@@ -277,16 +268,12 @@
     function toggleBuild(type) {
       initAudio();
       resetBuildButtons();
-      if (buildMode === type) {
-        buildMode = null;
-      } else {
-        buildMode = type;
-        document.getElementById(`btn-${type}`).classList.add('active-mode');
-      }
+      if (buildMode === type) { buildMode = null; } 
+      else { buildMode = type; document.getElementById(`btn-${type}`).classList.add('active-mode'); }
     }
 
     function resetBuildButtons() {
-      ['hq', 'barracks', 'refinery', 'factory', 'starport', 'turret'].forEach(t => {
+      ['hq', 'barracks', 'academy', 'refinery', 'factory', 'armory', 'starport', 'lab', 'bunker', 'turret'].forEach(t => {
         const btn = document.getElementById(`btn-${t}`);
         if (btn) btn.classList.remove('active-mode');
       });
@@ -295,64 +282,65 @@
     function handleBuild(wx, wy) {
       const freeSCV = entities.find(e => e.faction === 'player' && e.type === 'scv' && !e.isBuildingSCV);
       if (!freeSCV) {
-        showToast("⚠️ 건설 가능한 SCV가 없습니다!");
+        showToast("⚠️ 건설 가능한 자유 SCV가 없습니다!");
         buildMode = null; resetBuildButtons(); return;
       }
 
-      const buildTimes = { hq: 380, barracks: 200, refinery: 150, factory: 260, starport: 320, turret: 160 };
+      const buildTimes = { hq: 400, barracks: 200, academy: 220, refinery: 150, factory: 280, armory: 300, starport: 340, lab: 380, bunker: 180, turret: 160 };
 
       if (buildMode === 'hq' && resources.min >= 150) {
-        resources.min -= 150;
-        startBuildingConstruction('hq', 'player', wx, wy, freeSCV, buildTimes.hq);
+        resources.min -= 150; startBuildingConstruction('hq', 'player', wx, wy, freeSCV, buildTimes.hq);
       } else if (buildMode === 'barracks' && resources.min >= 40) {
-        resources.min -= 40;
-        startBuildingConstruction('barracks', 'player', wx, wy, freeSCV, buildTimes.barracks);
+        resources.min -= 40; startBuildingConstruction('barracks', 'player', wx, wy, freeSCV, buildTimes.barracks);
+      } else if (buildMode === 'academy' && resources.min >= 50) {
+        resources.min -= 50; startBuildingConstruction('academy', 'player', wx, wy, freeSCV, buildTimes.academy);
       } else if (buildMode === 'refinery' && resources.min >= 30) {
-        const gasNode = entities.find(e => e.type === 'resource_gas' && Math.hypot(e.x - wx, e.y - wy) < 45);
+        const gasNode = entities.find(e => e.type === 'resource_gas' && Math.hypot(e.x - wx, e.y - wy) < 50);
         if (gasNode && !gasNode.hasRefinery) {
           resources.min -= 30; gasNode.hasRefinery = true;
           startBuildingConstruction('refinery', 'player', gasNode.x, gasNode.y, freeSCV, buildTimes.refinery);
-        } else {
-          showToast("⚠️ 제련소는 가스 간헐천 위에만 건설할 수 있습니다!");
-        }
+        } else { showToast("⚠️ 가스 간헐천 위에만 제련소를 건설할 수 있습니다!"); }
       } else if (buildMode === 'factory' && resources.min >= 60 && resources.gas >= 20) {
-        resources.min -= 60; resources.gas -= 20;
-        startBuildingConstruction('factory', 'player', wx, wy, freeSCV, buildTimes.factory);
+        resources.min -= 60; resources.gas -= 20; startBuildingConstruction('factory', 'player', wx, wy, freeSCV, buildTimes.factory);
+      } else if (buildMode === 'armory' && resources.min >= 70 && resources.gas >= 30) {
+        resources.min -= 70; resources.gas -= 30; startBuildingConstruction('armory', 'player', wx, wy, freeSCV, buildTimes.armory);
       } else if (buildMode === 'starport' && resources.min >= 80 && resources.gas >= 40) {
-        resources.min -= 80; resources.gas -= 40;
-        startBuildingConstruction('starport', 'player', wx, wy, freeSCV, buildTimes.starport);
+        resources.min -= 80; resources.gas -= 40; startBuildingConstruction('starport', 'player', wx, wy, freeSCV, buildTimes.starport);
+      } else if (buildMode === 'lab' && resources.min >= 100 && resources.gas >= 50) {
+        resources.min -= 100; resources.gas -= 50; startBuildingConstruction('lab', 'player', wx, wy, freeSCV, buildTimes.lab);
+      } else if (buildMode === 'bunker' && resources.min >= 45) {
+        resources.min -= 45; startBuildingConstruction('bunker', 'player', wx, wy, freeSCV, buildTimes.bunker);
       } else if (buildMode === 'turret' && resources.min >= 35) {
-        resources.min -= 35;
-        startBuildingConstruction('turret', 'player', wx, wy, freeSCV, buildTimes.turret);
+        resources.min -= 35; startBuildingConstruction('turret', 'player', wx, wy, freeSCV, buildTimes.turret);
       }
+
       buildMode = null; resetBuildButtons(); updateUI();
     }
 
     function startBuildingConstruction(type, faction, x, y, scv, maxTime) {
       const b = spawnEntity(type, faction, x, y);
-      b.isUnderConstruction = true;
-      b.buildProgress = 0;
-      b.buildMaxTime = maxTime;
+      b.isUnderConstruction = true; b.buildProgress = 0; b.buildMaxTime = maxTime;
       b.builderSCVId = scv ? scv.id : null;
       if (scv) {
-        scv.isBuildingSCV = true;
-        scv.isManualMove = false;
-        scv.moveTarget = { x: x, y: y };
-        scv.cargo = null;
-        scv.mineTimer = 0;
+        scv.isBuildingSCV = true; scv.isManualMove = false;
+        scv.moveTarget = { x: x, y: y }; scv.cargo = null; scv.mineTimer = 0;
       }
     }
 
     function produce(unitType) {
       initAudio();
       const costs = {
-        scv: { min: 20, gas: 0, req: true, bType: 'hq', time: 60, name: 'SCV' }, // SCV 빠른 생산
-        fighter: { min: 30, gas: 0, req: tech.barracks, bType: 'barracks', time: 130, name: '전투기' },
-        scout: { min: 25, gas: 0, req: tech.barracks, bType: 'barracks', time: 100, name: '정찰기' },
-        tank: { min: 60, gas: 10, req: tech.factory, bType: 'factory', time: 200, name: '전차' },
-        mech: { min: 50, gas: 15, req: tech.factory, bType: 'factory', time: 170, name: '메카' },
-        cruiser: { min: 70, gas: 30, req: tech.starport, bType: 'starport', time: 260, name: '중순양함' },
-        carrier: { min: 100, gas: 60, req: tech.starport, bType: 'starport', time: 360, name: '항공모함' }
+        scv: { min: 20, gas: 0, req: true, bType: 'hq', time: 70, name: 'SCV' },
+        marine: { min: 15, gas: 0, req: tech.barracks, bType: 'barracks', time: 80, name: '보병' },
+        medic: { min: 25, gas: 0, req: tech.academy, bType: 'barracks', time: 100, name: '의무병' },
+        fighter: { min: 30, gas: 0, req: tech.barracks, bType: 'barracks', time: 120, name: '전투기' },
+        scout: { min: 25, gas: 0, req: tech.barracks, bType: 'barracks', time: 90, name: '정찰기' },
+        tank: { min: 60, gas: 10, req: tech.factory, bType: 'factory', time: 180, name: '전차' },
+        siegetank: { min: 90, gas: 30, req: tech.armory, bType: 'factory', time: 240, name: '공성전차' },
+        mech: { min: 50, gas: 15, req: tech.factory, bType: 'factory', time: 150, name: '메카' },
+        cruiser: { min: 70, gas: 30, req: tech.starport, bType: 'starport', time: 220, name: '중순양함' },
+        carrier: { min: 100, gas: 60, req: tech.starport, bType: 'starport', time: 320, name: '항공모함' },
+        titan: { min: 150, gas: 100, req: tech.lab, bType: 'starport', time: 420, name: '거대요새함' }
       };
 
       const c = costs[unitType];
@@ -378,93 +366,81 @@
       const playerHQs = entities.filter(e => e.type === 'hq' && e.faction === 'player');
       document.getElementById('hq-count').innerText = playerHQs.length;
 
-      const enemySquad = entities.filter(e => e.faction === 'enemy' && ['fighter','scout','tank','mech','cruiser','carrier'].includes(e.type));
+      const enemySquad = entities.filter(e => e.faction === 'enemy' && ['marine','medic','fighter','scout','tank','siegetank','mech','cruiser','carrier','titan'].includes(e.type));
       document.getElementById('ai-squad').innerText = enemySquad.length;
       
-      let stateLabel = '🛡️ 방어 및 성장';
-      if (wave < 2) stateLabel = '🕊️ 평화 수호';
-      else if (aiStateMode === 'attack') stateLabel = '💥 총공격 추진';
-      else if (aiStateMode === 'harass') stateLabel = '⚡ 견제 정찰';
-      else if (aiStateMode === 'retreat') stateLabel = '🏃 후퇴 재정비';
+      let stateLabel = '🛡️ 자원 탐색 및 주둔';
+      if (aiStateMode === 'expand') stateLabel = '🏰 멀티 확장 중';
+      else if (aiStateMode === 'attack') stateLabel = '💥 총공격 공세';
+      else if (aiStateMode === 'harass') stateLabel = '⚡ 자원 기습 게릴라';
       document.getElementById('ai-state-text').innerText = stateLabel;
 
+      document.getElementById('btn-marine').disabled = !tech.barracks || resources.min < 15;
+      document.getElementById('btn-medic').disabled = !tech.academy || resources.min < 25;
       document.getElementById('btn-fighter').disabled = !tech.barracks || resources.min < 30;
       document.getElementById('btn-scout').disabled = !tech.barracks || resources.min < 25;
       document.getElementById('btn-tank').disabled = !tech.factory || resources.min < 60 || resources.gas < 10;
+      document.getElementById('btn-siegetank').disabled = !tech.armory || resources.min < 90 || resources.gas < 30;
       document.getElementById('btn-mech').disabled = !tech.factory || resources.min < 50 || resources.gas < 15;
       document.getElementById('btn-cruiser').disabled = !tech.starport || resources.min < 70 || resources.gas < 30;
       document.getElementById('btn-carrier').disabled = !tech.starport || resources.min < 100 || resources.gas < 60;
+      document.getElementById('btn-titan').disabled = !tech.lab || resources.min < 150 || resources.gas < 100;
     }
 
     function spawnEntity(type, faction, x, y) {
       let e = {
-        id: Math.random().toString(),
-        type: type, faction: faction,
-        x: x, y: y,
-        hp: 100, maxHp: 100,
-        speed: 0, radius: 15, emoji: '🛸',
-        cooldown: 0, cooldownMax: 40, attackRange: 0,
-        damage: 10, splash: false, splashRadius: 0,
+        id: Math.random().toString(), type: type, faction: faction, x: x, y: y,
+        hp: 100, maxHp: 100, speed: 0, radius: 15, emoji: '🛸',
+        cooldown: 0, cooldownMax: 40, attackRange: 0, damage: 10,
+        splash: false, splashRadius: 0, isHealer: false,
         cargo: null, mineTimer: 0, moveTarget: null, forcedTarget: null,
         isUnderConstruction: false, buildProgress: 0, buildMaxTime: 0,
         productionQueue: [], isBuildingSCV: false, isManualMove: false, assignedRes: null,
         amount: 0, maxAmount: 0
       };
 
-      if (type === 'hq') {
-        e.hp = e.maxHp = 600; e.radius = 32; e.emoji = (faction === 'player') ? '🏰' : '🏯';
-      } else if (type === 'barracks') {
-        e.hp = e.maxHp = 300; e.radius = 26; e.emoji = '🏭';
-      } else if (type === 'factory') {
-        e.hp = e.maxHp = 350; e.radius = 28; e.emoji = '⚙️';
-      } else if (type === 'starport') {
-        e.hp = e.maxHp = 400; e.radius = 30; e.emoji = '🛫';
-      } else if (type === 'refinery') {
-        e.hp = e.maxHp = 250; e.radius = 22; e.emoji = '🌋';
-      } else if (type === 'turret') {
-        e.hp = e.maxHp = 240; e.radius = 18; e.emoji = '📡';
-        e.attackRange = 175; e.cooldownMax = 35; e.damage = 19;
-      } else if (type === 'resource_min') {
-        e.radius = 18; e.emoji = '💎'; e.resType = 'min'; e.amount = e.maxAmount = 1500;
-      } else if (type === 'resource_gas') {
-        e.radius = 20; e.emoji = '🌋'; e.resType = 'gas'; e.hasRefinery = false; e.amount = e.maxAmount = 2500;
-      } else if (type === 'scv') {
-        e.hp = e.maxHp = 60; e.speed = 2.4; e.radius = 12; e.emoji = '🛸';
-      } else if (type === 'fighter') {
-        e.hp = e.maxHp = 100; e.speed = 2.4; e.radius = 14; e.emoji = '🚀';
-        e.attackRange = 135; e.cooldownMax = 32; e.damage = 14;
-      } else if (type === 'scout') {
-        e.hp = e.maxHp = 75; e.speed = 3.0; e.radius = 11; e.emoji = '🥷';
-        e.attackRange = 110; e.cooldownMax = 22; e.damage = 9;
-      } else if (type === 'tank') {
-        e.hp = e.maxHp = 220; e.speed = 1.0; e.radius = 19; e.emoji = '🚜';
-        e.attackRange = 210; e.cooldownMax = 75; e.damage = 45; e.splash = true; e.splashRadius = 40;
-      } else if (type === 'mech') {
-        e.hp = e.maxHp = 260; e.speed = 1.4; e.radius = 18; e.emoji = '🤖';
-        e.attackRange = 140; e.cooldownMax = 36; e.damage = 22;
-      } else if (type === 'cruiser') {
-        e.hp = e.maxHp = 320; e.speed = 1.1; e.radius = 22; e.emoji = '🛩️';
-        e.attackRange = 180; e.cooldownMax = 60; e.damage = 35; e.splash = true; e.splashRadius = 35;
-      } else if (type === 'carrier') {
-        e.hp = e.maxHp = 450; e.speed = 0.85; e.radius = 25; e.emoji = '🛸';
-        e.attackRange = 230; e.cooldownMax = 50; e.damage = 50; e.splash = true; e.splashRadius = 50;
-      }
+      // 건물 스펙
+      if (type === 'hq') { e.hp = e.maxHp = 700; e.radius = 35; e.emoji = (faction === 'player') ? '🏰' : '🏯'; }
+      else if (type === 'barracks') { e.hp = e.maxHp = 320; e.radius = 26; e.emoji = '🏭'; }
+      else if (type === 'academy') { e.hp = e.maxHp = 280; e.radius = 24; e.emoji = '🎓'; }
+      else if (type === 'factory') { e.hp = e.maxHp = 380; e.radius = 28; e.emoji = '⚙️'; }
+      else if (type === 'armory') { e.hp = e.maxHp = 350; e.radius = 26; e.emoji = '⚔️'; }
+      else if (type === 'starport') { e.hp = e.maxHp = 420; e.radius = 30; e.emoji = '🛫'; }
+      else if (type === 'lab') { e.hp = e.maxHp = 450; e.radius = 32; e.emoji = '🔬'; }
+      else if (type === 'refinery') { e.hp = e.maxHp = 260; e.radius = 22; e.emoji = '🌋'; }
+      else if (type === 'bunker') { e.hp = e.maxHp = 400; e.radius = 22; e.emoji = '🛡️'; e.attackRange = 160; e.cooldownMax = 25; e.damage = 12; }
+      else if (type === 'turret') { e.hp = e.maxHp = 260; e.radius = 18; e.emoji = '📡'; e.attackRange = 190; e.cooldownMax = 30; e.damage = 22; }
+      // 자원 스펙
+      else if (type === 'resource_min') { e.radius = 18; e.emoji = '💎'; e.resType = 'min'; e.amount = e.maxAmount = 2000; }
+      else if (type === 'resource_gas') { e.radius = 20; e.emoji = '🌋'; e.resType = 'gas'; e.hasRefinery = false; e.amount = e.maxAmount = 3000; }
+      // 병력 스펙
+      else if (type === 'scv') { e.hp = e.maxHp = 60; e.speed = 2.5; e.radius = 12; e.emoji = '🛸'; }
+      else if (type === 'marine') { e.hp = e.maxHp = 70; e.speed = 2.2; e.radius = 11; e.emoji = '🪖'; e.attackRange = 120; e.cooldownMax = 22; e.damage = 10; }
+      else if (type === 'medic') { e.hp = e.maxHp = 80; e.speed = 2.3; e.radius = 11; e.emoji = '🏥'; e.attackRange = 100; e.cooldownMax = 20; e.damage = 8; e.isHealer = true; }
+      else if (type === 'fighter') { e.hp = e.maxHp = 100; e.speed = 2.4; e.radius = 14; e.emoji = '🚀'; e.attackRange = 140; e.cooldownMax = 30; e.damage = 15; }
+      else if (type === 'scout') { e.hp = e.maxHp = 75; e.speed = 3.2; e.radius = 11; e.emoji = '🥷'; e.attackRange = 115; e.cooldownMax = 20; e.damage = 9; }
+      else if (type === 'tank') { e.hp = e.maxHp = 220; e.speed = 1.1; e.radius = 19; e.emoji = '🚜'; e.attackRange = 200; e.cooldownMax = 70; e.damage = 45; e.splash = true; e.splashRadius = 40; }
+      else if (type === 'siegetank') { e.hp = e.maxHp = 280; e.speed = 0.8; e.radius = 21; e.emoji = '💥'; e.attackRange = 320; e.cooldownMax = 110; e.damage = 85; e.splash = true; e.splashRadius = 60; }
+      else if (type === 'mech') { e.hp = e.maxHp = 250; e.speed = 1.4; e.radius = 18; e.emoji = '🤖'; e.attackRange = 150; e.cooldownMax = 35; e.damage = 24; }
+      else if (type === 'cruiser') { e.hp = e.maxHp = 340; e.speed = 1.1; e.radius = 22; e.emoji = '🛩️'; e.attackRange = 185; e.cooldownMax = 55; e.damage = 38; e.splash = true; e.splashRadius = 35; }
+      else if (type === 'carrier') { e.hp = e.maxHp = 450; e.speed = 0.9; e.radius = 25; e.emoji = '🛸'; e.attackRange = 240; e.cooldownMax = 45; e.damage = 50; e.splash = true; e.splashRadius = 50; }
+      else if (type === 'titan') { e.hp = e.maxHp = 700; e.speed = 0.7; e.radius = 30; e.emoji = '🛡️'; e.attackRange = 280; e.cooldownMax = 60; e.damage = 90; e.splash = true; e.splashRadius = 70; }
 
       entities.push(e);
       return e;
     }
 
-    function spawnCurvedResources(hqX, hqY, startAngle, endAngle, radius = 130) {
-      const count = 6;
+    function spawnCurvedResources(hqX, hqY, startAngle, endAngle, radius = 140) {
+      const count = 7;
       for (let i = 0; i < count; i++) {
         let angle = startAngle + (endAngle - startAngle) * (i / (count - 1));
         let rx = hqX + Math.cos(angle) * radius;
         let ry = hqY + Math.sin(angle) * radius;
         spawnEntity('resource_min', 'neutral', rx, ry);
       }
-      let gasAngle = startAngle - 0.35;
-      let gx = hqX + Math.cos(gasAngle) * (radius + 15);
-      let gy = hqY + Math.sin(gasAngle) * (radius + 15);
+      let gasAngle = startAngle - 0.3;
+      let gx = hqX + Math.cos(gasAngle) * (radius + 20);
+      let gy = hqY + Math.sin(gasAngle) * (radius + 20);
       spawnEntity('resource_gas', 'neutral', gx, gy);
     }
 
@@ -475,35 +451,37 @@
 
     function initGame() {
       entities = []; bullets = []; particles = []; selectedUnits = [];
-      resources = { min: 200, gas: 0, enemyMin: 200, enemyGas: 0 };
+      resources = { min: 200, gas: 0, enemyMin: 250, enemyGas: 0 };
       wave = 1; waveTimer = 0; gameOver = false;
-      aiAttackCooldown = 0;
-      tech = { barracks: false, factory: false, starport: false };
+      tech = { barracks: false, academy: false, factory: false, armory: false, starport: false, lab: false };
 
       // 아군 본진 (좌하단)
-      const pX = 220, pY = 1000;
+      const pX = 350, pY = WORLD_H - 350;
       spawnEntity('hq', 'player', pX, pY);
-      spawnCurvedResources(pX, pY, -Math.PI * 0.45, Math.PI * 0.05, 125);
-      for (let i = 0; i < 5; i++) spawnEntity('scv', 'player', pX - 40 + (i * 20), pY - 50);
+      spawnCurvedResources(pX, pY, -Math.PI * 0.45, Math.PI * 0.05, 140);
+      for (let i = 0; i < 5; i++) spawnEntity('scv', 'player', pX - 50 + (i * 22), pY - 60);
 
       // 적군 본진 (우상단)
-      const eX = 1380, eY = 200;
+      const eX = WORLD_W - 350, eY = 350;
       spawnEntity('hq', 'enemy', eX, eY);
-      spawnCurvedResources(eX, eY, Math.PI * 0.55, Math.PI * 1.05, 125);
-      const eGas = entities.find(e => e.type === 'resource_gas' && Math.hypot(e.x - eX, e.y - eY) < 200);
+      spawnCurvedResources(eX, eY, Math.PI * 0.55, Math.PI * 1.05, 140);
+      const eGas = entities.find(e => e.type === 'resource_gas' && Math.hypot(e.x - eX, e.y - eY) < 220);
       if (eGas) { eGas.hasRefinery = true; spawnEntity('refinery', 'enemy', eGas.x, eGas.y); }
-      for (let i = 0; i < 4; i++) spawnEntity('scv', 'enemy', eX - 40 + (i * 22), eY + 50);
+      for (let i = 0; i < 5; i++) spawnEntity('scv', 'enemy', eX - 50 + (i * 22), eY + 60);
 
-      // 멀티 거점
-      spawnCurvedResources(300, 260, 0, Math.PI * 0.5, 110);
-      spawnCurvedResources(1300, 940, Math.PI, Math.PI * 1.5, 110);
-      spawnCurvedResources(800, 600, -Math.PI * 0.25, Math.PI * 0.25, 110);
+      // 광활한 전장의 중립 멀티 거점 6개 배치
+      spawnCurvedResources(400, 500, 0, Math.PI * 0.5, 120);
+      spawnCurvedResources(WORLD_W - 400, WORLD_H - 500, Math.PI, Math.PI * 1.5, 120);
+      spawnCurvedResources(WORLD_W / 2 - 300, WORLD_H / 2 - 200, -Math.PI * 0.25, Math.PI * 0.25, 130);
+      spawnCurvedResources(WORLD_W / 2 + 300, WORLD_H / 2 + 200, Math.PI * 0.75, Math.PI * 1.25, 130);
+      spawnCurvedResources(1100, 1500, Math.PI * 0.2, Math.PI * 0.7, 120);
+      spawnCurvedResources(2100, 900, -Math.PI * 0.8, -Math.PI * 0.3, 120);
 
       updateUI();
     }
 
     function updateCamera() {
-      const speed = 9;
+      const speed = 14;
       if (keys['ArrowLeft'] || keys['KeyA']) camX -= speed;
       if (keys['ArrowRight'] || keys['KeyD']) camX += speed;
       if (keys['ArrowUp'] || keys['KeyW']) camY -= speed;
@@ -513,110 +491,84 @@
       camY = Math.max(0, Math.min(WORLD_H - VIEW_H, camY));
     }
 
-    function findAIBuildPos(baseX, baseY, radius) {
-      for (let attempt = 0; attempt < 25; attempt++) {
-        const offsetDist = 80 + Math.random() * 120;
-        const angle = Math.PI * 0.2 + Math.random() * Math.PI * 0.6;
-        const testX = baseX - Math.cos(angle) * offsetDist;
-        const testY = baseY + Math.sin(angle) * offsetDist;
-
-        if (testX > 800 && testX < 1520 && testY > 50 && testY < 800) {
-          const overlap = entities.some(e => Math.hypot(e.x - testX, e.y - testY) < e.radius + radius + 15);
-          if (!overlap) return { x: testX, y: testY };
-        }
-      }
-      return null;
-    }
-
     let aiTimer = 0;
     function updateHumanlikeAI() {
       aiTimer++;
-      if (aiTimer % 35 !== 0) return;
+      if (aiTimer % 30 !== 0) return;
 
-      if (aiAttackCooldown > 0) aiAttackCooldown--;
+      const enemyHQs = entities.filter(e => e.type === 'hq' && e.faction === 'enemy' && !e.isUnderConstruction);
+      if (enemyHQs.length === 0) return;
 
-      const mainHQ = entities.find(e => e.type === 'hq' && e.faction === 'enemy' && !e.isUnderConstruction);
-      if (!mainHQ) return;
+      const enemySquad = entities.filter(e => e.faction === 'enemy' && ['marine','medic','fighter','scout','tank','siegetank','mech','cruiser','carrier','titan'].includes(e.type));
+      const playerHQs = entities.filter(e => e.type === 'hq' && e.faction === 'player');
 
-      const enemySquad = entities.filter(e => e.faction === 'enemy' && ['fighter','scout','tank','mech','cruiser','carrier'].includes(e.type));
-      const playerSquad = entities.filter(e => e.faction === 'player' && ['fighter','scout','tank','mech','cruiser','carrier'].includes(e.type));
+      // AI 멀티(사령부 확장) 조건 체크
+      if (resources.enemyMin >= 150) {
+        const freeAISCV = entities.find(e => e.faction === 'enemy' && e.type === 'scv' && !e.isBuildingSCV);
+        if (freeAISCV) {
+          // 비어있는 가스/미네랄 거점 탐색
+          const neutralNodes = entities.filter(e => e.type === 'resource_min' && e.amount > 500);
+          const unownedSpot = neutralNodes.find(node => {
+            return !entities.some(b => b.type === 'hq' && Math.hypot(b.x - node.x, b.y - node.y) < 350);
+          });
 
-      // 난이도 하향 조정: 웨이브 1~2는 완전 평화 시간 + 공격 후 휴식 쿨타임 적용
-      if (aiRetreatTimer > 0) {
-        aiRetreatTimer--;
-        aiStateMode = 'retreat';
-      } else if (wave < 2) {
-        aiStateMode = 'defend';
-      } else if (aiAttackCooldown > 0) {
-        aiStateMode = 'defend';
-      } else {
-        if (enemySquad.length >= 12) {
-          aiStateMode = 'attack';
-          aiAttackCooldown = 18; // 공격 후 쿨타임
-        } else if (enemySquad.length >= 7 && Math.random() < 0.15) {
-          aiStateMode = 'harass';
-          aiAttackCooldown = 12; // 견제 후 쿨타임
-        } else {
-          aiStateMode = 'defend';
+          if (unownedSpot) {
+            aiStateMode = 'expand';
+            resources.enemyMin -= 150;
+            startBuildingConstruction('hq', 'enemy', unownedSpot.x - 70, unownedSpot.y - 70, freeAISCV, 400);
+          }
         }
       }
 
-      if (aiStateMode === 'retreat' || aiStateMode === 'defend') {
-        enemySquad.forEach((u, idx) => {
-          u.moveTarget = { x: mainHQ.x - 120 + (idx % 4) * 25, y: mainHQ.y + 80 + Math.floor(idx / 4) * 25 };
-        });
-      } else if (aiStateMode === 'harass') {
-        const playerSCVs = entities.filter(e => e.faction === 'player' && e.type === 'scv');
-        const targetSCV = playerSCVs[Math.floor(Math.random() * playerSCVs.length)];
+      // AI 공세 및 게릴라 상태 제어
+      if (enemySquad.length >= 8) {
+        aiStateMode = 'attack';
+        const target = playerHQs[Math.floor(Math.random() * playerHQs.length)] || entities.find(e => e.faction === 'player');
+        if (target) {
+          enemySquad.forEach(u => {
+            if (!u.moveTarget) u.moveTarget = { x: target.x + (Math.random()-0.5)*100, y: target.y + (Math.random()-0.5)*100 };
+          });
+        }
+      } else if (enemySquad.length >= 4 && Math.random() < 0.3) {
+        aiStateMode = 'harass';
+        const targetSCV = entities.find(e => e.faction === 'player' && e.type === 'scv');
         if (targetSCV) {
-          enemySquad.forEach(u => {
-            if (u.type === 'scout' || u.type === 'fighter') {
-              u.moveTarget = { x: targetSCV.x, y: targetSCV.y };
-            }
-          });
-        }
-      } else if (aiStateMode === 'attack') {
-        const targetBuilding = entities.find(e => e.faction === 'player' && (e.type === 'hq' || e.type === 'barracks')) || playerSquad[0];
-        if (targetBuilding) {
-          enemySquad.forEach(u => {
-            if (!u.moveTarget) u.moveTarget = { x: targetBuilding.x, y: targetBuilding.y };
-          });
+          enemySquad.forEach(u => { u.moveTarget = { x: targetSCV.x, y: targetSCV.y }; });
         }
       }
 
+      // AI 일꾼 고용
       const eSCVs = entities.filter(e => e.type === 'scv' && e.faction === 'enemy');
-      if (eSCVs.length < 5 && resources.enemyMin >= 20) {
+      if (eSCVs.length < enemyHQs.length * 6 && resources.enemyMin >= 20) {
+        let spawnHQ = enemyHQs[Math.floor(Math.random() * enemyHQs.length)];
         resources.enemyMin -= 20;
-        spawnEntity('scv', 'enemy', mainHQ.x - 20, mainHQ.y + 20);
+        spawnEntity('scv', 'enemy', spawnHQ.x - 30, spawnHQ.y + 30);
       }
 
+      // AI 테크 및 건물 건설
       const freeAISCV = eSCVs.find(s => !s.isBuildingSCV);
-      const eBarracks = entities.find(e => e.type === 'barracks' && e.faction === 'enemy' && !e.isUnderConstruction);
-      const eFactory = entities.find(e => e.type === 'factory' && e.faction === 'enemy' && !e.isUnderConstruction);
-      const eStarport = entities.find(e => e.type === 'starport' && e.faction === 'enemy' && !e.isUnderConstruction);
+      const mainHQ = enemyHQs[0];
+      const eBarracks = entities.find(e => e.type === 'barracks' && e.faction === 'enemy');
+      const eFactory = entities.find(e => e.type === 'factory' && e.faction === 'enemy');
+      const eStarport = entities.find(e => e.type === 'starport' && e.faction === 'enemy');
 
       if (freeAISCV) {
         if (!eBarracks && resources.enemyMin >= 40) {
-          let pos = findAIBuildPos(mainHQ.x, mainHQ.y, 26);
-          if (pos) { resources.enemyMin -= 40; startBuildingConstruction('barracks', 'enemy', pos.x, pos.y, freeAISCV, 250); }
+          resources.enemyMin -= 40; startBuildingConstruction('barracks', 'enemy', mainHQ.x - 100, mainHQ.y + 80, freeAISCV, 200);
         } else if (eBarracks && !eFactory && resources.enemyMin >= 60 && resources.enemyGas >= 20) {
-          let pos = findAIBuildPos(mainHQ.x, mainHQ.y, 28);
-          if (pos) { resources.enemyMin -= 60; resources.enemyGas -= 20; startBuildingConstruction('factory', 'enemy', pos.x, pos.y, freeAISCV, 320); }
+          resources.enemyMin -= 60; resources.enemyGas -= 20; startBuildingConstruction('factory', 'enemy', mainHQ.x + 100, mainHQ.y + 80, freeAISCV, 280);
         } else if (eFactory && !eStarport && resources.enemyMin >= 80 && resources.enemyGas >= 40) {
-          let pos = findAIBuildPos(mainHQ.x, mainHQ.y, 30);
-          if (pos) { resources.enemyMin -= 80; resources.enemyGas -= 40; startBuildingConstruction('starport', 'enemy', pos.x, pos.y, freeAISCV, 400); }
+          resources.enemyMin -= 80; resources.enemyGas -= 40; startBuildingConstruction('starport', 'enemy', mainHQ.x - 120, mainHQ.y - 80, freeAISCV, 340);
         }
       }
 
+      // AI 연속 병력 생산
       if (eStarport && resources.enemyMin >= 100 && resources.enemyGas >= 60) {
-        resources.enemyMin -= 100; resources.enemyGas -= 60;
-        spawnEntity('carrier', 'enemy', eStarport.x - 30, eStarport.y + 30);
+        resources.enemyMin -= 100; resources.enemyGas -= 60; spawnEntity('carrier', 'enemy', eStarport.x - 30, eStarport.y + 30);
       } else if (eFactory && resources.enemyMin >= 60 && resources.enemyGas >= 10) {
-        resources.enemyMin -= 60; resources.enemyGas -= 10;
-        spawnEntity('tank', 'enemy', eFactory.x - 30, eFactory.y + 30);
-      } else if (eBarracks && resources.enemyMin >= 30) {
-        resources.enemyMin -= 30;
-        spawnEntity(Math.random() < 0.5 ? 'fighter' : 'scout', 'enemy', eBarracks.x - 30, eBarracks.y + 30);
+        resources.enemyMin -= 60; resources.enemyGas -= 10; spawnEntity('tank', 'enemy', eFactory.x - 30, eFactory.y + 30);
+      } else if (eBarracks && resources.enemyMin >= 15) {
+        resources.enemyMin -= 15; spawnEntity(Math.random() < 0.6 ? 'marine' : 'fighter', 'enemy', eBarracks.x - 30, eBarracks.y + 30);
       }
       
       updateUI();
@@ -630,17 +582,18 @@
         let e = entities[i];
         if (e.hp <= 0) {
           for (let p = 0; p < 6; p++) {
-            particles.push({
-              x: e.x, y: e.y, vx: (Math.random() - 0.5) * 5, vy: (Math.random() - 0.5) * 5, life: 22, text: '💥'
-            });
+            particles.push({ x: e.x, y: e.y, vx: (Math.random() - 0.5) * 5, vy: (Math.random() - 0.5) * 5, life: 22, text: '💥' });
           }
           playSound('explode');
           selectedUnits = selectedUnits.filter(u => u.id !== e.id);
           
           if (e.faction === 'player') {
             if (e.type === 'barracks') tech.barracks = entities.some(b => b.faction === 'player' && b.type === 'barracks' && !b.isUnderConstruction && b.id !== e.id);
+            if (e.type === 'academy') tech.academy = entities.some(b => b.faction === 'player' && b.type === 'academy' && !b.isUnderConstruction && b.id !== e.id);
             if (e.type === 'factory') tech.factory = entities.some(b => b.faction === 'player' && b.type === 'factory' && !b.isUnderConstruction && b.id !== e.id);
+            if (e.type === 'armory') tech.armory = entities.some(b => b.faction === 'player' && b.type === 'armory' && !b.isUnderConstruction && b.id !== e.id);
             if (e.type === 'starport') tech.starport = entities.some(b => b.faction === 'player' && b.type === 'starport' && !b.isUnderConstruction && b.id !== e.id);
+            if (e.type === 'lab') tech.lab = entities.some(b => b.faction === 'player' && b.type === 'lab' && !b.isUnderConstruction && b.id !== e.id);
           }
 
           entities.splice(i, 1);
@@ -651,11 +604,11 @@
 
           if (playerHQs.length === 0 && !gameOver) {
             gameOver = true;
-            document.getElementById('game-over-title').innerText = "💥 아군의 모든 사령부가 파괴되었습니다! 게임 오버!";
+            document.getElementById('game-over-title').innerText = "💥 모든 사령부가 전멸했습니다! 패배!";
             document.getElementById('game-over-modal').style.display = 'block';
           } else if (enemyHQs.length === 0 && !gameOver) {
             gameOver = true;
-            document.getElementById('game-over-title').innerText = "🎉 우주 대승리! 적의 모든 사령부를 파괴했습니다!";
+            document.getElementById('game-over-title').innerText = "🎉 적의 모든 사령부와 멀티를 정복했습니다! 대승리!";
             document.getElementById('game-over-modal').style.display = 'block';
           }
           continue;
@@ -667,22 +620,21 @@
             let distToSite = Math.hypot(builder.x - e.x, builder.y - e.y);
             if (distToSite > e.radius + 15) {
               let angle = Math.atan2(e.y - builder.y, e.x - builder.x);
-              builder.x += Math.cos(angle) * builder.speed;
-              builder.y += Math.sin(angle) * builder.speed;
+              builder.x += Math.cos(angle) * builder.speed; builder.y += Math.sin(angle) * builder.speed;
             } else {
               e.buildProgress++;
-              if (Math.random() < 0.25) particles.push({ x: e.x + (Math.random()-0.5)*e.radius, y: e.y + (Math.random()-0.5)*e.radius, vx: (Math.random()-0.5)*2, vy: (Math.random()-0.5)*2, life: 12, text: '🛠️' });
+              if (Math.random() < 0.2) particles.push({ x: e.x + (Math.random()-0.5)*e.radius, y: e.y + (Math.random()-0.5)*e.radius, vx: (Math.random()-0.5)*2, vy: (Math.random()-0.5)*2, life: 10, text: '🛠️' });
 
               if (e.buildProgress >= e.buildMaxTime) {
-                e.isUnderConstruction = false;
-                builder.isBuildingSCV = false;
-                builder.isManualMove = false;
-                builder.moveTarget = null;
+                e.isUnderConstruction = false; builder.isBuildingSCV = false; builder.isManualMove = false; builder.moveTarget = null;
                 playSound('produce');
                 if (e.faction === 'player') {
                   if (e.type === 'barracks') tech.barracks = true;
+                  if (e.type === 'academy') tech.academy = true;
                   if (e.type === 'factory') tech.factory = true;
+                  if (e.type === 'armory') tech.armory = true;
                   if (e.type === 'starport') tech.starport = true;
+                  if (e.type === 'lab') tech.lab = true;
                   updateUI();
                 }
               }
@@ -693,8 +645,11 @@
               e.isUnderConstruction = false;
               if (e.faction === 'player') {
                 if (e.type === 'barracks') tech.barracks = true;
+                if (e.type === 'academy') tech.academy = true;
                 if (e.type === 'factory') tech.factory = true;
+                if (e.type === 'armory') tech.armory = true;
                 if (e.type === 'starport') tech.starport = true;
+                if (e.type === 'lab') tech.lab = true;
                 updateUI();
               }
             }
@@ -706,43 +661,42 @@
           let item = e.productionQueue[0];
           item.progress++;
           if (item.progress >= item.maxTime) {
-            const newUnit = spawnEntity(item.unitType, e.faction, e.x + (Math.random() * 30 - 15), e.y + e.radius + 15);
+            spawnEntity(item.unitType, e.faction, e.x + (Math.random() * 30 - 15), e.y + e.radius + 15);
             playSound('produce');
             if (e.faction === 'player') showToast(`✨ ${item.unitType.toUpperCase()} 생산 완료!`);
             e.productionQueue.shift();
           }
         }
 
-        if (e.type === 'turret') {
+        // 벙커 및 터렛 방어 시스템
+        if (e.type === 'turret' || e.type === 'bunker') {
           if (e.cooldown > 0) e.cooldown--;
           let targets = entities.filter(t => t.faction !== 'neutral' && t.faction !== e.faction && !t.isUnderConstruction);
           let closestTarget = targets.reduce((prev, curr) => Math.hypot(curr.x - e.x, curr.y - e.y) < Math.hypot(prev.x - e.x, prev.y - e.y) ? curr : prev, targets[0]);
           if (closestTarget && Math.hypot(closestTarget.x - e.x, closestTarget.y - e.y) <= e.attackRange && e.cooldown <= 0) {
-            bullets.push({ x: e.x, y: e.y, targetX: closestTarget.x, targetY: closestTarget.y, targetId: closestTarget.id, faction: e.faction, speed: 8.5, damage: e.damage, splash: false, splashRadius: 0 });
+            bullets.push({ x: e.x, y: e.y, targetX: closestTarget.x, targetY: closestTarget.y, targetId: closestTarget.id, faction: e.faction, speed: 9, damage: e.damage, splash: false, splashRadius: 0 });
             playSound('laser');
             e.cooldown = e.cooldownMax;
           }
         }
 
-        // SCV AI (속도 및 채굴 효율 대폭 상향)
+        // SCV AI (요청대로 2초에 1회, 8자원 채굴로 조율)
         if (e.type === 'scv' && !e.isBuildingSCV) {
           if (e.isManualMove) {
             if (e.moveTarget) {
               let angle = Math.atan2(e.moveTarget.y - e.y, e.moveTarget.x - e.x);
-              e.x += Math.cos(angle) * e.speed;
-              e.y += Math.sin(angle) * e.speed;
+              e.x += Math.cos(angle) * e.speed; e.y += Math.sin(angle) * e.speed;
               if (Math.hypot(e.moveTarget.x - e.x, e.moveTarget.y - e.y) < 4) e.moveTarget = null;
             }
           } else {
             if (e.moveTarget) {
               let angle = Math.atan2(e.moveTarget.y - e.y, e.moveTarget.x - e.x);
-              e.x += Math.cos(angle) * e.speed;
-              e.y += Math.sin(angle) * e.speed;
+              e.x += Math.cos(angle) * e.speed; e.y += Math.sin(angle) * e.speed;
               if (Math.hypot(e.moveTarget.x - e.x, e.moveTarget.y - e.y) < 4) e.moveTarget = null;
             } else {
               const nearbyDamaged = entities.find(b => 
                 b.faction === e.faction && 
-                ['hq','barracks','factory','starport','refinery','turret'].includes(b.type) &&
+                ['hq','barracks','academy','factory','armory','starport','lab','refinery','bunker','turret'].includes(b.type) &&
                 !b.isUnderConstruction && b.hp < b.maxHp &&
                 Math.hypot(b.x - e.x, b.y - e.y) <= 120
               );
@@ -751,10 +705,9 @@
                 let dist = Math.hypot(nearbyDamaged.x - e.x, nearbyDamaged.y - e.y);
                 if (dist > nearbyDamaged.radius + 15) {
                   let angle = Math.atan2(nearbyDamaged.y - e.y, nearbyDamaged.x - e.x);
-                  e.x += Math.cos(angle) * e.speed;
-                  e.y += Math.sin(angle) * e.speed;
+                  e.x += Math.cos(angle) * e.speed; e.y += Math.sin(angle) * e.speed;
                 } else {
-                  nearbyDamaged.hp = Math.min(nearbyDamaged.maxHp, nearbyDamaged.hp + 0.35);
+                  nearbyDamaged.hp = Math.min(nearbyDamaged.maxHp, nearbyDamaged.hp + 0.3);
                   if (Math.random() < 0.2) particles.push({ x: e.x, y: e.y, vx: 0, vy: -1, life: 10, text: '🔧' });
                 }
               } else if (!e.cargo) {
@@ -770,12 +723,12 @@
                   if (dist < targetRes.radius + 12) {
                     if (!e.mineTimer) e.mineTimer = 0;
                     e.mineTimer++;
-                    if (Math.random() < 0.3) {
-                      particles.push({ x: e.x + (Math.random()-0.5)*10, y: e.y - 5, vx: (Math.random()-0.5)*2, vy: -1, life: 8, text: '✨' });
-                    }
-                    if (e.mineTimer >= 35) { // 약 0.6초 채굴 (기존 1.1초에서 단축)
+                    if (Math.random() < 0.2) particles.push({ x: e.x + (Math.random()-0.5)*10, y: e.y - 5, vx: (Math.random()-0.5)*2, vy: -1, life: 8, text: '✨' });
+                    
+                    // 정확히 2초(120 프레임) 채굴 타이머 설정
+                    if (e.mineTimer >= 120) {
                       e.mineTimer = 0;
-                      let harvest = Math.min(12, targetRes.amount); // 1회 채굴량 12로 증대
+                      let harvest = Math.min(8, targetRes.amount); // 1회 채굴량 8
                       targetRes.amount -= harvest;
                       e.cargo = { type: targetRes.resType, amount: harvest };
 
@@ -787,31 +740,25 @@
                   } else {
                     e.mineTimer = 0;
                     let angle = Math.atan2(targetRes.y - e.y, targetRes.x - e.x);
-                    e.x += Math.cos(angle) * e.speed;
-                    e.y += Math.sin(angle) * e.speed;
+                    e.x += Math.cos(angle) * e.speed; e.y += Math.sin(angle) * e.speed;
                   }
                 }
               } else {
                 let myHQs = entities.filter(h => h.type === 'hq' && h.faction === e.faction && !h.isUnderConstruction);
                 if (myHQs.length > 0) {
-                  let closestHQ = myHQs.reduce((prev, curr) => 
-                    Math.hypot(curr.x - e.x, curr.y - e.y) < Math.hypot(prev.x - e.x, prev.y - e.y) ? curr : prev, myHQs[0]
-                  );
+                  let closestHQ = myHQs.reduce((prev, curr) => Math.hypot(curr.x - e.x, curr.y - e.y) < Math.hypot(prev.x - e.x, prev.y - e.y) ? curr : prev, myHQs[0]);
                   let d = Math.hypot(closestHQ.x - e.x, closestHQ.y - e.y);
                   if (d < closestHQ.radius + 15) {
                     if (e.faction === 'player') {
-                      if (e.cargo.type === 'min') resources.min += e.cargo.amount;
-                      else resources.gas += e.cargo.amount;
+                      if (e.cargo.type === 'min') resources.min += e.cargo.amount; else resources.gas += e.cargo.amount;
                       updateUI();
                     } else {
-                      if (e.cargo.type === 'min') resources.enemyMin += e.cargo.amount;
-                      else resources.enemyGas += e.cargo.amount;
+                      if (e.cargo.type === 'min') resources.enemyMin += e.cargo.amount; else resources.enemyGas += e.cargo.amount;
                     }
                     e.cargo = null;
                   } else {
                     let angle = Math.atan2(closestHQ.y - e.y, closestHQ.x - e.x);
-                    e.x += Math.cos(angle) * e.speed;
-                    e.y += Math.sin(angle) * e.speed;
+                    e.x += Math.cos(angle) * e.speed; e.y += Math.sin(angle) * e.speed;
                   }
                 }
               }
@@ -819,49 +766,63 @@
           }
         }
 
-        if (['fighter','scout','tank','mech','cruiser','carrier'].includes(e.type)) {
+        // 일반 전투 유닛 및 의무병 AI
+        if (['marine','medic','fighter','scout','tank','siegetank','mech','cruiser','carrier','titan'].includes(e.type)) {
           if (e.cooldown > 0) e.cooldown--;
 
-          let target = e.forcedTarget;
-          let aggroRange = 220;
-
-          if (!target || target.hp <= 0) {
-            let enemies = entities.filter(t => t.faction !== 'neutral' && t.faction !== e.faction && !t.isUnderConstruction);
-            let closest = null; let minDist = 99999;
-            enemies.forEach(en => {
-              let d = Math.hypot(en.x - e.x, en.y - e.y);
-              if (d < minDist) { minDist = d; closest = en; }
-            });
-            if (closest && minDist <= aggroRange) {
-              target = closest;
+          if (e.isHealer) {
+            // 의무병: 부상당한 아군 유닛 치유
+            let injuredAlly = entities.find(u => u.faction === e.faction && u.hp < u.maxHp && !u.isUnderConstruction && Math.hypot(u.x - e.x, u.y - e.y) <= 150);
+            if (injuredAlly) {
+              let dist = Math.hypot(injuredAlly.x - e.x, injuredAlly.y - e.y);
+              if (dist <= e.attackRange) {
+                if (e.cooldown <= 0) {
+                  injuredAlly.hp = Math.min(injuredAlly.maxHp, injuredAlly.hp + e.damage);
+                  particles.push({ x: injuredAlly.x, y: injuredAlly.y - 10, vx: 0, vy: -1, life: 10, text: '💚' });
+                  e.cooldown = e.cooldownMax;
+                }
+              } else {
+                let angle = Math.atan2(injuredAlly.y - e.y, injuredAlly.x - e.x);
+                e.x += Math.cos(angle) * e.speed; e.y += Math.sin(angle) * e.speed;
+              }
+            } else if (e.moveTarget) {
+              let angle = Math.atan2(e.moveTarget.y - e.y, e.moveTarget.x - e.x);
+              e.x += Math.cos(angle) * e.speed; e.y += Math.sin(angle) * e.speed;
+              if (Math.hypot(e.moveTarget.x - e.x, e.moveTarget.y - e.y) < 4) e.moveTarget = null;
             }
-          }
+          } else {
+            let target = e.forcedTarget;
+            let aggroRange = 250;
 
-          if (target && Math.hypot(target.x - e.x, target.y - e.y) <= e.attackRange) {
-            if (e.cooldown <= 0) {
-              bullets.push({
-                x: e.x, y: e.y, targetX: target.x, targetY: target.y,
-                targetId: target.id, faction: e.faction, speed: 9,
-                damage: e.damage, splash: e.splash, splashRadius: e.splashRadius
+            if (!target || target.hp <= 0) {
+              let enemies = entities.filter(t => t.faction !== 'neutral' && t.faction !== e.faction && !t.isUnderConstruction);
+              let closest = null; let minDist = 99999;
+              enemies.forEach(en => {
+                let d = Math.hypot(en.x - e.x, en.y - e.y);
+                if (d < minDist) { minDist = d; closest = en; }
               });
-              playSound('laser');
-              e.cooldown = e.cooldownMax;
+              if (closest && minDist <= aggroRange) target = closest;
             }
-          }
 
-          if (e.moveTarget) {
-            let angle = Math.atan2(e.moveTarget.y - e.y, e.moveTarget.x - e.x);
-            e.x += Math.cos(angle) * e.speed;
-            e.y += Math.sin(angle) * e.speed;
-            if (Math.hypot(e.moveTarget.x - e.x, e.moveTarget.y - e.y) < 4) {
-              e.moveTarget = null;
-              if (e.forcedTarget) e.forcedTarget = null;
+            if (target && Math.hypot(target.x - e.x, target.y - e.y) <= e.attackRange) {
+              if (e.cooldown <= 0) {
+                bullets.push({ x: e.x, y: e.y, targetX: target.x, targetY: target.y, targetId: target.id, faction: e.faction, speed: 9.5, damage: e.damage, splash: e.splash, splashRadius: e.splashRadius });
+                playSound('laser');
+                e.cooldown = e.cooldownMax;
+              }
             }
-          } else if (target && Math.hypot(target.x - e.x, target.y - e.y) > e.attackRange) {
-            if (Math.hypot(target.x - e.x, target.y - e.y) <= aggroRange) {
-              let angle = Math.atan2(target.y - e.y, target.x - e.x);
-              e.x += Math.cos(angle) * (e.speed * 0.85);
-              e.y += Math.sin(angle) * (e.speed * 0.85);
+
+            if (e.moveTarget) {
+              let angle = Math.atan2(e.moveTarget.y - e.y, e.moveTarget.x - e.x);
+              e.x += Math.cos(angle) * e.speed; e.y += Math.sin(angle) * e.speed;
+              if (Math.hypot(e.moveTarget.x - e.x, e.moveTarget.y - e.y) < 4) {
+                e.moveTarget = null; if (e.forcedTarget) e.forcedTarget = null;
+              }
+            } else if (target && Math.hypot(target.x - e.x, target.y - e.y) > e.attackRange) {
+              if (Math.hypot(target.x - e.x, target.y - e.y) <= aggroRange) {
+                let angle = Math.atan2(target.y - e.y, target.x - e.x);
+                e.x += Math.cos(angle) * (e.speed * 0.85); e.y += Math.sin(angle) * (e.speed * 0.85);
+              }
             }
           }
         }
@@ -874,8 +835,7 @@
         let ty = t ? t.y : b.targetY;
 
         let angle = Math.atan2(ty - b.y, tx - b.x);
-        b.x += Math.cos(angle) * b.speed;
-        b.y += Math.sin(angle) * b.speed;
+        b.x += Math.cos(angle) * b.speed; b.y += Math.sin(angle) * b.speed;
 
         if (Math.hypot(tx - b.x, ty - b.y) < 10) {
           if (t) {
@@ -894,8 +854,7 @@
 
       for (let i = particles.length - 1; i >= 0; i--) {
         let p = particles[i];
-        p.x += p.vx; p.y += p.vy;
-        p.life--;
+        p.x += p.vx; p.y += p.vy; p.life--;
         if (p.life <= 0) particles.splice(i, 1);
       }
     }
@@ -907,10 +866,9 @@
       ctx.translate(-camX, -camY);
 
       ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--border').trim() || '#30363d';
-      ctx.lineWidth = 1;
-      ctx.globalAlpha = 0.25;
-      for (let x = 0; x <= WORLD_W; x += 100) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, WORLD_H); ctx.stroke(); }
-      for (let y = 0; y <= WORLD_H; y += 100) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(WORLD_W, y); ctx.stroke(); }
+      ctx.lineWidth = 1; ctx.globalAlpha = 0.2;
+      for (let x = 0; x <= WORLD_W; x += 120) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, WORLD_H); ctx.stroke(); }
+      for (let y = 0; y <= WORLD_H; y += 120) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(WORLD_W, y); ctx.stroke(); }
       ctx.globalAlpha = 1.0;
 
       entities.forEach(e => {
@@ -926,8 +884,7 @@
         }
 
         if (e.type === 'resource_min' || e.type === 'resource_gas') {
-          ctx.fillStyle = '#fff';
-          ctx.font = '10px sans-serif';
+          ctx.fillStyle = '#fff'; ctx.font = '10px sans-serif';
           ctx.fillText(e.amount, e.x, e.y + e.radius + 8);
         }
 
@@ -948,8 +905,7 @@
       });
 
       selectedUnits.forEach(u => {
-        ctx.strokeStyle = '#4dadf7';
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#4dadf7'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(u.x, u.y, u.radius + 4, 0, Math.PI * 2); ctx.stroke();
       });
 
@@ -959,8 +915,7 @@
       });
 
       particles.forEach(p => {
-        ctx.font = '14px sans-serif';
-        ctx.fillText(p.text, p.x, p.y);
+        ctx.font = '14px sans-serif'; ctx.fillText(p.text, p.x, p.y);
       });
 
       ctx.restore();
@@ -972,8 +927,7 @@
         const dh = Math.abs(dragEndScreen.y - dragStartScreen.y);
         ctx.fillStyle = 'rgba(77, 173, 247, 0.25)';
         ctx.fillRect(dx, dy, dw, dh);
-        ctx.strokeStyle = '#4dadf7';
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#4dadf7'; ctx.lineWidth = 1;
         ctx.strokeRect(dx, dy, dw, dh);
       }
 
@@ -981,11 +935,11 @@
     }
 
     function drawMinimap() {
-      const mmW = 140, mmH = 100;
+      const mmW = 160, mmH = 120;
       const mmX = VIEW_W - mmW - 10;
       const mmY = VIEW_H - mmH - 10;
 
-      ctx.fillStyle = 'rgba(15, 20, 30, 0.85)';
+      ctx.fillStyle = 'rgba(15, 20, 30, 0.88)';
       ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--border').trim() || '#30363d';
       ctx.lineWidth = 2;
       ctx.fillRect(mmX, mmY, mmW, mmH);
