@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>미니지 - 갤럭시 블리츠</title>
+  <title>갤럭시 블리츠: 스텔라 워 (Galactic Blitz)</title>
   <style>
     :root { --bg: #f8f9fa; --text: #333; --canvas-bg: #05070a; --border: #30363d; --btn-bg: #fff; }
     [data-theme="dark"] { --bg: #0d1117; --text: #c9d1d9; --canvas-bg: #020305; --border: #30363d; --btn-bg: #21262d; }
@@ -162,30 +162,71 @@
     let audioCtx = null;
     function initAudio() { if (!audioCtx) audioCtx = new AudioCtx(); }
 
-    function playSound(type) {
+    function playSound(type, worldX = null, worldY = null) {
       if (!audioCtx) return;
+
+      // 소리는 카메라 중심을 기준으로 거리 감쇠한다.
+      // 가까우면 정상 볼륨, 멀어질수록 부드럽게 작아지고
+      // 일정 거리 이상 떨어지면 완전히 들리지 않는다.
+      let distanceFactor = 1;
+      if (worldX !== null && worldY !== null) {
+        const cameraCenterX = camX + VIEW_W / 2;
+        const cameraCenterY = camY + VIEW_H / 2;
+        const distance = Math.hypot(worldX - cameraCenterX, worldY - cameraCenterY);
+
+        const fullVolumeDistance = 180;
+        const maxHearDistance = 900;
+
+        if (distance >= maxHearDistance) {
+          distanceFactor = 0;
+        } else if (distance > fullVolumeDistance) {
+          const t = (distance - fullVolumeDistance) /
+                    (maxHearDistance - fullVolumeDistance);
+          distanceFactor = Math.pow(1 - t, 1.8);
+        }
+      }
+
+      if (distanceFactor <= 0) return;
+
       try {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
-        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
         const now = audioCtx.currentTime;
 
         if (type === 'produce') {
-          osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); osc.frequency.exponentialRampToValueAtTime(800, now + 0.1);
-          gain.gain.setValueAtTime(0.12, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-          osc.start(now); osc.stop(now + 0.1);
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(400, now);
+          osc.frequency.exponentialRampToValueAtTime(800, now + 0.1);
+          gain.gain.setValueAtTime(0.12 * distanceFactor, now);
+          gain.gain.exponentialRampToValueAtTime(0.01 * distanceFactor, now + 0.1);
+          osc.start(now);
+          osc.stop(now + 0.1);
         } else if (type === 'laser') {
-          osc.type = 'sawtooth'; osc.frequency.setValueAtTime(650, now); osc.frequency.exponentialRampToValueAtTime(150, now + 0.07);
-          gain.gain.setValueAtTime(0.06, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.07);
-          osc.start(now); osc.stop(now + 0.07);
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(650, now);
+          osc.frequency.exponentialRampToValueAtTime(150, now + 0.07);
+          gain.gain.setValueAtTime(0.06 * distanceFactor, now);
+          gain.gain.exponentialRampToValueAtTime(0.01 * distanceFactor, now + 0.07);
+          osc.start(now);
+          osc.stop(now + 0.07);
         } else if (type === 'explode') {
-          osc.type = 'square'; osc.frequency.setValueAtTime(130, now); osc.frequency.exponentialRampToValueAtTime(25, now + 0.2);
-          gain.gain.setValueAtTime(0.18, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-          osc.start(now); osc.stop(now + 0.2);
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(130, now);
+          osc.frequency.exponentialRampToValueAtTime(25, now + 0.2);
+          gain.gain.setValueAtTime(0.18 * distanceFactor, now);
+          gain.gain.exponentialRampToValueAtTime(0.01 * distanceFactor, now + 0.2);
+          osc.start(now);
+          osc.stop(now + 0.2);
         } else if (type === 'mine') {
-          osc.type = 'triangle'; osc.frequency.setValueAtTime(800, now); osc.frequency.exponentialRampToValueAtTime(1400, now + 0.06);
-          gain.gain.setValueAtTime(0.08, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.06);
-          osc.start(now); osc.stop(now + 0.06);
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(800, now);
+          osc.frequency.exponentialRampToValueAtTime(1400, now + 0.06);
+          gain.gain.setValueAtTime(0.08 * distanceFactor, now);
+          gain.gain.exponentialRampToValueAtTime(0.01 * distanceFactor, now + 0.06);
+          osc.start(now);
+          osc.stop(now + 0.06);
         }
       } catch (e) {}
     }
@@ -508,7 +549,7 @@ function assignBestResource(scv) {
         if (!prodBuilding.productionQueue) prodBuilding.productionQueue = [];
         prodBuilding.productionQueue.push({ unitType: unitType, progress: 0, maxTime: c.time });
         showToast(`🛠️ ${c.name} 생산 예약됨`);
-        playSound('produce');
+        playSound('produce', prodBuilding.x, prodBuilding.y);
         updateUI();
       } else {
         showToast("⚠️ 생산 건물이 부족하거나 대기열이 가득 찼습니다!");
@@ -1259,7 +1300,7 @@ function assignBestResource(scv) {
               assignBaseResource(produced, 350, WORLD_H - 350, 320);
             }
             ent.productionQueue.shift();
-            playSound('produce');
+            playSound('produce', ent.x, ent.y);
           }
         }
 
@@ -1336,7 +1377,7 @@ function assignBestResource(scv) {
                     ent.cargo = res.resType;
                     res.amount -= 8;
                     ent.mineTimer = 0;
-                    playSound('mine');
+                    playSound('mine', ent.x, ent.y);
                   }
                 }
               } else {
@@ -1377,32 +1418,63 @@ function assignBestResource(scv) {
           }
         }
 
-        if (ent.speed > 0 && ent.type !== 'scv') {
+        const isStaticDefender = (ent.type === 'turret' || ent.type === 'bunker');
+
+        if ((ent.speed > 0 && ent.type !== 'scv') || isStaticDefender) {
           let target = ent.forcedTarget;
-          if ((!target || target.hp <= 0) && ent.faction === 'enemy' &&
-              (enemyAI.phase === 'RALLY' || enemyAI.phase === 'ATTACK')) {
-            // Scripted AI controls movement during rally/attack.
-            target = null;
-          }
+
+          // 명령된 목표가 죽었으면 다시 찾는다.
           if (!target || target.hp <= 0) {
+            ent.forcedTarget = null;
+
+            // 적/아군 중 사거리 안에 들어온 가장 가까운 공격 대상을 선택.
             const opp = (ent.faction === 'player') ? 'enemy' : 'player';
-            target = entities.find(e => e.faction === opp && Math.hypot(e.x - ent.x, e.y - ent.y) <= ent.attackRange + 50);
+            let nearest = null;
+            let nearestDist = Infinity;
+
+            entities.forEach(candidate => {
+              if (candidate === ent || candidate.faction !== opp || candidate.hp <= 0) return;
+              const dist = Math.hypot(candidate.x - ent.x, candidate.y - ent.y);
+              if (dist <= ent.attackRange && dist < nearestDist) {
+                nearest = candidate;
+                nearestDist = dist;
+              }
+            });
+
+            target = nearest;
+
+            // 적 AI의 집결 중에는 자동 전투 탐색보다 공격 명령을 우선한다.
+            if (!target && ent.faction === 'enemy' &&
+                enemyAI.phase === 'RALLY') {
+              target = null;
+            }
           }
 
           if (target && target.hp > 0) {
             const dist = Math.hypot(target.x - ent.x, target.y - ent.y);
-            if (dist > ent.attackRange) {
+
+            if (!isStaticDefender && dist > ent.attackRange) {
               const angle = Math.atan2(target.y - ent.y, target.x - ent.x);
               ent.x += Math.cos(angle) * ent.speed;
               ent.y += Math.sin(angle) * ent.speed;
-            } else if (ent.cooldown <= 0) {
+            } else if (dist <= ent.attackRange && ent.cooldown <= 0) {
               target.hp -= ent.damage;
               ent.cooldown = ent.cooldownMax;
-              bullets.push({ x: ent.x, y: ent.y, tx: target.x, ty: target.y, life: 6 });
-              playSound('laser');
-              if (target.hp <= 0) playSound('explode');
+
+              bullets.push({
+                x: ent.x,
+                y: ent.y,
+                tx: target.x,
+                ty: target.y,
+                life: 6
+              });
+
+              playSound('laser', ent.x, ent.y);
+              if (target.hp <= 0) {
+                playSound('explode', target.x, target.y);
+              }
             }
-          } else if (ent.moveTarget) {
+          } else if (!isStaticDefender && ent.moveTarget) {
             const dist = Math.hypot(ent.moveTarget.x - ent.x, ent.moveTarget.y - ent.y);
             if (dist > 4) {
               const angle = Math.atan2(ent.moveTarget.y - ent.y, ent.moveTarget.x - ent.x);
