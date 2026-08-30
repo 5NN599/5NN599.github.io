@@ -246,7 +246,10 @@
           );
 
           selectedUnits.forEach((unit, idx) => {
-            if (unit.isBuildingSCV) unit.isBuildingSCV = false;
+            if (unit.isBuildingSCV) {
+              unit.isBuildingSCV = false;
+              unit.buildingTargetId = null;
+            }
             unit.mineTimer = 0;
             const offsetX = (idx % 4 - 1.5) * 20;
             const offsetY = (Math.floor(idx / 4) - 1.5) * 20;
@@ -371,11 +374,19 @@
 
     function startBuildingConstruction(type, faction, x, y, scv, maxTime) {
       const b = spawnEntity(type, faction, x, y);
-      b.isUnderConstruction = true; b.buildProgress = 0; b.buildMaxTime = maxTime;
+      b.isUnderConstruction = true; 
+      b.buildProgress = 0; 
+      b.buildMaxTime = maxTime;
       b.builderSCVId = scv ? scv.id : null;
+      b.hp = 1; // 초기에 1 HP로 터를 잡음
+
       if (scv) {
-        scv.isBuildingSCV = true; scv.isManualMove = false;
-        scv.moveTarget = { x: x, y: y }; scv.cargo = null; scv.mineTimer = 0;
+        scv.isBuildingSCV = true; 
+        scv.isManualMove = false;
+        scv.moveTarget = { x: x, y: y }; 
+        scv.cargo = null; 
+        scv.mineTimer = 0;
+        scv.buildingTargetId = b.id;
       }
     }
 
@@ -449,7 +460,7 @@
         splash: false, splashRadius: 0, isHealer: false,
         cargo: null, mineTimer: 0, moveTarget: null, forcedTarget: null,
         isUnderConstruction: false, buildProgress: 0, buildMaxTime: 0,
-        productionQueue: [], isBuildingSCV: false, isManualMove: false, assignedRes: null,
+        productionQueue: [], isBuildingSCV: false, buildingTargetId: null, isManualMove: false, assignedRes: null,
         amount: 0, maxAmount: 0
       };
 
@@ -673,24 +684,31 @@
 
         // 건설 중인 건물
         if (e.isUnderConstruction) {
-          e.buildProgress++;
-          e.hp = Math.min(e.maxHp, (e.buildProgress / e.buildMaxTime) * e.maxHp);
-          if (e.buildProgress >= e.buildMaxTime) {
-            e.isUnderConstruction = false;
-            e.hp = e.maxHp;
-            const builder = entities.find(s => s.id === e.builderSCVId);
-            if (builder) builder.isBuildingSCV = false;
+          // 일꾼 SCV가 건축 현장에 도착했는지 확인
+          const builder = entities.find(s => s.id === e.builderSCVId && s.hp > 0);
+          
+          // SCV가 살아있고, 건물 근처(사거리)에 도착했을 때만 건설 진행
+          if (builder && Math.hypot(builder.x - e.x, builder.y - e.y) <= e.radius + 20) {
+            e.buildProgress++;
+            e.hp = Math.min(e.maxHp, Math.max(1, (e.buildProgress / e.buildMaxTime) * e.maxHp));
 
-            if (e.faction === 'player') {
-              if (e.type === 'barracks') tech.barracks = true;
-              if (e.type === 'academy') tech.academy = true;
-              if (e.type === 'factory') tech.factory = true;
-              if (e.type === 'armory') tech.armory = true;
-              if (e.type === 'starport') tech.starport = true;
-              if (e.type === 'lab') tech.lab = true;
-              showToast(`✅ ${e.type.toUpperCase()} 건설 완료!`);
+            if (e.buildProgress >= e.buildMaxTime) {
+              e.isUnderConstruction = false;
+              e.hp = e.maxHp;
+              builder.isBuildingSCV = false;
+              builder.buildingTargetId = null;
+
+              if (e.faction === 'player') {
+                if (e.type === 'barracks') tech.barracks = true;
+                if (e.type === 'academy') tech.academy = true;
+                if (e.type === 'factory') tech.factory = true;
+                if (e.type === 'armory') tech.armory = true;
+                if (e.type === 'starport') tech.starport = true;
+                if (e.type === 'lab') tech.lab = true;
+                showToast(`✅ ${e.type.toUpperCase()} 건설 완료!`);
+              }
+              updateUI();
             }
-            updateUI();
           }
           continue;
         }
@@ -707,10 +725,26 @@
           }
         }
 
-        // SCV 수리 / 분산 자원 채굴 로직
-        if (e.type === 'scv' && !e.isBuildingSCV) {
-          if (!e.isManualMove) {
-            // 1. 자동 수리 기능: 근처 손상된 아군 건물/기계 유닛 수리
+        // SCV 전용 동작
+        if (e.type === 'scv') {
+          // 0. 건물을 지으러 이동 중인 경우
+          if (e.isBuildingSCV) {
+            const targetB = entities.find(b => b.id === e.buildingTargetId);
+            if (targetB && targetB.isUnderConstruction) {
+              const distB = Math.hypot(targetB.x - e.x, targetB.y - e.y);
+              if (distB > targetB.radius + 10) {
+                e.x += ((targetB.x - e.x) / distB) * e.speed;
+                e.y += ((targetB.y - e.y) / distB) * e.speed;
+              }
+            } else {
+              // 건물이 이미 완성되었거나 파괴된 경우 자유 상태 전환
+              e.isBuildingSCV = false;
+              e.buildingTargetId = null;
+            }
+          } 
+          // 일꾼이 일반 수리 / 채굴 수행
+          else if (!e.isManualMove) {
+            // 1. 자동 수리 기능
             let damagedTarget = null;
             if (!e.cargo) {
               damagedTarget = entities.find(other => 
@@ -763,11 +797,10 @@
                 }
               }
             } 
-            // 3. 자원 채굴 (스마트 분산 채굴 방식)
+            // 3. 분산 자원 채굴
             else {
               let resNode = e.assignedRes;
 
-              // 노드가 없거나 고갈되면 일꾼이 가장 적게 몰린 노드로 최적 배분
               if (!resNode || resNode.amount <= 0 || !entities.includes(resNode)) {
                 let availableRes = entities.filter(r => 
                   (r.type === 'resource_min' || (r.type === 'resource_gas' && r.hasRefinery)) &&
@@ -828,7 +861,7 @@
           }
         }
 
-        // 유닛 전투 및 타겟 검증 로직
+        // 전투 로직
         if (e.attackRange > 0) {
           if (e.cooldown > 0) e.cooldown--;
 
