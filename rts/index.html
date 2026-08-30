@@ -360,8 +360,20 @@ function assignBestResource(scv) {
                 unit.assignedRes = null;
               }
             } else {
+              unit.isManualMove = !targetEnemy;
               unit.moveTarget = { x: worldX + offsetX, y: worldY + offsetY };
-              unit.forcedTarget = targetEnemy || null;
+
+              if (targetEnemy) {
+                // 사용자가 직접 찍은 공격 대상을 최우선 명령으로 기억한다.
+                unit.playerOrder = 'attack';
+                unit.playerOrderTarget = targetEnemy;
+                unit.forcedTarget = targetEnemy;
+              } else {
+                // 지상 이동 명령 중에는 주변 적에게 멋대로 달려들지 않는다.
+                unit.playerOrder = 'move';
+                unit.playerOrderTarget = null;
+                unit.forcedTarget = null;
+              }
             }
           });
         }
@@ -601,6 +613,7 @@ function assignBestResource(scv) {
         cargo: null, mineTimer: 0, moveTarget: null, forcedTarget: null,
         isUnderConstruction: false, buildProgress: 0, buildMaxTime: 0,
         productionQueue: [], isBuildingSCV: false, buildingTargetId: null, isManualMove: false, assignedRes: null,
+        playerOrder: 'none', playerOrderTarget: null,
         amount: 0, maxAmount: 0
       };
 
@@ -672,7 +685,7 @@ function assignBestResource(scv) {
       entities = []; bullets = []; particles = []; sparks = []; selectedUnits = [];
       resources = { min: 20, gas: 0, enemyMin: 20, enemyGas: 0 };
       wave = 1; waveTimer = 0; gameOver = false; window.enemyAITimer = 0;
-      enemyAI.initialized = false; enemyAI.phase = 'OPENING'; enemyAI.timer = 0; enemyAI.attackTimer = 0; enemyAI.rallyTimer = 0; enemyAI.attackCount = 0; enemyAI.threatened = false; enemyAI.attackTarget = null;
+      enemyAI.initialized = false; enemyAI.phase = 'OPENING'; enemyAI.timer = 0; enemyAI.attackTimer = 0; enemyAI.rallyTimer = 0; enemyAI.attackCount = 0; enemyAI.threatened = false; enemyAI.attackTarget = null; enemyAI.lastAttackSize = 0; enemyAI.rallyPoint = null;
       tech = { barracks: false, academy: false, factory: false, armory: false, starport: false, lab: false };
 
       const pX = 350, pY = WORLD_H - 350;
@@ -832,35 +845,98 @@ function assignBestResource(scv) {
       enemyAI.rallyPoint = point;
     }
 
+    function enemyChooseAttackTarget(army) {
+      const playerHQ = enemyGetPlayerHQ();
+      if (!playerHQ || !army.length) return null;
+
+      // 1순위: 전투 중이면 가까운 적 전투 유닛
+      const nearbyArmy = playerCombatUnits()
+        .filter(u => Math.hypot(u.x - playerHQ.x, u.y - playerHQ.y) <= 700)
+        .sort((a, b) =>
+          Math.hypot(a.x - army[0].x, a.y - army[0].y) -
+          Math.hypot(b.x - army[0].x, b.y - army[0].y)
+        );
+
+      if (nearbyArmy.length) return nearbyArmy[0];
+
+      // 2순위: 방어 건물
+      const defenses = entities
+        .filter(e =>
+          e.faction === 'player' &&
+          (e.type === 'turret' || e.type === 'bunker')
+        )
+        .sort((a, b) =>
+          Math.hypot(a.x - army[0].x, a.y - army[0].y) -
+          Math.hypot(b.x - army[0].x, b.y - army[0].y)
+        );
+
+      if (defenses.length) return defenses[0];
+
+      // 3순위: 플레이어 생산/기반 시설
+      const structures = entities
+        .filter(e =>
+          e.faction === 'player' &&
+          e.speed === 0 &&
+          e.type !== 'resource_min' &&
+          e.type !== 'resource_gas' &&
+          e.type !== 'obstacle'
+        )
+        .sort((a, b) =>
+          Math.hypot(a.x - army[0].x, a.y - army[0].y) -
+          Math.hypot(b.x - army[0].x, b.y - army[0].y)
+        );
+
+      return structures[0] || playerHQ;
+    }
+
     function enemyLaunchAttack() {
       const targetHQ = enemyGetPlayerHQ();
       if (!targetHQ) return false;
 
       const army = enemyCombatUnits();
       const minArmy =
-        enemyAI.mode === 'RUSH' ? 4 :
-        enemyAI.mode === 'MECH' ? 6 :
-        enemyAI.mode === 'AIR' ? 6 : 8;
+        enemyAI.mode === 'RUSH' ? 5 :
+        enemyAI.mode === 'MECH' ? 7 :
+        enemyAI.mode === 'AIR' ? 7 : 8;
 
       if (army.length < minArmy) return false;
 
+      // 공격 전에 적 기지 주변의 플레이어 병력을 확인한다.
+      const enemyPower = army.reduce((sum, u) => sum + (u.damage || 1) + (u.maxHp || 1) / 20, 0);
+      const playerNearBase = playerCombatUnits().filter(u =>
+        Math.hypot(u.x - targetHQ.x, u.y - targetHQ.y) <= 650
+      );
+      const playerPower = playerNearBase.reduce((sum, u) => sum + (u.damage || 1) + (u.maxHp || 1) / 20, 0);
+
+      // 방어 병력이 훨씬 많으면 바로 꼴아박지 않고 한 번 더 생산한다.
+      if (playerNearBase.length >= 5 && playerPower > enemyPower * 1.20) {
+        enemyAI.phase = 'REARM';
+        enemyAI.rallyPoint = { x: WORLD_W - 750, y: 650 };
+        enemyAssignRally(enemyAI.rallyPoint);
+        enemySetState('🟡 적 방어 확인 · 재정비');
+        return false;
+      }
+
       const rally = {
-        x: (350 + (WORLD_W - 350)) / 2,
-        y: (WORLD_H - 350 + 350) / 2
+        x: WORLD_W - 850,
+        y: 650
       };
 
-      // First gather at the same rally point, then commit as a wave.
       enemyAssignRally(rally);
 
       const commitDelay =
-        enemyAI.mode === 'RUSH' ? 45 :
-        enemyAI.mode === 'MECH' ? 100 : 70;
+        enemyAI.mode === 'RUSH' ? 80 :
+        enemyAI.mode === 'MECH' ? 150 :
+        enemyAI.mode === 'AIR' ? 130 : 110;
 
       enemyAI.rallyTimer = commitDelay;
       enemyAI.phase = 'RALLY';
       enemyAI.attackCount++;
       enemyAI.lastAttackSize = army.length;
       enemyAI.attackTimer = 0;
+      enemyAI.attackTarget = null;
+
+      enemySetState(`🟠 공격 준비 #${enemyAI.attackCount}`);
       return true;
     }
 
@@ -871,16 +947,51 @@ function assignBestResource(scv) {
       const army = enemyCombatUnits();
       if (!army.length) return;
 
+      const target = enemyChooseAttackTarget(army) || targetHQ;
+
       army.forEach(u => {
-        u.forcedTarget = targetHQ;
-        u.moveTarget = { x: targetHQ.x, y: targetHQ.y };
+        u.forcedTarget = target;
+        u.moveTarget = { x: target.x, y: target.y };
+        u.playerOrder = 'none';
+        u.playerOrderTarget = null;
       });
 
       enemyAI.phase = 'ATTACK';
       enemyAI.attackTimer = 0;
       enemyAI.rallyTimer = 0;
-      enemyAI.attackTarget = targetHQ;
-      enemySetState(`🟠 공격 웨이브 #${enemyAI.attackCount}`);
+      enemyAI.attackTarget = target;
+      enemySetState(`🟠 공격 #${enemyAI.attackCount}`);
+    }
+
+    function enemyRetreatFromBadFight() {
+      const hq = enemyBaseHQ();
+      if (!hq) return false;
+
+      const army = enemyCombatUnits();
+      const target = enemyAI.attackTarget;
+      if (!army.length || !target || target.hp <= 0) return false;
+
+      const localEnemies = playerCombatUnits().filter(u =>
+        Math.hypot(u.x - target.x, u.y - target.y) <= 380
+      );
+
+      const enemyPower = army.reduce((sum, u) => sum + (u.damage || 1) + (u.maxHp || 1) / 20, 0);
+      const localPower = localEnemies.reduce((sum, u) => sum + (u.damage || 1) + (u.maxHp || 1) / 20, 0);
+
+      // 지나치게 불리해지면 후퇴하여 병력 전체를 버리지 않는다.
+      if (localEnemies.length >= 4 && localPower > enemyPower * 1.35) {
+        const retreatPoint = enemyAI.rallyPoint || { x: WORLD_W - 800, y: 650 };
+        army.forEach(u => {
+          u.forcedTarget = null;
+          u.moveTarget = { x: retreatPoint.x, y: retreatPoint.y };
+        });
+        enemyAI.phase = 'REARM';
+        enemyAI.attackTarget = null;
+        enemySetState('🔵 불리한 교전 · 후퇴');
+        return true;
+      }
+
+      return false;
     }
 
     function enemyDefendBase() {
@@ -1216,10 +1327,10 @@ function assignBestResource(scv) {
 
         if (enemyAI.phase !== 'RALLY' &&
             enemyAI.phase !== 'ATTACK' &&
+            enemyAI.phase !== 'REARM' &&
             army.length >= minArmy &&
             enemyAI.attackTimer >= attackCooldown) {
-          enemyLaunchAttack();
-          return;
+          if (enemyLaunchAttack()) return;
         }
       }
 
@@ -1227,31 +1338,78 @@ function assignBestResource(scv) {
       if (enemyAI.phase === 'ATTACK') {
         enemyAI.attackTimer += thinkInterval;
 
-        const target = enemyGetPlayerHQ();
-        if (!target) return;
-
+        const target = enemyAI.attackTarget;
         const remaining = enemyCombatUnits();
 
-        // If the initial wave is nearly gone, stop chasing and regroup.
-        if (remaining.length <= Math.max(2, Math.floor(enemyAI.lastAttackSize * 0.35))) {
-          enemyResetAttackOrders();
+        if (!remaining.length) {
           enemyAI.phase = 'OPENING';
-          enemyAI.attackTimer = Math.max(0, attackCooldown - 200);
-          enemySetState('🟡 병력 재편성');
+          enemyAI.attackTimer = 0;
+          enemyAI.attackTarget = null;
           return;
         }
 
-        // Re-commit surviving units toward the HQ periodically.
-        if (enemyAI.attackTimer % 240 === 0) {
+        // 큰 손실이 나면 전멸할 때까지 돌진하지 않고 후퇴한다.
+        if (enemyRetreatFromBadFight()) {
+          return;
+        }
+
+        // 목표가 파괴되었다면 바로 다음 목표를 선택한다.
+        if (!target || target.hp <= 0) {
+          const nextTarget = enemyChooseAttackTarget(remaining);
+          if (nextTarget) {
+            enemyAI.attackTarget = nextTarget;
+            remaining.forEach(u => {
+              u.forcedTarget = nextTarget;
+              u.moveTarget = { x: nextTarget.x, y: nextTarget.y };
+            });
+          } else {
+            enemyAI.phase = 'REARM';
+          }
+        }
+
+        // 초기 공격대의 40% 이하로 줄면 본진으로 재편성.
+        if (remaining.length <= Math.max(2, Math.floor(enemyAI.lastAttackSize * 0.40))) {
+          const regroup = enemyAI.rallyPoint || { x: WORLD_W - 800, y: 650 };
           remaining.forEach(u => {
-            u.forcedTarget = target;
-            u.moveTarget = { x: target.x, y: target.y };
+            u.forcedTarget = null;
+            u.moveTarget = { x: regroup.x, y: regroup.y };
           });
+          enemyAI.phase = 'REARM';
+          enemyAI.attackTarget = null;
+          enemySetState('🟡 공격 중단 · 재편성');
+          return;
+        }
+
+        // 일정 간격으로 전투 상황을 다시 평가한다.
+        if (enemyAI.attackTimer % 180 === 0) {
+          const bestTarget = enemyChooseAttackTarget(remaining);
+          if (bestTarget && bestTarget !== enemyAI.attackTarget) {
+            enemyAI.attackTarget = bestTarget;
+            remaining.forEach(u => {
+              u.forcedTarget = bestTarget;
+              u.moveTarget = { x: bestTarget.x, y: bestTarget.y };
+            });
+          }
         }
       } else if (enemyAI.phase === 'RALLY') {
         if (enemyAI.rallyTimer > 0) {
           enemyAI.rallyTimer -= thinkInterval;
           if (enemyAI.rallyTimer <= 0) enemyCommitAttack();
+        }
+      } else if (enemyAI.phase === 'REARM') {
+        const regroup = enemyAI.rallyPoint || { x: WORLD_W - 800, y: 650 };
+        const armyNow = enemyCombatUnits();
+
+        armyNow.forEach(u => {
+          if (!u.forcedTarget) {
+            u.moveTarget = { x: regroup.x, y: regroup.y };
+          }
+        });
+
+        // 재편성 후 전투력이 충분해지면 다시 공격을 시도한다.
+        if (armyNow.length >= minArmy + 1 &&
+            enemyAI.attackTimer >= attackCooldown + 180) {
+          enemyAI.phase = 'OPENING';
         }
       }
 
@@ -1423,11 +1581,37 @@ function assignBestResource(scv) {
         if ((ent.speed > 0 && ent.type !== 'scv') || isStaticDefender) {
           let target = ent.forcedTarget;
 
-          // 명령된 목표가 죽었으면 다시 찾는다.
-          if (!target || target.hp <= 0) {
+          // =========================
+          // 플레이어 명령 우선순위
+          // =========================
+          if (ent.faction === 'player' && !isStaticDefender) {
+            if (ent.playerOrder === 'attack') {
+              // 직접 지정한 대상이 살아있는 동안 절대로 주변의 다른 적을 우선하지 않는다.
+              target = ent.playerOrderTarget;
+              ent.forcedTarget = target;
+
+              if (!target || target.hp <= 0) {
+                ent.playerOrder = 'none';
+                ent.playerOrderTarget = null;
+                ent.forcedTarget = null;
+                target = null;
+              }
+            } else if (ent.playerOrder === 'move') {
+              // 이동 명령은 주변 적 자동 공격보다 우선한다.
+              target = null;
+              ent.forcedTarget = null;
+            }
+          }
+
+          // =========================
+          // AI / 자동 전투
+          // =========================
+          if ((!target || target.hp <= 0) &&
+              !(ent.faction === 'player' && ent.playerOrder === 'move') &&
+              !(ent.faction === 'player' && ent.playerOrder === 'attack')) {
+
             ent.forcedTarget = null;
 
-            // 적/아군 중 사거리 안에 들어온 가장 가까운 공격 대상을 선택.
             const opp = (ent.faction === 'player') ? 'enemy' : 'player';
             let nearest = null;
             let nearestDist = Infinity;
@@ -1443,7 +1627,7 @@ function assignBestResource(scv) {
 
             target = nearest;
 
-            // 적 AI의 집결 중에는 자동 전투 탐색보다 공격 명령을 우선한다.
+            // AI 집결 단계에서는 멋대로 전투에 끌려가지 않고 집결 명령을 우선한다.
             if (!target && ent.faction === 'enemy' &&
                 enemyAI.phase === 'RALLY') {
               target = null;
@@ -1472,6 +1656,12 @@ function assignBestResource(scv) {
               playSound('laser', ent.x, ent.y);
               if (target.hp <= 0) {
                 playSound('explode', target.x, target.y);
+
+                if (ent.faction === 'player' && ent.playerOrderTarget === target) {
+                  ent.playerOrder = 'none';
+                  ent.playerOrderTarget = null;
+                  ent.forcedTarget = null;
+                }
               }
             }
           } else if (!isStaticDefender && ent.moveTarget) {
@@ -1482,6 +1672,10 @@ function assignBestResource(scv) {
               ent.y += Math.sin(angle) * ent.speed;
             } else {
               ent.moveTarget = null;
+
+              if (ent.faction === 'player' && ent.playerOrder === 'move') {
+                ent.playerOrder = 'none';
+              }
             }
           }
         }
