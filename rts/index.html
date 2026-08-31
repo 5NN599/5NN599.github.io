@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>갤럭시 블리츠: 스텔라 워 (Galactic Blitz)</title>
+  <title>미니지 - 갤럭시 블리츠</title>
   <style>
     :root { --bg: #f8f9fa; --text: #333; --canvas-bg: #05070a; --border: #30363d; --btn-bg: #fff; }
     [data-theme="dark"] { --bg: #0d1117; --text: #c9d1d9; --canvas-bg: #020305; --border: #30363d; --btn-bg: #21262d; }
@@ -25,6 +25,37 @@
       padding: 6px 16px; border-radius: 20px; font-size: 0.82rem; font-weight: bold;
       pointer-events: none; opacity: 0; transition: opacity 0.3s ease; z-index: 100;
     }
+
+
+    #start-menu {
+      position: absolute; inset: 0;
+      background: rgba(2, 6, 12, 0.96);
+      color: #fff; display: flex; align-items: center; justify-content: center;
+      z-index: 500;
+    }
+    #start-card {
+      width: min(520px, 92vw);
+      padding: 26px 28px;
+      border: 1px solid #475569;
+      border-radius: 14px;
+      background: rgba(15, 23, 42, 0.98);
+      box-shadow: 0 18px 50px rgba(0,0,0,0.45);
+      text-align: left;
+    }
+    #start-card h1 { margin: 0 0 8px; font-size: 1.45rem; color: #ffd43b; }
+    #start-card .subtitle { margin-bottom: 18px; opacity: 0.78; font-size: 0.85rem; }
+    .setup-label { display:block; margin: 12px 0 6px; font-weight: 700; font-size: 0.85rem; }
+    .setup-grid { display:grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+    .setup-btn {
+      padding: 10px 8px; border-radius: 8px; border: 1px solid #475569;
+      background: #111827; color:#fff; cursor:pointer; font-weight:700;
+    }
+    .setup-btn.active { border-color:#4dabf7; background:#183153; }
+    #start-game-btn {
+      width:100%; margin-top:18px; padding:11px 12px; border:0; border-radius:9px;
+      background:#1c7ed6; color:#fff; font-weight:800; cursor:pointer;
+    }
+    #start-game-btn:hover { filter: brightness(1.08); }
 
     #game-over-modal {
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -80,6 +111,30 @@
 
   <div class="canvas-container">
     <canvas id="game-canvas" width="650" height="460"></canvas>
+
+    <div id="start-menu">
+      <div id="start-card">
+        <h1>🌌 갤럭시 블리츠</h1>
+        <div class="subtitle">게임을 시작하기 전에 맵과 난이도를 선택하세요.</div>
+
+        <span class="setup-label">🗺️ 맵 선택</span>
+        <div class="setup-grid">
+          <button class="setup-btn active" data-map="STANDARD" onclick="selectMapPreset('STANDARD', this)">표준 전장</button>
+          <button class="setup-btn" data-map="ISLAND" onclick="selectMapPreset('ISLAND', this)">섬 전장</button>
+          <button class="setup-btn" data-map="VALLEY" onclick="selectMapPreset('VALLEY', this)">계곡 전장</button>
+        </div>
+
+        <span class="setup-label">⚔️ 난이도 선택</span>
+        <div class="setup-grid">
+          <button class="setup-btn" data-diff="EASY" onclick="selectDifficultyPreset('EASY', this)">쉬움</button>
+          <button class="setup-btn active" data-diff="NORMAL" onclick="selectDifficultyPreset('NORMAL', this)">보통</button>
+          <button class="setup-btn" data-diff="HARD" onclick="selectDifficultyPreset('HARD', this)">어려움</button>
+        </div>
+
+        <button id="start-game-btn" onclick="startConfiguredGame()">🎮 게임 시작</button>
+      </div>
+    </div>
+
     <div id="toast-msg"></div>
     <div id="game-over-modal">
       <h2 id="game-over-title">게임 종료</h2>
@@ -110,6 +165,54 @@
     // grass / water / hill / ramp
     let terrain = [];
 
+
+    let selectedMapPreset = 'STANDARD';
+
+    const MAP_PRESETS = {
+      STANDARD: {
+        name: '표준 전장',
+        waterScale: 1.0,
+        hillScale: 1.0,
+        rampCount: 3
+      },
+      ISLAND: {
+        name: '섬 전장',
+        waterScale: 1.45,
+        hillScale: 0.85,
+        rampCount: 4
+      },
+      VALLEY: {
+        name: '계곡 전장',
+        waterScale: 1.15,
+        hillScale: 1.35,
+        rampCount: 5
+      }
+    };
+
+    let selectedDifficultyPreset = 'NORMAL';
+
+    function selectMapPreset(key, button) {
+      if (!MAP_PRESETS[key]) return;
+      selectedMapPreset = key;
+      document.querySelectorAll('[data-map]').forEach(b => b.classList.remove('active'));
+      button.classList.add('active');
+    }
+
+    function selectDifficultyPreset(key, button) {
+      if (!DIFFICULTY_SETTINGS[key]) return;
+      selectedDifficultyPreset = key;
+      document.querySelectorAll('[data-diff]').forEach(b => b.classList.remove('active'));
+      button.classList.add('active');
+    }
+
+    function startConfiguredGame() {
+      currentDifficulty = DIFFICULTY_SETTINGS[selectedDifficultyPreset] || DIFFICULTY_SETTINGS.NORMAL;
+      document.getElementById('diff-select').value = selectedDifficultyPreset;
+      document.getElementById('start-menu').style.display = 'none';
+      initGame();
+      running = true;
+    }
+
     function terrainIndex(col, row) {
       return row * TERRAIN_COLS + col;
     }
@@ -125,48 +228,62 @@
     function generateTerrain() {
       terrain = new Array(TERRAIN_COLS * TERRAIN_ROWS);
 
+      const preset = MAP_PRESETS[selectedMapPreset] || MAP_PRESETS.STANDARD;
+      const waterScale = preset.waterScale;
+      const hillScale = preset.hillScale;
+
+      const crossings = [
+        { x: 1020, y: 1200 },
+        { x: 1940, y: 1140 },
+        { x: 1540, y: 1490 },
+        { x: 820,  y: 1180 },
+        { x: 2380, y: 1180 }
+      ].slice(0, preset.rampCount);
+
       for (let row = 0; row < TERRAIN_ROWS; row++) {
         for (let col = 0; col < TERRAIN_COLS; col++) {
           const x = col * TERRAIN_TILE + TERRAIN_TILE / 2;
           const y = row * TERRAIN_TILE + TERRAIN_TILE / 2;
 
-          // 기본 평지.
           let type = 'grass';
 
-          // 굽이치는 강 + 넓은 만.
+          // 수역.
           const riverY =
             1200 +
             Math.sin(x / 430) * 180 +
             Math.sin(x / 170) * 45;
 
-          const riverWidth = 125 + 30 * Math.sin(x / 250 + 0.5);
+          const riverWidth =
+            (125 + 30 * Math.sin(x / 250 + 0.5)) * waterScale;
 
           if (Math.abs(y - riverY) < riverWidth) {
             type = 'water';
           }
 
-          // 중앙 하부의 작은 호수.
-          const lakeDist = Math.hypot(x - 1540, y - 1770);
-          if (lakeDist < 245) {
+          // 호수.
+          let lakeRadius = 245 * waterScale;
+          if (selectedMapPreset === 'VALLEY') lakeRadius *= 0.75;
+          if (Math.hypot(x - 1540, y - 1770) < lakeRadius) {
             type = 'water';
           }
 
-          // 고지대: 강/호수와 겹치면 물을 우선.
+          // 섬 전장은 외곽 수역을 더 강조한다.
+          if (selectedMapPreset === 'ISLAND') {
+            const edge = Math.min(x, WORLD_W - x, y, WORLD_H - y);
+            if (edge < 170) type = 'water';
+          }
+
+          // 고지대.
           const hillA = Math.hypot((x - 780) / 1.15, y - 760);
           const hillB = Math.hypot((x - 2320) / 1.2, y - 820);
           const hillC = Math.hypot((x - 1580) / 1.0, y - 430);
 
           if (type !== 'water' &&
-              (hillA < 360 || hillB < 380 || hillC < 310)) {
+              (hillA < 360 * hillScale ||
+               hillB < 380 * hillScale ||
+               hillC < 310 * hillScale)) {
             type = 'hill';
           }
-
-          // 경사로: 강을 건너는 주요 연결 지점.
-          const crossings = [
-            { x: 1020, y: 1200 },
-            { x: 1940, y: 1140 },
-            { x: 1540, y: 1490 }
-          ];
 
           for (const c of crossings) {
             if (Math.hypot(x - c.x, y - c.y) < 145) {
@@ -179,23 +296,22 @@
         }
       }
 
-      // 기지 주변은 넓은 평지로 확보.
+      // 기지 주변은 항상 넓은 평지.
       [
         { x: 350, y: WORLD_H - 350 },
         { x: WORLD_W - 350, y: 350 }
       ].forEach(base => {
-        const minCol = Math.floor((base.x - 420) / TERRAIN_TILE);
-        const maxCol = Math.floor((base.x + 420) / TERRAIN_TILE);
-        const minRow = Math.floor((base.y - 420) / TERRAIN_TILE);
-        const maxRow = Math.floor((base.y + 420) / TERRAIN_TILE);
+        for (let row = Math.floor((base.y - 420) / TERRAIN_TILE);
+             row <= Math.floor((base.y + 420) / TERRAIN_TILE); row++) {
+          for (let col = Math.floor((base.x - 420) / TERRAIN_TILE);
+               col <= Math.floor((base.x + 420) / TERRAIN_TILE); col++) {
 
-        for (let row = minRow; row <= maxRow; row++) {
-          for (let col = minCol; col <= maxCol; col++) {
             if (col < 0 || row < 0 || col >= TERRAIN_COLS || row >= TERRAIN_ROWS) continue;
-            if (Math.hypot(
-              col * TERRAIN_TILE + TERRAIN_TILE / 2 - base.x,
-              row * TERRAIN_TILE + TERRAIN_TILE / 2 - base.y
-            ) < 340) {
+
+            const cx = col * TERRAIN_TILE + TERRAIN_TILE / 2;
+            const cy = row * TERRAIN_TILE + TERRAIN_TILE / 2;
+
+            if (Math.hypot(cx - base.x, cy - base.y) < 340) {
               terrain[terrainIndex(col, row)] = 'grass';
             }
           }
@@ -931,7 +1047,8 @@ function assignBestResource(scv) {
 
     function restartGame() {
       document.getElementById('game-over-modal').style.display = 'none';
-      initGame();
+      running = false;
+      document.getElementById('start-menu').style.display = 'flex';
     }
 
     function initGame() {
@@ -991,6 +1108,9 @@ function assignBestResource(scv) {
     // 실제 스타크래프트 1의 내부 스크립트를 복제하지 않고,
     // "빌드오더 + 상황판단 + 웨이브 공격 + 방어 + 확장" 구조를 재현한다.
     const enemyAI = {
+      updateBudget: 0,
+      nextThinkAt: 0,
+
       initialized: false,
       mode: 'BIO_PRESSURE',
       phase: 'OPENING',
@@ -1546,6 +1666,13 @@ function assignBestResource(scv) {
     }
 
     function updateHumanlikeAI() {
+      // AI는 매 프레임 전체 의사결정을 하지 않는다.
+      // 기본 이동/전투는 게임 루프에서 처리하고, 전략 판단만 일정 간격으로 수행한다.
+      if (gameTime < enemyAI.nextThinkAt) return;
+      enemyAI.nextThinkAt = gameTime + Math.max(18, Math.floor(currentDifficulty.buildInterval / 2));
+
+      const aiFrameStart = performance.now();
+
       const hq = enemyBaseHQ();
       const playerHQ = enemyGetPlayerHQ();
       if (!hq || !playerHQ) return;
@@ -1881,8 +2008,14 @@ function assignBestResource(scv) {
       }
     }
 
+      // AI 한 번의 생각이 과도하게 오래 걸렸다면 다음 전략 판단을 늦춰 프레임을 보호한다.
+      const aiCost = performance.now() - aiFrameStart;
+      if (aiCost > 35) {
+        enemyAI.nextThinkAt += Math.min(60, Math.ceil(aiCost / 4));
+      }
+
     function updateGameLogic() {
-      if (gameOver) return;
+      if (gameOver || !running) return;
 
       gameTime++;
       updateCamera();
@@ -2410,20 +2543,21 @@ function assignBestResource(scv) {
       const frameStart = performance.now();
 
       try {
-        updateGameLogic();
-        render();
+        if (running) {
+          updateGameLogic();
+          render();
+        } else {
+          // 시작 메뉴/대기 상태에서는 렌더링만 유지.
+          render();
+        }
       } catch (err) {
-        // 일시적인 렌더/AI 오류로 전체 게임 루프가 죽지 않도록 방어.
         console.error('Game loop error:', err);
       }
 
       const frameCost = performance.now() - frameStart;
       lastGameTickAt = now;
 
-      // 한 프레임이 비정상적으로 오래 걸렸다면 다음 프레임에서 정상적으로 재개한다.
-      // 상태를 정지시키지는 않는다.
       if (frameCost > 120) {
-        // 과도한 경로 재탐색을 막기 위해 모든 유닛의 재탐색 쿨다운을 잠시 올린다.
         entities.forEach(e => {
           if (e.pathRecalcCooldown < 3) e.pathRecalcCooldown = 3;
         });
@@ -2432,7 +2566,9 @@ function assignBestResource(scv) {
       requestAnimationFrame(gameLoop);
     }
 
-    initGame();
+    // 게임 루프만 켜고, 실제 게임은 시작 메뉴에서 맵/난이도를 고른 뒤 시작한다.
+    running = false;
+    document.getElementById('start-menu').style.display = 'flex';
     gameLoop();
   </script>
 </body>
