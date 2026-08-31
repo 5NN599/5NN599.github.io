@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>갤럭시 블리츠: 스텔라 워 (Galactic Blitz)</title>
+  <title>미니지 - 갤럭시 블리츠</title>
   <style>
     :root { --bg: #f8f9fa; --text: #333; --canvas-bg: #05070a; --border: #30363d; --btn-bg: #fff; }
     [data-theme="dark"] { --bg: #0d1117; --text: #c9d1d9; --canvas-bg: #020305; --border: #30363d; --btn-bg: #21262d; }
@@ -294,48 +294,78 @@
 
       // 전장별 추가 지형 특징.
       if (mapType === 'ISLANDS') {
+        // 군도: 여러 섬과 넓은 수역.
         for (let row = 0; row < TERRAIN_ROWS; row++) {
           for (let col = 0; col < TERRAIN_COLS; col++) {
             const x = col * TERRAIN_TILE + TERRAIN_TILE / 2;
             const y = row * TERRAIN_TILE + TERRAIN_TILE / 2;
 
-            const island1 = Math.hypot((x - 1100) / 1.0, y - 800);
-            const island2 = Math.hypot((x - 2150) / 1.0, y - 1500);
-            const island3 = Math.hypot((x - 1550) / 1.15, y - 500);
+            const lakeA = Math.hypot((x - 1450) / 1.2, (y - 850) / 1.0) < 420;
+            const lakeB = Math.hypot((x - 2200) / 1.0, (y - 1650) / 0.9) < 410;
+            const lakeC = Math.hypot((x - 900) / 1.1, (y - 1550) / 1.0) < 300;
 
-            if (island1 > 470 && island1 < 720) terrain[terrainIndex(col, row)] = 'water';
-            if (island2 > 420 && island2 < 650) terrain[terrainIndex(col, row)] = 'water';
-            if (island3 > 360 && island3 < 560) terrain[terrainIndex(col, row)] = 'water';
-          }
-        }
-      } else if (mapType === 'CHOKE') {
-        for (let row = 0; row < TERRAIN_ROWS; row++) {
-          for (let col = 0; col < TERRAIN_COLS; col++) {
-            const x = col * TERRAIN_TILE + TERRAIN_TILE / 2;
-            const y = row * TERRAIN_TILE + TERRAIN_TILE / 2;
+            if (lakeA || lakeB || lakeC) {
+              terrain[terrainIndex(col, row)] = 'water';
+            }
 
-            // 중앙 수역을 만들어 좌우/상하 이동을 좁은 육상 통로로 유도.
-            const centralWater = Math.abs(x - WORLD_W / 2) < 270 && Math.abs(y - 1200) < 520;
-            const sideLake = Math.hypot(x - 1550, y - 1850) < 300;
-
-            if (centralWater || sideLake) {
+            // 작은 섬 띠
+            const ringA = Math.hypot((x - 1500) / 1.0, (y - 850) / 0.9);
+            if (ringA > 520 && ringA < 700) {
               terrain[terrainIndex(col, row)] = 'water';
             }
           }
         }
 
-        // 명확한 육상 경사로 2개 확보.
-        const ramps = [
-          { x: WORLD_W / 2 - 300, y: 900 },
-          { x: WORLD_W / 2 + 300, y: 1500 }
-        ];
-
-        ramps.forEach(rp => {
+        // 군도 특유의 연결 경사로.
+        [
+          { x: 1080, y: 1100 },
+          { x: 1800, y: 1100 },
+          { x: 1500, y: 1450 }
+        ].forEach(rp => {
           for (let row = 0; row < TERRAIN_ROWS; row++) {
             for (let col = 0; col < TERRAIN_COLS; col++) {
               const x = col * TERRAIN_TILE + TERRAIN_TILE / 2;
               const y = row * TERRAIN_TILE + TERRAIN_TILE / 2;
-              if (Math.hypot(x - rp.x, y - rp.y) < 150) {
+              if (Math.hypot(x - rp.x, y - rp.y) < 135) {
+                terrain[terrainIndex(col, row)] = 'ramp';
+              }
+            }
+          }
+        });
+      } else if (mapType === 'CHOKE') {
+        // 협곡: 중앙에 거대한 호수/협곡, 몇 개의 좁은 육상 통로.
+        for (let row = 0; row < TERRAIN_ROWS; row++) {
+          for (let col = 0; col < TERRAIN_COLS; col++) {
+            const x = col * TERRAIN_TILE + TERRAIN_TILE / 2;
+            const y = row * TERRAIN_TILE + TERRAIN_TILE / 2;
+
+            const trench =
+              Math.abs(x - WORLD_W / 2) < 310 &&
+              y > 450 && y < 1950;
+
+            const lakeTop =
+              Math.hypot((x - 900) / 1.0, (y - 500) / 0.8) < 320;
+
+            const lakeBottom =
+              Math.hypot((x - 2300) / 1.0, (y - 1850) / 0.9) < 340;
+
+            if (trench || lakeTop || lakeBottom) {
+              terrain[terrainIndex(col, row)] = 'water';
+            }
+          }
+        }
+
+        // 방어 가능한 핵심 경사로 3개.
+        [
+          { x: WORLD_W / 2 - 360, y: 700 },
+          { x: WORLD_W / 2 + 360, y: 1200 },
+          { x: WORLD_W / 2 - 360, y: 1750 }
+        ].forEach(rp => {
+          for (let row = 0; row < TERRAIN_ROWS; row++) {
+            for (let col = 0; col < TERRAIN_COLS; col++) {
+              const x = col * TERRAIN_TILE + TERRAIN_TILE / 2;
+              const y = row * TERRAIN_TILE + TERRAIN_TILE / 2;
+              if (Math.hypot(x - rp.x, y - rp.y) < 140) {
                 terrain[terrainIndex(col, row)] = 'ramp';
               }
             }
@@ -1139,30 +1169,40 @@ function assignBestResource(scv) {
           );
 
           selectedUnits.forEach((unit, idx) => {
-            if (unit.isBuildingSCV) {
+            // 건설 중인 SCV를 이동시키면 건설을 취소하지 않고 일시정지한다.
+            if (unit.isBuildingSCV && unit.buildingTargetId) {
+              const unfinished = entities.find(e =>
+                e.id === unit.buildingTargetId &&
+                e.faction === unit.faction &&
+                e.isUnderConstruction
+              );
+              if (unfinished) {
+                unfinished.builderSCVId = null;
+                unfinished.builderPaused = true;
+              }
               unit.isBuildingSCV = false;
               unit.buildingTargetId = null;
+              unit.repairingTargetId = null;
             }
             unit.mineTimer = 0;
             const offsetX = (idx % 4 - 1.5) * 20;
             const offsetY = (Math.floor(idx / 4) - 1.5) * 20;
 
             if (unit.type === 'scv') {
-              if (targetRes) {
-                unit.isManualMove = false; 
-                unit.moveTarget = null; 
+              if (targetConstruction) {
+                resumeConstructionWithSCV(unit, targetConstruction);
+              } else if (targetRes) {
+                unit.isManualMove = false;
+                unit.moveTarget = null;
                 unit.assignedRes = targetRes;
+                unit.repairingTargetId = null;
               } else {
-                unit.isManualMove = true; 
-                unit.moveTarget = { x: worldX + offsetX, y: worldY + offsetY }; 
+                unit.isManualMove = true;
+                unit.moveTarget = { x: worldX + offsetX, y: worldY + offsetY };
                 unit.assignedRes = null;
+                unit.repairingTargetId = null;
               }
             } else {
-              if (unit.type === 'scv' && targetConstruction) {
-                resumeConstructionWithSCV(unit, targetConstruction);
-                return;
-              }
-
               unit.isManualMove = !targetEnemy;
               unit.moveTarget = { x: worldX + offsetX, y: worldY + offsetY };
 
@@ -1379,6 +1419,16 @@ function assignBestResource(scv) {
 
       if (scv.isBuildingSCV && scv.buildingTargetId !== building.id) return false;
 
+      if (building.builderSCVId) {
+        const currentBuilder = entities.find(e =>
+          e.id === building.builderSCVId &&
+          e.faction === building.faction &&
+          e.type === 'scv' &&
+          e.hp > 0
+        );
+        if (currentBuilder && currentBuilder.id !== scv.id) return false;
+      }
+
       const dist = Math.hypot(building.x - scv.x, building.y - scv.y);
       if (dist > building.radius + 28) {
         scv.isManualMove = false;
@@ -1398,6 +1448,7 @@ function assignBestResource(scv) {
       scv.mineTimer = 0;
       scv.buildingTargetId = building.id;
       building.builderSCVId = scv.id;
+      building.builderPaused = false;
       scv.repairingTargetId = null;
       return true;
     }
@@ -2656,6 +2707,7 @@ function assignBestResource(scv) {
                 if (b.buildProgress >= b.buildMaxTime) {
                   b.isUnderConstruction = false;
                   b.constructionHP = 0;
+                  b.builderPaused = false;
                   b.hp = b.maxHp;
                   ent.isBuildingSCV = false;
                   ent.buildingTargetId = null;
