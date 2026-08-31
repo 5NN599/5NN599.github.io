@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>미니지 - 갤럭시 블리츠</title>
+  <title>갤럭시 블리츠: 스텔라 워 (Galactic Blitz)</title>
   <style>
     :root { --bg: #f8f9fa; --text: #333; --canvas-bg: #05070a; --border: #30363d; --btn-bg: #fff; }
     [data-theme="dark"] { --bg: #0d1117; --text: #c9d1d9; --canvas-bg: #020305; --border: #30363d; --btn-bg: #21262d; }
@@ -26,60 +26,140 @@
       pointer-events: none; opacity: 0; transition: opacity 0.3s ease; z-index: 100;
     }
 
-
-    #start-menu {
-      position: absolute; inset: 0;
-      background: rgba(2, 6, 12, 0.96);
-      color: #fff; display: flex; align-items: center; justify-content: center;
-      z-index: 500;
-    }
-    #start-card {
-      width: min(520px, 92vw);
-      padding: 26px 28px;
-      border: 1px solid #475569;
-      border-radius: 14px;
-      background: rgba(15, 23, 42, 0.98);
-      box-shadow: 0 18px 50px rgba(0,0,0,0.45);
-      text-align: left;
-    }
-    #start-card h1 { margin: 0 0 8px; font-size: 1.45rem; color: #ffd43b; }
-    #start-card .subtitle { margin-bottom: 18px; opacity: 0.78; font-size: 0.85rem; }
-    .setup-label { display:block; margin: 12px 0 6px; font-weight: 700; font-size: 0.85rem; }
-    .setup-grid { display:grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
-    .setup-btn {
-      padding: 10px 8px; border-radius: 8px; border: 1px solid #475569;
-      background: #111827; color:#fff; cursor:pointer; font-weight:700;
-    }
-    .setup-btn.active { border-color:#4dabf7; background:#183153; }
-    #start-game-btn {
-      width:100%; margin-top:18px; padding:11px 12px; border:0; border-radius:9px;
-      background:#1c7ed6; color:#fff; font-weight:800; cursor:pointer;
-    }
-    #start-game-btn:hover { filter: brightness(1.08); }
-
     #game-over-modal {
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
       background: rgba(10, 15, 26, 0.95); border: 2px solid #fcc419; padding: 25px 35px;
       border-radius: 12px; color: #fff; text-align: center; display: none; z-index: 200;
     }
     #game-over-modal h2 { margin: 0 0 15px 0; font-size: 1.3rem; color: #fcc419; }
+
+    #start-screen {
+      position: fixed; inset: 0; z-index: 1000;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(3, 8, 14, 0.96);
+      color: #eaf2ff;
+    }
+    #start-card {
+      width: min(720px, calc(100vw - 40px));
+      max-height: calc(100vh - 40px);
+      overflow: auto;
+      background: rgba(13, 21, 34, 0.98);
+      border: 1px solid #3d536f;
+      border-radius: 16px;
+      box-shadow: 0 18px 70px rgba(0,0,0,0.55);
+      padding: 22px;
+      text-align: left;
+    }
+    #start-card h1 { margin: 0 0 5px; font-size: 1.55rem; }
+    #start-card .subtitle { opacity: 0.75; font-size: 0.88rem; margin-bottom: 18px; }
+    .setup-section { margin-top: 16px; }
+    .setup-title {
+      font-size: 0.82rem; font-weight: 800; letter-spacing: .04em;
+      text-transform: uppercase; opacity: 0.75; margin-bottom: 7px;
+    }
+    .setup-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+    }
+    .setup-option {
+      border: 1px solid #3d536f; border-radius: 10px;
+      padding: 11px; background: #111c2b; color: #eaf2ff;
+      cursor: pointer; transition: .15s;
+    }
+    .setup-option:hover { transform: translateY(-1px); border-color: #6ea8fe; }
+    .setup-option.selected { border: 2px solid #4dadf7; background: #183153; }
+    .setup-option strong { display:block; margin-bottom:4px; }
+    .setup-option span { font-size:.75rem; opacity:.72; line-height:1.3; }
+    #start-controls {
+      display:flex; justify-content:space-between; align-items:center; gap:12px;
+      margin-top:20px; padding-top:15px; border-top:1px solid #27384d;
+    }
+    #start-summary { font-size:.78rem; opacity:.75; }
+    #start-button {
+      border:0; border-radius:10px; padding:10px 18px;
+      background:#4dabf7; color:#07111d; font-weight:900; cursor:pointer;
+    }
+    #start-button:hover { filter: brightness(1.08); }
+    #game-shell { display:none; }
+    #topbar {
+      width:min(1040px, calc(100vw - 14px));
+      margin:0 auto 4px;
+    }
+    #rts-panel {
+      min-height: 28px; padding: 4px 8px;
+      background: rgba(18, 28, 42, 0.95);
+      border:1px solid #283a51; border-radius:9px;
+      color:#e9eef5;
+      justify-content:space-between; gap:8px;
+    }
+    .build-row { max-width:1040px; margin:4px auto; }
+    .build-row button { min-height:27px; }
   </style>
 </head>
 <body>
-  <div id="rts-panel">
+  <div id="start-screen">
+    <div id="start-card">
+      <h1>갤럭시 블리츠: 스텔라 워</h1>
+      <div class="subtitle">게임 시작 전에 전장과 난이도를 선택하세요.</div>
+
+      <div class="setup-section">
+        <div class="setup-title">전장 선택</div>
+        <div class="setup-grid">
+          <button class="setup-option selected" data-map="CONTINENT" onclick="selectMap('CONTINENT')">
+            <strong>🌎 대륙 전장</strong>
+            <span>넓은 평지와 중앙 수역, 여러 고지대가 섞인 기본형 맵</span>
+          </button>
+          <button class="setup-option" data-map="ISLANDS" onclick="selectMap('ISLANDS')">
+            <strong>🏝️ 군도 전장</strong>
+            <span>바다와 육지가 복잡하게 나뉘어 경사로와 우회가 중요</span>
+          </button>
+          <button class="setup-option" data-map="CHOKE" onclick="selectMap('CHOKE')">
+            <strong>🗻 협곡 전장</strong>
+            <span>넓은 수역과 좁은 육상 통로가 있어 방어선 구축이 유리</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="setup-section">
+        <div class="setup-title">난이도</div>
+        <div class="setup-grid">
+          <button class="setup-option" data-diff="EASY" onclick="selectDifficulty('EASY')">
+            <strong>🟢 쉬움</strong>
+            <span>경제 성장과 공격 속도가 느리고 실수가 많음</span>
+          </button>
+          <button class="setup-option selected" data-diff="NORMAL" onclick="selectDifficulty('NORMAL')">
+            <strong>🟡 보통</strong>
+            <span>경제·공격·방어가 균형 잡힌 기본 AI</span>
+          </button>
+          <button class="setup-option" data-diff="HARD" onclick="selectDifficulty('HARD')">
+            <strong>🔴 어려움</strong>
+            <span>빠른 경제 확장과 적극적인 정찰·공격 판단</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="start-controls">
+        <div id="start-summary">대륙 전장 · 보통 난이도</div>
+        <button id="start-button" onclick="startGame()">🚀 게임 시작</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="game-shell">
+    <div id="topbar">
+      <div id="rts-panel">
     <span>💎 <span id="res-min">200</span> | 🌋 <span id="res-gas">0</span></span>
     <span>📦 인구: <span id="p-supply">0/10</span></span>
     <span>🌊 웨이브: <span id="wave-num">1</span></span>
     <span>🏰 사령부: <span id="hq-count">1</span>개</span>
     <span>⚔️ 적: <span id="ai-squad">0</span> (<span id="ai-supply">0/10</span>)</span>
-    <select id="diff-select" class="diff-select" onchange="changeDifficulty(this.value)">
+    <select id="diff-select" class="diff-select" title="게임 시작 전 선택한 난이도" disabled>
       <option value="EASY">난이도: 쉬움</option>
       <option value="NORMAL" selected>난이도: 보통</option>
       <option value="HARD">난이도: 어려움</option>
     </select>
-  </div>
+      </div>
 
-  <!-- 건물 버튼 -->
+      <!-- 건물 버튼 -->
   <div class="build-row">
     <button id="btn-hq" onclick="toggleBuild('hq')">🏰 사령부(💎150)</button>
     <button id="btn-depot" onclick="toggleBuild('depot')">🏠 보급고(💎30)</button>
@@ -94,7 +174,7 @@
     <button id="btn-turret" onclick="toggleBuild('turret')">📡 터렛(💎35)</button>
   </div>
 
-  <!-- 유닛 버튼 -->
+      <!-- 유닛 버튼 -->
   <div class="build-row">
     <button id="btn-scv" onclick="produce('scv')">🛸 SCV(💎20/📦1)</button>
     <button id="btn-marine" onclick="produce('marine')" disabled>🪖 보병(💎15/📦1)</button>
@@ -109,32 +189,8 @@
     <button id="btn-titan" onclick="produce('titan')" disabled>🛡️ 요새함(💎150/🌋100/📦8)</button>
   </div>
 
-  <div class="canvas-container">
+      <div class="canvas-container">
     <canvas id="game-canvas" width="650" height="460"></canvas>
-
-    <div id="start-menu">
-      <div id="start-card">
-        <h1>🌌 갤럭시 블리츠</h1>
-        <div class="subtitle">게임을 시작하기 전에 맵과 난이도를 선택하세요.</div>
-
-        <span class="setup-label">🗺️ 맵 선택</span>
-        <div class="setup-grid">
-          <button class="setup-btn active" data-map="STANDARD" onclick="selectMapPreset('STANDARD', this)">표준 전장</button>
-          <button class="setup-btn" data-map="ISLAND" onclick="selectMapPreset('ISLAND', this)">섬 전장</button>
-          <button class="setup-btn" data-map="VALLEY" onclick="selectMapPreset('VALLEY', this)">계곡 전장</button>
-        </div>
-
-        <span class="setup-label">⚔️ 난이도 선택</span>
-        <div class="setup-grid">
-          <button class="setup-btn" data-diff="EASY" onclick="selectDifficultyPreset('EASY', this)">쉬움</button>
-          <button class="setup-btn active" data-diff="NORMAL" onclick="selectDifficultyPreset('NORMAL', this)">보통</button>
-          <button class="setup-btn" data-diff="HARD" onclick="selectDifficultyPreset('HARD', this)">어려움</button>
-        </div>
-
-        <button id="start-game-btn" onclick="startConfiguredGame()">🎮 게임 시작</button>
-      </div>
-    </div>
-
     <div id="toast-msg"></div>
     <div id="game-over-modal">
       <h2 id="game-over-title">게임 종료</h2>
@@ -142,7 +198,9 @@
     </div>
   </div>
 
-  <div class="help-text">마우스 드래그: 다중 선택 | 우클릭: 이동/채굴/공격 | WASD/방향키: 화면 이동 (대형 맵 3200x2400)</div>
+    <div class="help-text">마우스 드래그: 다중 선택 | 우클릭: 이동/채굴/공격 | 건설 중 건물: 다른 SCV로 우클릭하면 이어짓기 | WASD/방향키: 화면 이동</div>
+    </div>
+  </div>
 
   <script>
     window.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -165,54 +223,6 @@
     // grass / water / hill / ramp
     let terrain = [];
 
-
-    let selectedMapPreset = 'STANDARD';
-
-    const MAP_PRESETS = {
-      STANDARD: {
-        name: '표준 전장',
-        waterScale: 1.0,
-        hillScale: 1.0,
-        rampCount: 3
-      },
-      ISLAND: {
-        name: '섬 전장',
-        waterScale: 1.45,
-        hillScale: 0.85,
-        rampCount: 4
-      },
-      VALLEY: {
-        name: '계곡 전장',
-        waterScale: 1.15,
-        hillScale: 1.35,
-        rampCount: 5
-      }
-    };
-
-    let selectedDifficultyPreset = 'NORMAL';
-
-    function selectMapPreset(key, button) {
-      if (!MAP_PRESETS[key]) return;
-      selectedMapPreset = key;
-      document.querySelectorAll('[data-map]').forEach(b => b.classList.remove('active'));
-      button.classList.add('active');
-    }
-
-    function selectDifficultyPreset(key, button) {
-      if (!DIFFICULTY_SETTINGS[key]) return;
-      selectedDifficultyPreset = key;
-      document.querySelectorAll('[data-diff]').forEach(b => b.classList.remove('active'));
-      button.classList.add('active');
-    }
-
-    function startConfiguredGame() {
-      currentDifficulty = DIFFICULTY_SETTINGS[selectedDifficultyPreset] || DIFFICULTY_SETTINGS.NORMAL;
-      document.getElementById('diff-select').value = selectedDifficultyPreset;
-      document.getElementById('start-menu').style.display = 'none';
-      initGame();
-      running = true;
-    }
-
     function terrainIndex(col, row) {
       return row * TERRAIN_COLS + col;
     }
@@ -225,65 +235,51 @@
       return (n >>> 0) / 4294967295;
     }
 
-    function generateTerrain() {
+    function generateTerrain(mapType = selectedMap) {
       terrain = new Array(TERRAIN_COLS * TERRAIN_ROWS);
-
-      const preset = MAP_PRESETS[selectedMapPreset] || MAP_PRESETS.STANDARD;
-      const waterScale = preset.waterScale;
-      const hillScale = preset.hillScale;
-
-      const crossings = [
-        { x: 1020, y: 1200 },
-        { x: 1940, y: 1140 },
-        { x: 1540, y: 1490 },
-        { x: 820,  y: 1180 },
-        { x: 2380, y: 1180 }
-      ].slice(0, preset.rampCount);
 
       for (let row = 0; row < TERRAIN_ROWS; row++) {
         for (let col = 0; col < TERRAIN_COLS; col++) {
           const x = col * TERRAIN_TILE + TERRAIN_TILE / 2;
           const y = row * TERRAIN_TILE + TERRAIN_TILE / 2;
 
+          // 기본 평지.
           let type = 'grass';
 
-          // 수역.
+          // 굽이치는 강 + 넓은 만.
           const riverY =
             1200 +
             Math.sin(x / 430) * 180 +
             Math.sin(x / 170) * 45;
 
-          const riverWidth =
-            (125 + 30 * Math.sin(x / 250 + 0.5)) * waterScale;
+          const riverWidth = 125 + 30 * Math.sin(x / 250 + 0.5);
 
           if (Math.abs(y - riverY) < riverWidth) {
             type = 'water';
           }
 
-          // 호수.
-          let lakeRadius = 245 * waterScale;
-          if (selectedMapPreset === 'VALLEY') lakeRadius *= 0.75;
-          if (Math.hypot(x - 1540, y - 1770) < lakeRadius) {
+          // 중앙 하부의 작은 호수.
+          const lakeDist = Math.hypot(x - 1540, y - 1770);
+          if (lakeDist < 245) {
             type = 'water';
           }
 
-          // 섬 전장은 외곽 수역을 더 강조한다.
-          if (selectedMapPreset === 'ISLAND') {
-            const edge = Math.min(x, WORLD_W - x, y, WORLD_H - y);
-            if (edge < 170) type = 'water';
-          }
-
-          // 고지대.
+          // 고지대: 강/호수와 겹치면 물을 우선.
           const hillA = Math.hypot((x - 780) / 1.15, y - 760);
           const hillB = Math.hypot((x - 2320) / 1.2, y - 820);
           const hillC = Math.hypot((x - 1580) / 1.0, y - 430);
 
           if (type !== 'water' &&
-              (hillA < 360 * hillScale ||
-               hillB < 380 * hillScale ||
-               hillC < 310 * hillScale)) {
+              (hillA < 360 || hillB < 380 || hillC < 310)) {
             type = 'hill';
           }
+
+          // 경사로: 강을 건너는 주요 연결 지점.
+          const crossings = [
+            { x: 1020, y: 1200 },
+            { x: 1940, y: 1140 },
+            { x: 1540, y: 1490 }
+          ];
 
           for (const c of crossings) {
             if (Math.hypot(x - c.x, y - c.y) < 145) {
@@ -296,22 +292,74 @@
         }
       }
 
-      // 기지 주변은 항상 넓은 평지.
+      // 전장별 추가 지형 특징.
+      if (mapType === 'ISLANDS') {
+        for (let row = 0; row < TERRAIN_ROWS; row++) {
+          for (let col = 0; col < TERRAIN_COLS; col++) {
+            const x = col * TERRAIN_TILE + TERRAIN_TILE / 2;
+            const y = row * TERRAIN_TILE + TERRAIN_TILE / 2;
+
+            const island1 = Math.hypot((x - 1100) / 1.0, y - 800);
+            const island2 = Math.hypot((x - 2150) / 1.0, y - 1500);
+            const island3 = Math.hypot((x - 1550) / 1.15, y - 500);
+
+            if (island1 > 470 && island1 < 720) terrain[terrainIndex(col, row)] = 'water';
+            if (island2 > 420 && island2 < 650) terrain[terrainIndex(col, row)] = 'water';
+            if (island3 > 360 && island3 < 560) terrain[terrainIndex(col, row)] = 'water';
+          }
+        }
+      } else if (mapType === 'CHOKE') {
+        for (let row = 0; row < TERRAIN_ROWS; row++) {
+          for (let col = 0; col < TERRAIN_COLS; col++) {
+            const x = col * TERRAIN_TILE + TERRAIN_TILE / 2;
+            const y = row * TERRAIN_TILE + TERRAIN_TILE / 2;
+
+            // 중앙 수역을 만들어 좌우/상하 이동을 좁은 육상 통로로 유도.
+            const centralWater = Math.abs(x - WORLD_W / 2) < 270 && Math.abs(y - 1200) < 520;
+            const sideLake = Math.hypot(x - 1550, y - 1850) < 300;
+
+            if (centralWater || sideLake) {
+              terrain[terrainIndex(col, row)] = 'water';
+            }
+          }
+        }
+
+        // 명확한 육상 경사로 2개 확보.
+        const ramps = [
+          { x: WORLD_W / 2 - 300, y: 900 },
+          { x: WORLD_W / 2 + 300, y: 1500 }
+        ];
+
+        ramps.forEach(rp => {
+          for (let row = 0; row < TERRAIN_ROWS; row++) {
+            for (let col = 0; col < TERRAIN_COLS; col++) {
+              const x = col * TERRAIN_TILE + TERRAIN_TILE / 2;
+              const y = row * TERRAIN_TILE + TERRAIN_TILE / 2;
+              if (Math.hypot(x - rp.x, y - rp.y) < 150) {
+                terrain[terrainIndex(col, row)] = 'ramp';
+              }
+            }
+          }
+        });
+      }
+
+      // 기지 주변은 넓은 평지로 확보.
       [
         { x: 350, y: WORLD_H - 350 },
         { x: WORLD_W - 350, y: 350 }
       ].forEach(base => {
-        for (let row = Math.floor((base.y - 420) / TERRAIN_TILE);
-             row <= Math.floor((base.y + 420) / TERRAIN_TILE); row++) {
-          for (let col = Math.floor((base.x - 420) / TERRAIN_TILE);
-               col <= Math.floor((base.x + 420) / TERRAIN_TILE); col++) {
+        const minCol = Math.floor((base.x - 420) / TERRAIN_TILE);
+        const maxCol = Math.floor((base.x + 420) / TERRAIN_TILE);
+        const minRow = Math.floor((base.y - 420) / TERRAIN_TILE);
+        const maxRow = Math.floor((base.y + 420) / TERRAIN_TILE);
 
+        for (let row = minRow; row <= maxRow; row++) {
+          for (let col = minCol; col <= maxCol; col++) {
             if (col < 0 || row < 0 || col >= TERRAIN_COLS || row >= TERRAIN_ROWS) continue;
-
-            const cx = col * TERRAIN_TILE + TERRAIN_TILE / 2;
-            const cy = row * TERRAIN_TILE + TERRAIN_TILE / 2;
-
-            if (Math.hypot(cx - base.x, cy - base.y) < 340) {
+            if (Math.hypot(
+              col * TERRAIN_TILE + TERRAIN_TILE / 2 - base.x,
+              row * TERRAIN_TILE + TERRAIN_TILE / 2 - base.y
+            ) < 340) {
               terrain[terrainIndex(col, row)] = 'grass';
             }
           }
@@ -365,13 +413,10 @@
 
       if (terrainCell(tc, tr) === 'water') return [];
 
-      const startKey = sc + ',' + sr;
-      const targetKey = tc + ',' + tr;
+      const startKey = `${sc},${sr}`;
+      const targetKey = `${tc},${tr}`;
 
-      // shift()를 사용하지 않는 인덱스 큐: 대규모 탐색에서도 O(n²) 증가를 피한다.
       const queue = [{ col: sc, row: sr }];
-      let queueIndex = 0;
-
       const visited = new Set([startKey]);
       const parent = new Map();
 
@@ -380,16 +425,12 @@
         [1, 1], [1, -1], [-1, 1], [-1, -1]
       ];
 
-      // 전체 맵은 작지만, 특정 상황에서 탐색이 길어지는 것을 방지한다.
-      const MAX_EXPANSIONS = 1800;
-      let expansions = 0;
       let found = false;
 
-      while (queueIndex < queue.length && expansions < MAX_EXPANSIONS) {
-        const cur = queue[queueIndex++];
-        expansions++;
+      while (queue.length) {
+        const cur = queue.shift();
+        const curKey = `${cur.col},${cur.row}`;
 
-        const curKey = cur.col + ',' + cur.row;
         if (curKey === targetKey) {
           found = true;
           break;
@@ -397,14 +438,15 @@
 
         const cp = cellCenter(cur.col, cur.row);
 
-        for (let i = 0; i < dirs.length; i++) {
-          const nc = cur.col + dirs[i][0];
-          const nr = cur.row + dirs[i][1];
+        for (const [dc, dr] of dirs) {
+          const nc = cur.col + dc;
+          const nr = cur.row + dr;
 
           if (nc < 0 || nr < 0 || nc >= TERRAIN_COLS || nr >= TERRAIN_ROWS) continue;
 
-          const key = nc + ',' + nr;
+          const key = `${nc},${nr}`;
           if (visited.has(key)) continue;
+
           if (terrainCell(nc, nr) === 'water') continue;
 
           const np = cellCenter(nc, nr);
@@ -422,10 +464,7 @@
       let key = targetKey;
 
       while (key !== startKey) {
-        const comma = key.indexOf(',');
-        const c = Number(key.slice(0, comma));
-        const r = Number(key.slice(comma + 1));
-
+        const [c, r] = key.split(',').map(Number);
         path.push(cellCenter(c, r));
         key = parent.get(key);
         if (!key) return [];
@@ -438,11 +477,7 @@
     function moveUnitToward(unit, targetX, targetY) {
       if (!unit || unit.speed <= 0) return true;
 
-      if (unit.pathRecalcCooldown > 0) {
-        unit.pathRecalcCooldown--;
-      }
-
-      // 공중유닛은 지형에 제한되지 않는다.
+      // 공중유닛은 물/언덕의 이동 제한을 받지 않는다.
       if (isAirUnit(unit)) {
         const dx = targetX - unit.x;
         const dy = targetY - unit.y;
@@ -468,11 +503,9 @@
         unit.y = targetY;
         unit.pathQueue = [];
         unit.pathTargetKey = null;
-        unit.pathRecalcCooldown = 0;
         return true;
       }
 
-      // 먼저 한 칸 직접 이동을 시도한다.
       const nx = unit.x + dx / dist * unit.speed;
       const ny = unit.y + dy / dist * unit.speed;
 
@@ -481,34 +514,17 @@
         unit.y = ny;
         unit.pathQueue = [];
         unit.pathTargetKey = null;
-        unit.pathRecalcCooldown = 0;
         return false;
       }
 
-      const targetKey =
-        Math.floor(targetX / TERRAIN_TILE) + ',' +
-        Math.floor(targetY / TERRAIN_TILE);
+      const targetKey = `${Math.floor(targetX / TERRAIN_TILE)},${Math.floor(targetY / TERRAIN_TILE)}`;
 
-      // 같은 목적지의 길은 잠깐 재사용한다.
-      if (unit.pathTargetKey !== targetKey) {
-        unit.pathQueue = [];
-        unit.pathTargetKey = targetKey;
-        unit.pathRecalcCooldown = 0;
-      }
-
-      // 경로가 없거나 너무 오래되어도 매 프레임 계산하지 않는다.
-      if ((!unit.pathQueue || unit.pathQueue.length === 0) &&
-          unit.pathRecalcCooldown <= 0) {
+      if (!unit.pathQueue || unit.pathTargetKey !== targetKey || unit.pathQueue.length === 0) {
         unit.pathQueue = findGroundPath(unit.x, unit.y, targetX, targetY);
         unit.pathTargetKey = targetKey;
-
-        // 길찾기 실패 시 다음 재시도까지 잠시 기다린다.
-        unit.pathRecalcCooldown = unit.pathQueue.length ? 10 : 18;
       }
 
-      if (!unit.pathQueue || !unit.pathQueue.length) {
-        return false;
-      }
+      if (!unit.pathQueue.length) return true;
 
       const wp = unit.pathQueue[0];
       const wx = wp.x - unit.x;
@@ -519,21 +535,482 @@
         unit.x = wp.x;
         unit.y = wp.y;
         unit.pathQueue.shift();
-      } else if (wdist > 0) {
+      } else {
         const sx = unit.x + wx / wdist * unit.speed;
         const sy = unit.y + wy / wdist * unit.speed;
 
         if (canGroundStep(unit.x, unit.y, sx, sy)) {
           unit.x = sx;
           unit.y = sy;
-        } else {
-          // 기존 경로가 더 이상 유효하지 않으면 재탐색을 예약한다.
-          unit.pathQueue = [];
-          unit.pathRecalcCooldown = 0;
         }
       }
 
       return false;
+    }
+
+    function drawTerrain() {
+      const col0 = Math.max(0, Math.floor(camX / TERRAIN_TILE) - 1);
+      const col1 = Math.min(TERRAIN_COLS - 1, Math.ceil((camX + VIEW_W) / TERRAIN_TILE) + 1);
+      const row0 = Math.max(0, Math.floor(camY / TERRAIN_TILE) - 1);
+      const row1 = Math.min(TERRAIN_ROWS - 1, Math.ceil((camY + VIEW_H) / TERRAIN_TILE) + 1);
+
+      for (let row = row0; row <= row1; row++) {
+        for (let col = col0; col <= col1; col++) {
+          const type = terrain[terrainIndex(col, row)] || 'grass';
+          const x = col * TERRAIN_TILE - camX;
+          const y = row * TERRAIN_TILE - camY;
+          const n = terrainRand(col, row);
+
+          // 지형 기본 색상.
+          if (type === 'grass') {
+            const shade = Math.floor(3 + n * 7);
+            ctx.fillStyle = `rgb(${28 + shade}, ${82 + shade * 3}, ${42 + shade * 2})`;
+          } else if (type === 'water') {
+            const shade = Math.floor(n * 12);
+            ctx.fillStyle = `rgb(${20 + shade}, ${80 + shade * 2}, ${125 + shade * 3})`;
+          } else if (type === 'hill') {
+            const shade = Math.floor(n * 9);
+            ctx.fillStyle = `rgb(${72 + shade}, ${92 + shade * 2}, ${52 + shade})`;
+          } else {
+            // 경사로는 바위/모래색의 통로.
+            const shade = Math.floor(n * 10);
+            ctx.fillStyle = `rgb(${126 + shade}, ${104 + shade}, ${70 + shade})`;
+          }
+
+          ctx.fillRect(x, y, TERRAIN_TILE + 1, TERRAIN_TILE + 1);
+
+          // 잔디 지표면 디테일.
+          if (type === 'grass') {
+            ctx.strokeStyle = `rgba(120, 170, 95, ${0.10 + n * 0.06})`;
+            ctx.lineWidth = 1;
+            for (let k = 0; k < 4; k++) {
+              const gx = x + 10 + terrainRand(col + k, row + 13) * (TERRAIN_TILE - 20);
+              const gy = y + 12 + terrainRand(col + 19, row + k) * (TERRAIN_TILE - 24);
+              ctx.beginPath();
+              ctx.moveTo(gx, gy + 4);
+              ctx.lineTo(gx + 2, gy);
+              ctx.stroke();
+            }
+          }
+
+          // 물결.
+          if (type === 'water') {
+            ctx.strokeStyle = 'rgba(145, 220, 240, 0.22)';
+            ctx.lineWidth = 1;
+            for (let k = 0; k < 3; k++) {
+              const wy = y + 18 + k * 22 + terrainRand(col + 3, row + k + 30) * 6;
+              ctx.beginPath();
+              ctx.moveTo(x + 10, wy);
+              ctx.quadraticCurveTo(
+                x + TERRAIN_TILE / 2,
+                wy - 5,
+                x + TERRAIN_TILE - 10,
+                wy
+              );
+              ctx.stroke();
+            }
+          }
+
+          // 언덕의 층층이 보이는 지형 윤곽.
+          if (type === 'hill') {
+            ctx.strokeStyle = 'rgba(25, 55, 35, 0.34)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.ellipse(
+              x + TERRAIN_TILE * 0.52,
+              y + TERRAIN_TILE * 0.54,
+              26 + n * 10,
+              18 + n * 8,
+              0,
+              0,
+              Math.PI * 2
+            );
+            ctx.stroke();
+
+            ctx.strokeStyle = 'rgba(150, 160, 100, 0.18)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.ellipse(
+              x + TERRAIN_TILE * 0.53,
+              y + TERRAIN_TILE * 0.50,
+              13 + n * 5,
+              9 + n * 4,
+              0,
+              0,
+              Math.PI * 2
+            );
+            ctx.stroke();
+          }
+
+          // 경사로의 진행 방향과 가장자리.
+          if (type === 'ramp') {
+            ctx.strokeStyle = 'rgba(75, 55, 35, 0.45)';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(x + 8, y + TERRAIN_TILE - 8);
+            ctx.lineTo(x + TERRAIN_TILE - 8, y + 8);
+            ctx.stroke();
+
+            ctx.strokeStyle = 'rgba(205, 179, 125, 0.55)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x + 18, y + TERRAIN_TILE - 5);
+            ctx.lineTo(x + TERRAIN_TILE - 5, y + 18);
+            ctx.stroke();
+          }
+
+          // 지형 타일 사이를 자연스럽게 연결하는 약한 음영.
+          ctx.strokeStyle = 'rgba(0, 0, 0, 0.08)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x, y, TERRAIN_TILE, TERRAIN_TILE);
+        }
+      }
+
+      // 강의 가장자리에 얕은 해안선.
+      const shoreCol0 = Math.max(0, Math.floor(camX / TERRAIN_TILE) - 2);
+      const shoreCol1 = Math.min(TERRAIN_COLS - 1, Math.ceil((camX + VIEW_W) / TERRAIN_TILE) + 2);
+      const shoreRow0 = Math.max(0, Math.floor(camY / TERRAIN_TILE) - 2);
+      const shoreRow1 = Math.min(TERRAIN_ROWS - 1, Math.ceil((camY + VIEW_H) / TERRAIN_TILE) + 2);
+
+      ctx.strokeStyle = 'rgba(205, 190, 125, 0.24)';
+      ctx.lineWidth = 2;
+
+      for (let row = shoreRow0; row <= shoreRow1; row++) {
+        for (let col = shoreCol0; col <= shoreCol1; col++) {
+          if (terrain[terrainIndex(col, row)] !== 'water') continue;
+
+          const x = col * TERRAIN_TILE - camX;
+          const y = row * TERRAIN_TILE - camY;
+
+          const neigh = [
+            [col - 1, row], [col + 1, row],
+            [col, row - 1], [col, row + 1]
+          ];
+
+          neigh.forEach(([nc, nr]) => {
+            if (nc < 0 || nr < 0 || nc >= TERRAIN_COLS || nr >= TERRAIN_ROWS) return;
+            if (terrain[terrainIndex(nc, nr)] === 'water') return;
+
+            if (nc < col) {
+              ctx.beginPath();
+              ctx.moveTo(x, y);
+              ctx.lineTo(x, y + TERRAIN_TILE);
+              ctx.stroke();
+            } else if (nc > col) {
+              ctx.beginPath();
+              ctx.moveTo(x + TERRAIN_TILE, y);
+              ctx.lineTo(x + TERRAIN_TILE, y + TERRAIN_TILE);
+              ctx.stroke();
+            } else if (nr < row) {
+              ctx.beginPath();
+              ctx.moveTo(x, y);
+              ctx.lineTo(x + TERRAIN_TILE, y);
+              ctx.stroke();
+            } else if (nr > row) {
+              ctx.beginPath();
+              ctx.moveTo(x, y + TERRAIN_TILE);
+              ctx.lineTo(x + TERRAIN_TILE, y + TERRAIN_TILE);
+              ctx.stroke();
+            }
+          });
+        }
+      }
+    }
+
+
+    // 전장의 안개(Fog of War)
+    const FOG_TILE = 80;
+    const FOG_COLS = Math.ceil(WORLD_W / FOG_TILE);
+    const FOG_ROWS = Math.ceil(WORLD_H / FOG_TILE);
+    let fogVisible = new Uint8Array(FOG_COLS * FOG_ROWS);
+    let fogExplored = new Uint8Array(FOG_COLS * FOG_ROWS);
+
+    function resetFogOfWar() {
+      fogVisible = new Uint8Array(FOG_COLS * FOG_ROWS);
+      fogExplored = new Uint8Array(FOG_COLS * FOG_ROWS);
+    }
+
+    function fogIndex(col, row) {
+      return row * FOG_COLS + col;
+    }
+
+    function markFogCircle(x, y, radius) {
+      const minCol = Math.max(0, Math.floor((x - radius) / FOG_TILE));
+      const maxCol = Math.min(FOG_COLS - 1, Math.floor((x + radius) / FOG_TILE));
+      const minRow = Math.max(0, Math.floor((y - radius) / FOG_TILE));
+      const maxRow = Math.min(FOG_ROWS - 1, Math.floor((y + radius) / FOG_TILE));
+
+      for (let row = minRow; row <= maxRow; row++) {
+        for (let col = minCol; col <= maxCol; col++) {
+          const cx = col * FOG_TILE + FOG_TILE / 2;
+          const cy = row * FOG_TILE + FOG_TILE / 2;
+          if (Math.hypot(cx - x, cy - y) <= radius + FOG_TILE * 0.45) {
+            const idx = fogIndex(col, row);
+            fogVisible[idx] = 1;
+            fogExplored[idx] = 1;
+          }
+        }
+      }
+    }
+
+    function updateFogOfWar() {
+      fogVisible.fill(0);
+
+      entities.forEach(e => {
+        if (e.faction !== 'player') return;
+
+        let vision = 190;
+
+        if (e.type === 'hq') vision = 420;
+        else if (e.type === 'scv') vision = 220;
+        else if (e.type === 'turret') vision = 300;
+        else if (e.type === 'bunker') vision = 270;
+        else if (e.speed > 0) vision = 240;
+
+        // 건설 중인 건물은 완성 건물보다 시야가 크게 좁다.
+        // 예: 터렛 300 -> 110, 벙커 270 -> 100.
+        if (e.isUnderConstruction) {
+          vision = Math.max(80, Math.floor(vision * 0.36));
+        }
+
+        markFogCircle(e.x, e.y, vision);
+      });
+    }
+
+    function isVisibleToPlayer(e) {
+      if (e.faction === 'player') return true;
+      const col = Math.floor(e.x / FOG_TILE);
+      const row = Math.floor(e.y / FOG_TILE);
+      if (col < 0 || row < 0 || col >= FOG_COLS || row >= FOG_ROWS) return false;
+      return fogVisible[fogIndex(col, row)] === 1;
+    }
+
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+
+    const DIFFICULTY_SETTINGS = {
+      EASY:   { name: '쉬움', aiGatherRate: 0.8, buildInterval: 45 },
+      NORMAL: { name: '보통', aiGatherRate: 1.2, buildInterval: 30 },
+      HARD:   { name: '어려움', aiGatherRate: 1.8, buildInterval: 18 }
+    };
+    let currentDifficulty = DIFFICULTY_SETTINGS.NORMAL;
+
+    let resources = { min: 20, gas: 0, enemyMin: 20, enemyGas: 0 };
+    let wave = 1;
+    let waveTimer = 0;
+    let gameTime = 0;
+    let buildMode = null;
+    let gameOver = false;
+    let gameStarted = false;
+    let selectedMap = 'CONTINENT';
+    let selectedDifficultyKey = 'NORMAL';
+
+    const BUILD_UNLOCKS = {
+      barracks: 300,  // 약 5초 후
+      starport: 900   // 약 15초 후
+    };
+
+    let tech = { barracks: false, academy: false, factory: false, armory: false, starport: false, lab: false };
+
+    let entities = [];
+    let bullets = [];
+    let particles = [];
+    let sparks = [];
+    let selectedUnits = [];
+    let keys = {};
+
+    let isDragging = false;
+    let dragStartScreen = { x: 0, y: 0 };
+    let dragEndScreen = { x: 0, y: 0 };
+    let isMinimapDragging = false;
+
+    const UNIT_SPECS = {
+      scv:       { min: 20,  gas: 0,   supply: 1, req: true,         bType: 'hq',       time: 70,  name: 'SCV',       air: false },
+      marine:    { min: 15,  gas: 0,   supply: 1, req: 'barracks',    bType: 'barracks', time: 80,  name: '보병',      air: false },
+      medic:     { min: 25,  gas: 0,   supply: 1, req: 'academy',     bType: 'barracks', time: 100, name: '의무병',    air: false },
+      fighter:   { min: 30,  gas: 0,   supply: 2, req: 'starport',    bType: 'starport', time: 120, name: '전투기',    air: true },
+      scout:     { min: 25,  gas: 0,   supply: 2, req: 'starport',    bType: 'starport', time: 90,  name: '정찰기',    air: true },
+      tank:      { min: 60,  gas: 10,  supply: 3, req: 'factory',     bType: 'factory',  time: 180, name: '전차',      air: false },
+      siegetank: { min: 90,  gas: 30,  supply: 4, req: 'armory',      bType: 'factory',  time: 240, name: '공성전차',  air: false },
+      mech:      { min: 50,  gas: 15,  supply: 3, req: 'factory',     bType: 'factory',  time: 150, name: '메카',      air: false },
+      cruiser:   { min: 70,  gas: 30,  supply: 5, req: 'starport',    bType: 'starport', time: 220, name: '중순양함',  air: true },
+      carrier:   { min: 100, gas: 60,  supply: 6, req: 'starport',    bType: 'starport', time: 320, name: '항공모함',  air: true },
+      titan:     { min: 150, gas: 100, supply: 8, req: 'lab',         bType: 'starport', time: 420, name: '요새함',    air: true }
+    };
+
+    function isAirUnit(unit) {
+      return !!(unit && UNIT_SPECS[unit.type] && UNIT_SPECS[unit.type].air);
+    }
+
+    function isBuildUnlocked(type) {
+      return !BUILD_UNLOCKS[type] || gameTime >= BUILD_UNLOCKS[type];
+    }
+
+    let toastTimer = null;
+    function showToast(msg) {
+      const toast = document.getElementById('toast-msg');
+      toast.innerText = msg;
+      toast.style.opacity = '1';
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { toast.style.opacity = '0'; }, 2000);
+    }
+
+    function changeDifficulty(val) {
+      currentDifficulty = DIFFICULTY_SETTINGS[val] || DIFFICULTY_SETTINGS.NORMAL;
+      selectedDifficultyKey = val;
+      showToast(`난이도가 [${currentDifficulty.name}](으)로 설정되었습니다.`);
+    }
+
+    function selectMap(mapType) {
+      selectedMap = mapType;
+
+      document.querySelectorAll('.setup-option[data-map]').forEach(btn => {
+        btn.classList.toggle('selected', btn.dataset.map === mapType);
+      });
+
+      const mapNames = {
+        CONTINENT: '대륙 전장',
+        ISLANDS: '군도 전장',
+        CHOKE: '협곡 전장'
+      };
+
+      document.getElementById('start-summary').innerText =
+        `${mapNames[selectedMap]} · ${DIFFICULTY_SETTINGS[selectedDifficultyKey].name} 난이도`;
+    }
+
+    function selectDifficulty(diff) {
+      selectedDifficultyKey = diff;
+      currentDifficulty = DIFFICULTY_SETTINGS[diff] || DIFFICULTY_SETTINGS.NORMAL;
+
+      document.querySelectorAll('.setup-option[data-diff]').forEach(btn => {
+        btn.classList.toggle('selected', btn.dataset.diff === diff);
+      });
+
+      const mapNames = {
+        CONTINENT: '대륙 전장',
+        ISLANDS: '군도 전장',
+        CHOKE: '협곡 전장'
+      };
+
+      document.getElementById('start-summary').innerText =
+        `${mapNames[selectedMap]} · ${currentDifficulty.name} 난이도`;
+    }
+
+    function startGame() {
+      selectedDifficultyKey = selectedDifficultyKey || 'NORMAL';
+      currentDifficulty = DIFFICULTY_SETTINGS[selectedDifficultyKey] || DIFFICULTY_SETTINGS.NORMAL;
+
+      const diffSelect = document.getElementById('diff-select');
+      if (diffSelect) {
+        diffSelect.value = selectedDifficultyKey;
+        diffSelect.disabled = true;
+      }
+
+      gameStarted = true;
+      document.getElementById('start-screen').style.display = 'none';
+      document.getElementById('game-shell').style.display = 'block';
+      initGame();
+    }
+
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+    function initAudio() { if (!audioCtx) audioCtx = new AudioCtx(); }
+
+    function playSound(type, worldX = null, worldY = null) {
+      if (!audioCtx) return;
+
+      // 소리는 카메라 중심을 기준으로 거리 감쇠한다.
+      // 가까우면 정상 볼륨, 멀어질수록 부드럽게 작아지고
+      // 일정 거리 이상 떨어지면 완전히 들리지 않는다.
+      let distanceFactor = 1;
+      if (worldX !== null && worldY !== null) {
+        const cameraCenterX = camX + VIEW_W / 2;
+        const cameraCenterY = camY + VIEW_H / 2;
+        const distance = Math.hypot(worldX - cameraCenterX, worldY - cameraCenterY);
+
+        const fullVolumeDistance = 180;
+        const maxHearDistance = 900;
+
+        if (distance >= maxHearDistance) {
+          distanceFactor = 0;
+        } else if (distance > fullVolumeDistance) {
+          const t = (distance - fullVolumeDistance) /
+                    (maxHearDistance - fullVolumeDistance);
+          distanceFactor = Math.pow(1 - t, 1.8);
+        }
+      }
+
+      if (distanceFactor <= 0) return;
+
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        const now = audioCtx.currentTime;
+
+        if (type === 'produce') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(400, now);
+          osc.frequency.exponentialRampToValueAtTime(800, now + 0.1);
+          gain.gain.setValueAtTime(0.12 * distanceFactor, now);
+          gain.gain.exponentialRampToValueAtTime(0.01 * distanceFactor, now + 0.1);
+          osc.start(now);
+          osc.stop(now + 0.1);
+        } else if (type === 'laser') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(650, now);
+          osc.frequency.exponentialRampToValueAtTime(150, now + 0.07);
+          gain.gain.setValueAtTime(0.06 * distanceFactor, now);
+          gain.gain.exponentialRampToValueAtTime(0.01 * distanceFactor, now + 0.07);
+          osc.start(now);
+          osc.stop(now + 0.07);
+        } else if (type === 'explode') {
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(130, now);
+          osc.frequency.exponentialRampToValueAtTime(25, now + 0.2);
+          gain.gain.setValueAtTime(0.18 * distanceFactor, now);
+          gain.gain.exponentialRampToValueAtTime(0.01 * distanceFactor, now + 0.2);
+          osc.start(now);
+          osc.stop(now + 0.2);
+        } else if (type === 'mine') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(800, now);
+          osc.frequency.exponentialRampToValueAtTime(1400, now + 0.06);
+          gain.gain.setValueAtTime(0.08 * distanceFactor, now);
+          gain.gain.exponentialRampToValueAtTime(0.01 * distanceFactor, now + 0.06);
+          osc.start(now);
+          osc.stop(now + 0.06);
+        }
+      } catch (e) {}
+    }
+
+    window.addEventListener('keydown', (e) => { keys[e.code] = true; });
+    window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+
+    function handleMinimapClick(mx, my) {
+      const mmW = 160, mmH = 120;
+      const mmX = VIEW_W - mmW - 10;
+      const mmY = VIEW_H - mmH - 10;
+
+      if (mx >= mmX && mx <= mmX + mmW && my >= mmY && my <= mmY + mmH) {
+        const targetX = ((mx - mmX) / mmW) * WORLD_W;
+        const targetY = ((my - mmY) / mmH) * WORLD_H;
+        camX = Math.max(0, Math.min(WORLD_W - VIEW_W, targetX - VIEW_W / 2));
+        camY = Math.max(0, Math.min(WORLD_H - VIEW_H, targetY - VIEW_H / 2));
+        return true;
+      }
+      return false;
+    }
+
+    function getSupplyInfo(faction) {
+      const hqCount = entities.filter(e => e.faction === faction && e.type === 'hq' && !e.isUnderConstruction).length;
+      const depotCount = entities.filter(e => e.faction === faction && e.type === 'depot' && !e.isUnderConstruction).length;
+      const maxSupply = Math.min(200, (hqCount * 10) + (depotCount * 8));
+      const currentSupply = entities
+        .filter(e => e.faction === faction && UNIT_SPECS[e.type])
+        .reduce((sum, u) => sum + (UNIT_SPECS[u.type].supply || 1), 0);
+      return { current: currentSupply, max: maxSupply };
     }
 
     // SCV 최적 자원 분산 알고리즘 (특정 자원에 채굴자가 몰리지 않게 할당)
@@ -646,11 +1123,17 @@ function assignBestResource(scv) {
 
       if (e.button === 2) {
         if (selectedUnits.length > 0) {
-          const targetEnemy = entities.find(ent => 
+          const targetEnemy = entities.find(ent =>
             ent.faction === 'enemy' && Math.hypot(ent.x - worldX, ent.y - worldY) <= ent.radius + 12
           );
 
-          const targetRes = entities.find(ent => 
+          const targetConstruction = entities.find(ent =>
+            ent.faction === 'player' &&
+            ent.isUnderConstruction &&
+            Math.hypot(ent.x - worldX, ent.y - worldY) <= ent.radius + 18
+          );
+
+          const targetRes = entities.find(ent =>
             (ent.type === 'resource_min' || (ent.type === 'resource_gas' && ent.hasRefinery)) &&
             Math.hypot(ent.x - worldX, ent.y - worldY) <= ent.radius + 15
           );
@@ -675,6 +1158,11 @@ function assignBestResource(scv) {
                 unit.assignedRes = null;
               }
             } else {
+              if (unit.type === 'scv' && targetConstruction) {
+                resumeConstructionWithSCV(unit, targetConstruction);
+                return;
+              }
+
               unit.isManualMove = !targetEnemy;
               unit.moveTarget = { x: worldX + offsetX, y: worldY + offsetY };
 
@@ -766,6 +1254,7 @@ function assignBestResource(scv) {
     }
 
     function handleBuild(wx, wy) {
+      updateFogOfWar(true);
       const freeSCV = entities.find(e =>
         e.faction === 'player' &&
         e.type === 'scv' &&
@@ -800,6 +1289,22 @@ function assignBestResource(scv) {
 
       if (!isBuildUnlocked(buildMode)) {
         showToast('⏳ 아직 해금되지 않은 건물입니다.');
+        buildMode = null;
+        resetBuildButtons();
+        return;
+      }
+
+
+      // 전장의 안개 속에는 건물을 건설할 수 없다.
+      const fogCol = Math.floor(wx / FOG_TILE);
+      const fogRow = Math.floor(wy / FOG_TILE);
+      const fogIdx = fogRow * FOG_COLS + fogCol;
+      if (
+        fogCol < 0 || fogRow < 0 ||
+        fogCol >= FOG_COLS || fogRow >= FOG_ROWS ||
+        !fogVisible[fogIdx]
+      ) {
+        showToast('🌫️ 전장의 안개 속에는 건물을 건설할 수 없습니다.');
         buildMode = null;
         resetBuildButtons();
         return;
@@ -848,20 +1353,53 @@ function assignBestResource(scv) {
 
     function startBuildingConstruction(type, faction, x, y, scv, maxTime) {
       const b = spawnEntity(type, faction, x, y);
-      b.isUnderConstruction = true; 
-      b.buildProgress = 0; 
+      b.isUnderConstruction = true;
+      b.buildProgress = 1;
       b.buildMaxTime = maxTime;
       b.builderSCVId = scv ? scv.id : null;
-      b.hp = Math.max(1, b.hp || 1);
+      b.constructionHP = maxTime;
+      b.hp = Math.max(1, Math.floor((b.buildProgress / b.buildMaxTime) * b.maxHp));
 
       if (scv) {
-        scv.isBuildingSCV = true; 
+        scv.isBuildingSCV = true;
         scv.isManualMove = false;
-        scv.moveTarget = { x: x, y: y }; 
-        scv.cargo = null; 
+        scv.moveTarget = { x: x, y: y };
+        scv.cargo = null;
         scv.mineTimer = 0;
         scv.buildingTargetId = b.id;
+        scv.playerOrder = 'none';
+        scv.playerOrderTarget = null;
       }
+    }
+
+    function resumeConstructionWithSCV(scv, building) {
+      if (!scv || !building) return false;
+      if (scv.faction !== building.faction || scv.type !== 'scv') return false;
+      if (!building.isUnderConstruction || building.buildProgress <= 0) return false;
+
+      if (scv.isBuildingSCV && scv.buildingTargetId !== building.id) return false;
+
+      const dist = Math.hypot(building.x - scv.x, building.y - scv.y);
+      if (dist > building.radius + 28) {
+        scv.isManualMove = false;
+        scv.moveTarget = { x: building.x, y: building.y };
+        scv.assignedRes = null;
+        scv.playerOrder = 'none';
+        scv.playerOrderTarget = null;
+        scv.repairingTargetId = building.id;
+        return true;
+      }
+
+      scv.isBuildingSCV = true;
+      scv.isManualMove = false;
+      scv.moveTarget = null;
+      scv.assignedRes = null;
+      scv.cargo = null;
+      scv.mineTimer = 0;
+      scv.buildingTargetId = building.id;
+      building.builderSCVId = scv.id;
+      scv.repairingTargetId = null;
+      return true;
     }
 
     function createSparks(x, y) {
@@ -960,11 +1498,12 @@ function assignBestResource(scv) {
         cooldown: 0, cooldownMax: 40, attackRange: 0, damage: 10,
         splash: false, splashRadius: 0, isHealer: false,
         cargo: null, mineTimer: 0, moveTarget: null, forcedTarget: null,
-        isUnderConstruction: false, buildProgress: 0, buildMaxTime: 0,
+        isUnderConstruction: false, buildProgress: 0, buildMaxTime: 0, constructionHP: 0, builderSCVId: null,
         productionQueue: [], isBuildingSCV: false, buildingTargetId: null, isManualMove: false, assignedRes: null,
+        repairingTargetId: null,
         assignedBaseId: null,
         playerOrder: 'none', playerOrderTarget: null,
-        pathQueue: [], pathTargetKey: null, pathRecalcCooldown: 0,
+        pathQueue: [], pathTargetKey: null,
         amount: 0, maxAmount: 0
       };
 
@@ -1047,11 +1586,29 @@ function assignBestResource(scv) {
 
     function restartGame() {
       document.getElementById('game-over-modal').style.display = 'none';
-      running = false;
-      document.getElementById('start-menu').style.display = 'flex';
+
+      currentDifficulty =
+        DIFFICULTY_SETTINGS[selectedDifficultyKey] || DIFFICULTY_SETTINGS.NORMAL;
+
+      const diffSelect = document.getElementById('diff-select');
+      if (diffSelect) {
+        diffSelect.value = selectedDifficultyKey;
+        diffSelect.disabled = true;
+      }
+
+      initGame();
     }
 
     function initGame() {
+      currentDifficulty =
+        DIFFICULTY_SETTINGS[selectedDifficultyKey] || DIFFICULTY_SETTINGS.NORMAL;
+
+      const diffSelect = document.getElementById('diff-select');
+      if (diffSelect) {
+        diffSelect.value = selectedDifficultyKey;
+        if (gameStarted) diffSelect.disabled = true;
+      }
+
       entities = []; bullets = []; particles = []; sparks = []; selectedUnits = [];
       resetFogOfWar();
       resources = { min: 20, gas: 0, enemyMin: 20, enemyGas: 0 };
@@ -1059,7 +1616,7 @@ function assignBestResource(scv) {
       enemyAI.initialized = false; enemyAI.phase = 'OPENING'; enemyAI.timer = 0; enemyAI.attackTimer = 0; enemyAI.rallyTimer = 0; enemyAI.attackCount = 0; enemyAI.threatened = false; enemyAI.attackTarget = null; enemyAI.lastAttackSize = 0; enemyAI.rallyPoint = null;
       tech = { barracks: false, academy: false, factory: false, armory: false, starport: false, lab: false };
 
-      generateTerrain();
+      generateTerrain(selectedMap);
 
       const pX = 350, pY = WORLD_H - 350;
       spawnEntity('hq', 'player', pX, pY);
@@ -1108,9 +1665,6 @@ function assignBestResource(scv) {
     // 실제 스타크래프트 1의 내부 스크립트를 복제하지 않고,
     // "빌드오더 + 상황판단 + 웨이브 공격 + 방어 + 확장" 구조를 재현한다.
     const enemyAI = {
-      updateBudget: 0,
-      nextThinkAt: 0,
-
       initialized: false,
       mode: 'BIO_PRESSURE',
       phase: 'OPENING',
@@ -1651,6 +2205,43 @@ function assignBestResource(scv) {
       return true;
     }
 
+    function enemyAssessStrategy() {
+      const playerTech = {
+        barracks: entities.some(e => e.faction === 'player' && e.type === 'barracks' && !e.isUnderConstruction),
+        factory: entities.some(e => e.faction === 'player' && e.type === 'factory' && !e.isUnderConstruction),
+        starport: entities.some(e => e.faction === 'player' && e.type === 'starport' && !e.isUnderConstruction)
+      };
+
+      const playerArmy = playerCombatUnits();
+      const enemyArmy = enemyCombatUnits();
+
+      const playerPower = playerArmy.reduce((s, u) => s + (u.damage || 1) + (u.maxHp || 1) / 20, 0);
+      const enemyPower = enemyArmy.reduce((s, u) => s + (u.damage || 1) + (u.maxHp || 1) / 20, 0);
+
+      // 적이 밀리는 상황: 메카/방어 성향으로 전환하고 무리한 공격을 중단.
+      if (playerTech.factory && playerTech.starport && playerPower > enemyPower * 1.25) {
+        if (currentDifficulty !== DIFFICULTY_SETTINGS.EASY) {
+          enemyAI.mode = 'MECH';
+        }
+        if (enemyAI.phase === 'ATTACK') {
+          enemyRetreatFromBadFight();
+        }
+        return;
+      }
+
+      // 플레이어가 방어적으로 테크만 올리면 압박 전략을 강화.
+      if (playerTech.starport && playerArmy.length < 8 &&
+          enemyArmy.length >= 7) {
+        enemyAI.mode = 'BIO_PRESSURE';
+      }
+
+      // 플레이어가 초반에 전투 유닛을 많이 만들면 공장으로 대응.
+      if (playerTech.barracks && playerArmy.length >= 6 &&
+          enemyPower < playerPower * 0.95) {
+        enemyAI.mode = 'MECH';
+      }
+    }
+
     function enemyChooseMode() {
       // Classic-style preset strategy selection:
       // easy = safer bio, normal = pressure/mech mix, hard = aggressive opening.
@@ -1665,14 +2256,11 @@ function assignBestResource(scv) {
       }
     }
 
+    function thinkIntervalSafeForAI() {
+      return Math.max(30, currentDifficulty.buildInterval * 8);
+    }
+
     function updateHumanlikeAI() {
-      // AI는 매 프레임 전체 의사결정을 하지 않는다.
-      // 기본 이동/전투는 게임 루프에서 처리하고, 전략 판단만 일정 간격으로 수행한다.
-      if (gameTime < enemyAI.nextThinkAt) return;
-      enemyAI.nextThinkAt = gameTime + Math.max(18, Math.floor(currentDifficulty.buildInterval / 2));
-
-      const aiFrameStart = performance.now();
-
       const hq = enemyBaseHQ();
       const playerHQ = enemyGetPlayerHQ();
       if (!hq || !playerHQ) return;
@@ -1686,6 +2274,10 @@ function assignBestResource(scv) {
       }
 
       enemyAI.timer++;
+
+      if (enemyAI.timer % (thinkIntervalSafeForAI()) === 0) {
+        enemyAssessStrategy();
+      }
 
       // Keep every free SCV working at the home mineral/gas line.
       entities.filter(e => e.faction === 'enemy' && e.type === 'scv').forEach(scv => {
@@ -2008,14 +2600,8 @@ function assignBestResource(scv) {
       }
     }
 
-      // AI 한 번의 생각이 과도하게 오래 걸렸다면 다음 전략 판단을 늦춰 프레임을 보호한다.
-      const aiCost = performance.now() - aiFrameStart;
-      if (aiCost > 35) {
-        enemyAI.nextThinkAt += Math.min(60, Math.ceil(aiCost / 4));
-      }
-
     function updateGameLogic() {
-      if (gameOver || !running) return;
+      if (!gameStarted || gameOver) return;
 
       gameTime++;
       updateCamera();
@@ -2061,11 +2647,15 @@ function assignBestResource(scv) {
                 moveUnitToward(ent, b.x, b.y);
               } else {
                 createSparks(ent.x, ent.y);
-                b.buildProgress++;
-                b.hp = Math.min(b.maxHp, Math.floor((b.buildProgress / b.buildMaxTime) * b.maxHp));
+
+                // 건설 수치는 공격으로 감소할 수 있다.
+                b.buildProgress = Math.min(b.buildMaxTime, b.buildProgress + 1);
+                b.constructionHP = b.buildProgress;
+                b.hp = Math.max(1, Math.floor((b.buildProgress / b.buildMaxTime) * b.maxHp));
 
                 if (b.buildProgress >= b.buildMaxTime) {
                   b.isUnderConstruction = false;
+                  b.constructionHP = 0;
                   b.hp = b.maxHp;
                   ent.isBuildingSCV = false;
                   ent.buildingTargetId = null;
@@ -2073,12 +2663,25 @@ function assignBestResource(scv) {
                   ent.moveTarget = null;
                   ent.cargo = null;
                   ent.mineTimer = 0;
+                  ent.repairingTargetId = null;
 
                   if (ent.faction === 'player') assignResourceForNearestBase(ent);
                   else assignEnemyBaseResource(ent);
 
                   showToast("🏗️ 건물 건설 완료!");
                 }
+              }
+            } else if (ent.repairingTargetId) {
+              const abandoned = entities.find(e =>
+                e.id === ent.repairingTargetId &&
+                e.faction === ent.faction &&
+                e.isUnderConstruction
+              );
+
+              if (abandoned) {
+                resumeConstructionWithSCV(ent, abandoned);
+              } else {
+                ent.repairingTargetId = null;
               }
             } else {
               ent.isBuildingSCV = false;
@@ -2164,7 +2767,7 @@ function assignBestResource(scv) {
 
         const isStaticDefender = (ent.type === 'turret' || ent.type === 'bunker');
 
-        if ((ent.speed > 0 && ent.type !== 'scv') || isStaticDefender) {
+        if (!ent.isUnderConstruction && ((ent.speed > 0 && ent.type !== 'scv') || isStaticDefender)) {
           let target = ent.forcedTarget;
 
           // =========================
@@ -2204,6 +2807,7 @@ function assignBestResource(scv) {
 
             entities.forEach(candidate => {
               if (candidate === ent || candidate.faction !== opp || candidate.hp <= 0) return;
+              if (candidate.isUnderConstruction) return;
               const dist = Math.hypot(candidate.x - ent.x, candidate.y - ent.y);
               if (dist <= ent.attackRange && dist < nearestDist) {
                 nearest = candidate;
@@ -2220,7 +2824,33 @@ function assignBestResource(scv) {
             }
           }
 
-          if (target && target.hp > 0) {
+          // 건설 중인 구조물은 공격은 받을 수 있지만 반격하지 않는다.
+          if (target && target.isUnderConstruction) {
+            const dist = Math.hypot(target.x - ent.x, target.y - ent.y);
+
+            if (!isStaticDefender && dist > ent.attackRange) {
+              moveUnitToward(ent, target.x, target.y);
+            } else if (dist <= ent.attackRange && ent.cooldown <= 0) {
+              target.buildProgress = Math.max(0, target.buildProgress - Math.max(1, Math.ceil(ent.damage / 3)));
+              target.constructionHP = target.buildProgress;
+              target.hp = Math.max(1, Math.floor((target.buildProgress / Math.max(1, target.buildMaxTime)) * target.maxHp));
+              ent.cooldown = ent.cooldownMax;
+
+              bullets.push({
+                x: ent.x, y: ent.y,
+                tx: target.x, ty: target.y, life: 6
+              });
+
+              playSound('laser', ent.x, ent.y);
+
+              if (target.buildProgress <= 0) {
+                target.hp = 0;
+                target.isUnderConstruction = false;
+                target.constructionHP = 0;
+                playSound('explode', target.x, target.y);
+              }
+            }
+          } else if (target && target.hp > 0) {
             const dist = Math.hypot(target.x - ent.x, target.y - ent.y);
 
             if (!isStaticDefender && dist > ent.attackRange) {
@@ -2263,6 +2893,22 @@ function assignBestResource(scv) {
         }
 
         if (ent.cooldown > 0) ent.cooldown--;
+      });
+
+      // 건설 중인 SCV가 죽으면 건물은 그대로 남지만 공사만 중단된다.
+      entities.forEach(building => {
+        if (!building.isUnderConstruction || !building.builderSCVId) return;
+
+        const builderAlive = entities.some(e =>
+          e.id === building.builderSCVId &&
+          e.faction === building.faction &&
+          e.type === 'scv' &&
+          e.hp > 0
+        );
+
+        if (!builderAlive) {
+          building.builderSCVId = null;
+        }
       });
 
       for (let i = sparks.length - 1; i >= 0; i--) {
@@ -2539,36 +3185,13 @@ function assignBestResource(scv) {
       ctx.strokeRect(vx, vy, vw, vh);
     }
 
-    function gameLoop(now = performance.now()) {
-      const frameStart = performance.now();
-
-      try {
-        if (running) {
-          updateGameLogic();
-          render();
-        } else {
-          // 시작 메뉴/대기 상태에서는 렌더링만 유지.
-          render();
-        }
-      } catch (err) {
-        console.error('Game loop error:', err);
-      }
-
-      const frameCost = performance.now() - frameStart;
-      lastGameTickAt = now;
-
-      if (frameCost > 120) {
-        entities.forEach(e => {
-          if (e.pathRecalcCooldown < 3) e.pathRecalcCooldown = 3;
-        });
-      }
-
+    function gameLoop() {
+      updateGameLogic();
+      render();
       requestAnimationFrame(gameLoop);
     }
 
-    // 게임 루프만 켜고, 실제 게임은 시작 메뉴에서 맵/난이도를 고른 뒤 시작한다.
-    running = false;
-    document.getElementById('start-menu').style.display = 'flex';
+    // 시작 화면에서 맵/난이도를 선택한 뒤 startGame()이 실제 게임을 시작한다.
     gameLoop();
   </script>
 </body>
