@@ -249,10 +249,13 @@
 
       if (terrainCell(tc, tr) === 'water') return [];
 
-      const startKey = `${sc},${sr}`;
-      const targetKey = `${tc},${tr}`;
+      const startKey = sc + ',' + sr;
+      const targetKey = tc + ',' + tr;
 
+      // shift()를 사용하지 않는 인덱스 큐: 대규모 탐색에서도 O(n²) 증가를 피한다.
       const queue = [{ col: sc, row: sr }];
+      let queueIndex = 0;
+
       const visited = new Set([startKey]);
       const parent = new Map();
 
@@ -261,12 +264,16 @@
         [1, 1], [1, -1], [-1, 1], [-1, -1]
       ];
 
+      // 전체 맵은 작지만, 특정 상황에서 탐색이 길어지는 것을 방지한다.
+      const MAX_EXPANSIONS = 1800;
+      let expansions = 0;
       let found = false;
 
-      while (queue.length) {
-        const cur = queue.shift();
-        const curKey = `${cur.col},${cur.row}`;
+      while (queueIndex < queue.length && expansions < MAX_EXPANSIONS) {
+        const cur = queue[queueIndex++];
+        expansions++;
 
+        const curKey = cur.col + ',' + cur.row;
         if (curKey === targetKey) {
           found = true;
           break;
@@ -274,15 +281,14 @@
 
         const cp = cellCenter(cur.col, cur.row);
 
-        for (const [dc, dr] of dirs) {
-          const nc = cur.col + dc;
-          const nr = cur.row + dr;
+        for (let i = 0; i < dirs.length; i++) {
+          const nc = cur.col + dirs[i][0];
+          const nr = cur.row + dirs[i][1];
 
           if (nc < 0 || nr < 0 || nc >= TERRAIN_COLS || nr >= TERRAIN_ROWS) continue;
 
-          const key = `${nc},${nr}`;
+          const key = nc + ',' + nr;
           if (visited.has(key)) continue;
-
           if (terrainCell(nc, nr) === 'water') continue;
 
           const np = cellCenter(nc, nr);
@@ -300,7 +306,10 @@
       let key = targetKey;
 
       while (key !== startKey) {
-        const [c, r] = key.split(',').map(Number);
+        const comma = key.indexOf(',');
+        const c = Number(key.slice(0, comma));
+        const r = Number(key.slice(comma + 1));
+
         path.push(cellCenter(c, r));
         key = parent.get(key);
         if (!key) return [];
@@ -313,7 +322,11 @@
     function moveUnitToward(unit, targetX, targetY) {
       if (!unit || unit.speed <= 0) return true;
 
-      // 공중유닛은 물/언덕의 이동 제한을 받지 않는다.
+      if (unit.pathRecalcCooldown > 0) {
+        unit.pathRecalcCooldown--;
+      }
+
+      // 공중유닛은 지형에 제한되지 않는다.
       if (isAirUnit(unit)) {
         const dx = targetX - unit.x;
         const dy = targetY - unit.y;
@@ -339,9 +352,11 @@
         unit.y = targetY;
         unit.pathQueue = [];
         unit.pathTargetKey = null;
+        unit.pathRecalcCooldown = 0;
         return true;
       }
 
+      // 먼저 한 칸 직접 이동을 시도한다.
       const nx = unit.x + dx / dist * unit.speed;
       const ny = unit.y + dy / dist * unit.speed;
 
@@ -350,17 +365,34 @@
         unit.y = ny;
         unit.pathQueue = [];
         unit.pathTargetKey = null;
+        unit.pathRecalcCooldown = 0;
         return false;
       }
 
-      const targetKey = `${Math.floor(targetX / TERRAIN_TILE)},${Math.floor(targetY / TERRAIN_TILE)}`;
+      const targetKey =
+        Math.floor(targetX / TERRAIN_TILE) + ',' +
+        Math.floor(targetY / TERRAIN_TILE);
 
-      if (!unit.pathQueue || unit.pathTargetKey !== targetKey || unit.pathQueue.length === 0) {
-        unit.pathQueue = findGroundPath(unit.x, unit.y, targetX, targetY);
+      // 같은 목적지의 길은 잠깐 재사용한다.
+      if (unit.pathTargetKey !== targetKey) {
+        unit.pathQueue = [];
         unit.pathTargetKey = targetKey;
+        unit.pathRecalcCooldown = 0;
       }
 
-      if (!unit.pathQueue.length) return true;
+      // 경로가 없거나 너무 오래되어도 매 프레임 계산하지 않는다.
+      if ((!unit.pathQueue || unit.pathQueue.length === 0) &&
+          unit.pathRecalcCooldown <= 0) {
+        unit.pathQueue = findGroundPath(unit.x, unit.y, targetX, targetY);
+        unit.pathTargetKey = targetKey;
+
+        // 길찾기 실패 시 다음 재시도까지 잠시 기다린다.
+        unit.pathRecalcCooldown = unit.pathQueue.length ? 10 : 18;
+      }
+
+      if (!unit.pathQueue || !unit.pathQueue.length) {
+        return false;
+      }
 
       const wp = unit.pathQueue[0];
       const wx = wp.x - unit.x;
@@ -371,420 +403,21 @@
         unit.x = wp.x;
         unit.y = wp.y;
         unit.pathQueue.shift();
-      } else {
+      } else if (wdist > 0) {
         const sx = unit.x + wx / wdist * unit.speed;
         const sy = unit.y + wy / wdist * unit.speed;
 
         if (canGroundStep(unit.x, unit.y, sx, sy)) {
           unit.x = sx;
           unit.y = sy;
+        } else {
+          // 기존 경로가 더 이상 유효하지 않으면 재탐색을 예약한다.
+          unit.pathQueue = [];
+          unit.pathRecalcCooldown = 0;
         }
       }
 
       return false;
-    }
-
-    function drawTerrain() {
-      const col0 = Math.max(0, Math.floor(camX / TERRAIN_TILE) - 1);
-      const col1 = Math.min(TERRAIN_COLS - 1, Math.ceil((camX + VIEW_W) / TERRAIN_TILE) + 1);
-      const row0 = Math.max(0, Math.floor(camY / TERRAIN_TILE) - 1);
-      const row1 = Math.min(TERRAIN_ROWS - 1, Math.ceil((camY + VIEW_H) / TERRAIN_TILE) + 1);
-
-      for (let row = row0; row <= row1; row++) {
-        for (let col = col0; col <= col1; col++) {
-          const type = terrain[terrainIndex(col, row)] || 'grass';
-          const x = col * TERRAIN_TILE - camX;
-          const y = row * TERRAIN_TILE - camY;
-          const n = terrainRand(col, row);
-
-          // 지형 기본 색상.
-          if (type === 'grass') {
-            const shade = Math.floor(3 + n * 7);
-            ctx.fillStyle = `rgb(${28 + shade}, ${82 + shade * 3}, ${42 + shade * 2})`;
-          } else if (type === 'water') {
-            const shade = Math.floor(n * 12);
-            ctx.fillStyle = `rgb(${20 + shade}, ${80 + shade * 2}, ${125 + shade * 3})`;
-          } else if (type === 'hill') {
-            const shade = Math.floor(n * 9);
-            ctx.fillStyle = `rgb(${72 + shade}, ${92 + shade * 2}, ${52 + shade})`;
-          } else {
-            // 경사로는 바위/모래색의 통로.
-            const shade = Math.floor(n * 10);
-            ctx.fillStyle = `rgb(${126 + shade}, ${104 + shade}, ${70 + shade})`;
-          }
-
-          ctx.fillRect(x, y, TERRAIN_TILE + 1, TERRAIN_TILE + 1);
-
-          // 잔디 지표면 디테일.
-          if (type === 'grass') {
-            ctx.strokeStyle = `rgba(120, 170, 95, ${0.10 + n * 0.06})`;
-            ctx.lineWidth = 1;
-            for (let k = 0; k < 4; k++) {
-              const gx = x + 10 + terrainRand(col + k, row + 13) * (TERRAIN_TILE - 20);
-              const gy = y + 12 + terrainRand(col + 19, row + k) * (TERRAIN_TILE - 24);
-              ctx.beginPath();
-              ctx.moveTo(gx, gy + 4);
-              ctx.lineTo(gx + 2, gy);
-              ctx.stroke();
-            }
-          }
-
-          // 물결.
-          if (type === 'water') {
-            ctx.strokeStyle = 'rgba(145, 220, 240, 0.22)';
-            ctx.lineWidth = 1;
-            for (let k = 0; k < 3; k++) {
-              const wy = y + 18 + k * 22 + terrainRand(col + 3, row + k + 30) * 6;
-              ctx.beginPath();
-              ctx.moveTo(x + 10, wy);
-              ctx.quadraticCurveTo(
-                x + TERRAIN_TILE / 2,
-                wy - 5,
-                x + TERRAIN_TILE - 10,
-                wy
-              );
-              ctx.stroke();
-            }
-          }
-
-          // 언덕의 층층이 보이는 지형 윤곽.
-          if (type === 'hill') {
-            ctx.strokeStyle = 'rgba(25, 55, 35, 0.34)';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.ellipse(
-              x + TERRAIN_TILE * 0.52,
-              y + TERRAIN_TILE * 0.54,
-              26 + n * 10,
-              18 + n * 8,
-              0,
-              0,
-              Math.PI * 2
-            );
-            ctx.stroke();
-
-            ctx.strokeStyle = 'rgba(150, 160, 100, 0.18)';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.ellipse(
-              x + TERRAIN_TILE * 0.53,
-              y + TERRAIN_TILE * 0.50,
-              13 + n * 5,
-              9 + n * 4,
-              0,
-              0,
-              Math.PI * 2
-            );
-            ctx.stroke();
-          }
-
-          // 경사로의 진행 방향과 가장자리.
-          if (type === 'ramp') {
-            ctx.strokeStyle = 'rgba(75, 55, 35, 0.45)';
-            ctx.lineWidth = 4;
-            ctx.beginPath();
-            ctx.moveTo(x + 8, y + TERRAIN_TILE - 8);
-            ctx.lineTo(x + TERRAIN_TILE - 8, y + 8);
-            ctx.stroke();
-
-            ctx.strokeStyle = 'rgba(205, 179, 125, 0.55)';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(x + 18, y + TERRAIN_TILE - 5);
-            ctx.lineTo(x + TERRAIN_TILE - 5, y + 18);
-            ctx.stroke();
-          }
-
-          // 지형 타일 사이를 자연스럽게 연결하는 약한 음영.
-          ctx.strokeStyle = 'rgba(0, 0, 0, 0.08)';
-          ctx.lineWidth = 1;
-          ctx.strokeRect(x, y, TERRAIN_TILE, TERRAIN_TILE);
-        }
-      }
-
-      // 강의 가장자리에 얕은 해안선.
-      const shoreCol0 = Math.max(0, Math.floor(camX / TERRAIN_TILE) - 2);
-      const shoreCol1 = Math.min(TERRAIN_COLS - 1, Math.ceil((camX + VIEW_W) / TERRAIN_TILE) + 2);
-      const shoreRow0 = Math.max(0, Math.floor(camY / TERRAIN_TILE) - 2);
-      const shoreRow1 = Math.min(TERRAIN_ROWS - 1, Math.ceil((camY + VIEW_H) / TERRAIN_TILE) + 2);
-
-      ctx.strokeStyle = 'rgba(205, 190, 125, 0.24)';
-      ctx.lineWidth = 2;
-
-      for (let row = shoreRow0; row <= shoreRow1; row++) {
-        for (let col = shoreCol0; col <= shoreCol1; col++) {
-          if (terrain[terrainIndex(col, row)] !== 'water') continue;
-
-          const x = col * TERRAIN_TILE - camX;
-          const y = row * TERRAIN_TILE - camY;
-
-          const neigh = [
-            [col - 1, row], [col + 1, row],
-            [col, row - 1], [col, row + 1]
-          ];
-
-          neigh.forEach(([nc, nr]) => {
-            if (nc < 0 || nr < 0 || nc >= TERRAIN_COLS || nr >= TERRAIN_ROWS) return;
-            if (terrain[terrainIndex(nc, nr)] === 'water') return;
-
-            if (nc < col) {
-              ctx.beginPath();
-              ctx.moveTo(x, y);
-              ctx.lineTo(x, y + TERRAIN_TILE);
-              ctx.stroke();
-            } else if (nc > col) {
-              ctx.beginPath();
-              ctx.moveTo(x + TERRAIN_TILE, y);
-              ctx.lineTo(x + TERRAIN_TILE, y + TERRAIN_TILE);
-              ctx.stroke();
-            } else if (nr < row) {
-              ctx.beginPath();
-              ctx.moveTo(x, y);
-              ctx.lineTo(x + TERRAIN_TILE, y);
-              ctx.stroke();
-            } else if (nr > row) {
-              ctx.beginPath();
-              ctx.moveTo(x, y + TERRAIN_TILE);
-              ctx.lineTo(x + TERRAIN_TILE, y + TERRAIN_TILE);
-              ctx.stroke();
-            }
-          });
-        }
-      }
-    }
-
-
-    // 전장의 안개(Fog of War)
-    const FOG_TILE = 80;
-    const FOG_COLS = Math.ceil(WORLD_W / FOG_TILE);
-    const FOG_ROWS = Math.ceil(WORLD_H / FOG_TILE);
-    let fogVisible = new Uint8Array(FOG_COLS * FOG_ROWS);
-    let fogExplored = new Uint8Array(FOG_COLS * FOG_ROWS);
-
-    function resetFogOfWar() {
-      fogVisible = new Uint8Array(FOG_COLS * FOG_ROWS);
-      fogExplored = new Uint8Array(FOG_COLS * FOG_ROWS);
-    }
-
-    function fogIndex(col, row) {
-      return row * FOG_COLS + col;
-    }
-
-    function markFogCircle(x, y, radius) {
-      const minCol = Math.max(0, Math.floor((x - radius) / FOG_TILE));
-      const maxCol = Math.min(FOG_COLS - 1, Math.floor((x + radius) / FOG_TILE));
-      const minRow = Math.max(0, Math.floor((y - radius) / FOG_TILE));
-      const maxRow = Math.min(FOG_ROWS - 1, Math.floor((y + radius) / FOG_TILE));
-
-      for (let row = minRow; row <= maxRow; row++) {
-        for (let col = minCol; col <= maxCol; col++) {
-          const cx = col * FOG_TILE + FOG_TILE / 2;
-          const cy = row * FOG_TILE + FOG_TILE / 2;
-          if (Math.hypot(cx - x, cy - y) <= radius + FOG_TILE * 0.45) {
-            const idx = fogIndex(col, row);
-            fogVisible[idx] = 1;
-            fogExplored[idx] = 1;
-          }
-        }
-      }
-    }
-
-    function updateFogOfWar() {
-      fogVisible.fill(0);
-
-      entities.forEach(e => {
-        if (e.faction !== 'player') return;
-
-        let vision = 190;
-        if (e.type === 'hq') vision = 420;
-        else if (e.type === 'scv') vision = 220;
-        else if (e.type === 'turret') vision = 300;
-        else if (e.type === 'bunker') vision = 270;
-        else if (e.speed > 0) vision = 240;
-
-        markFogCircle(e.x, e.y, vision);
-      });
-    }
-
-    function isVisibleToPlayer(e) {
-      if (e.faction === 'player') return true;
-      const col = Math.floor(e.x / FOG_TILE);
-      const row = Math.floor(e.y / FOG_TILE);
-      if (col < 0 || row < 0 || col >= FOG_COLS || row >= FOG_ROWS) return false;
-      return fogVisible[fogIndex(col, row)] === 1;
-    }
-
-    const canvas = document.getElementById('game-canvas');
-    const ctx = canvas.getContext('2d');
-
-    const DIFFICULTY_SETTINGS = {
-      EASY:   { name: '쉬움', aiGatherRate: 0.8, buildInterval: 45 },
-      NORMAL: { name: '보통', aiGatherRate: 1.2, buildInterval: 30 },
-      HARD:   { name: '어려움', aiGatherRate: 1.8, buildInterval: 18 }
-    };
-    let currentDifficulty = DIFFICULTY_SETTINGS.NORMAL;
-
-    let resources = { min: 20, gas: 0, enemyMin: 20, enemyGas: 0 };
-    let wave = 1;
-    let waveTimer = 0;
-    let gameTime = 0;
-    let buildMode = null;
-    let gameOver = false;
-
-    const BUILD_UNLOCKS = {
-      barracks: 300,  // 약 5초 후
-      starport: 900   // 약 15초 후
-    };
-
-    let tech = { barracks: false, academy: false, factory: false, armory: false, starport: false, lab: false };
-
-    let entities = [];
-    let bullets = [];
-    let particles = [];
-    let sparks = [];
-    let selectedUnits = [];
-    let keys = {};
-
-    let isDragging = false;
-    let dragStartScreen = { x: 0, y: 0 };
-    let dragEndScreen = { x: 0, y: 0 };
-    let isMinimapDragging = false;
-
-    const UNIT_SPECS = {
-      scv:       { min: 20,  gas: 0,   supply: 1, req: true,         bType: 'hq',       time: 70,  name: 'SCV',       air: false },
-      marine:    { min: 15,  gas: 0,   supply: 1, req: 'barracks',    bType: 'barracks', time: 80,  name: '보병',      air: false },
-      medic:     { min: 25,  gas: 0,   supply: 1, req: 'academy',     bType: 'barracks', time: 100, name: '의무병',    air: false },
-      fighter:   { min: 30,  gas: 0,   supply: 2, req: 'starport',    bType: 'starport', time: 120, name: '전투기',    air: true },
-      scout:     { min: 25,  gas: 0,   supply: 2, req: 'starport',    bType: 'starport', time: 90,  name: '정찰기',    air: true },
-      tank:      { min: 60,  gas: 10,  supply: 3, req: 'factory',     bType: 'factory',  time: 180, name: '전차',      air: false },
-      siegetank: { min: 90,  gas: 30,  supply: 4, req: 'armory',      bType: 'factory',  time: 240, name: '공성전차',  air: false },
-      mech:      { min: 50,  gas: 15,  supply: 3, req: 'factory',     bType: 'factory',  time: 150, name: '메카',      air: false },
-      cruiser:   { min: 70,  gas: 30,  supply: 5, req: 'starport',    bType: 'starport', time: 220, name: '중순양함',  air: true },
-      carrier:   { min: 100, gas: 60,  supply: 6, req: 'starport',    bType: 'starport', time: 320, name: '항공모함',  air: true },
-      titan:     { min: 150, gas: 100, supply: 8, req: 'lab',         bType: 'starport', time: 420, name: '요새함',    air: true }
-    };
-
-    function isAirUnit(unit) {
-      return !!(unit && UNIT_SPECS[unit.type] && UNIT_SPECS[unit.type].air);
-    }
-
-    function isBuildUnlocked(type) {
-      return !BUILD_UNLOCKS[type] || gameTime >= BUILD_UNLOCKS[type];
-    }
-
-    let toastTimer = null;
-    function showToast(msg) {
-      const toast = document.getElementById('toast-msg');
-      toast.innerText = msg;
-      toast.style.opacity = '1';
-      clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => { toast.style.opacity = '0'; }, 2000);
-    }
-
-    function changeDifficulty(val) {
-      currentDifficulty = DIFFICULTY_SETTINGS[val] || DIFFICULTY_SETTINGS.NORMAL;
-      showToast(`난이도가 [${currentDifficulty.name}](으)로 설정되었습니다.`);
-    }
-
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    let audioCtx = null;
-    function initAudio() { if (!audioCtx) audioCtx = new AudioCtx(); }
-
-    function playSound(type, worldX = null, worldY = null) {
-      if (!audioCtx) return;
-
-      // 소리는 카메라 중심을 기준으로 거리 감쇠한다.
-      // 가까우면 정상 볼륨, 멀어질수록 부드럽게 작아지고
-      // 일정 거리 이상 떨어지면 완전히 들리지 않는다.
-      let distanceFactor = 1;
-      if (worldX !== null && worldY !== null) {
-        const cameraCenterX = camX + VIEW_W / 2;
-        const cameraCenterY = camY + VIEW_H / 2;
-        const distance = Math.hypot(worldX - cameraCenterX, worldY - cameraCenterY);
-
-        const fullVolumeDistance = 180;
-        const maxHearDistance = 900;
-
-        if (distance >= maxHearDistance) {
-          distanceFactor = 0;
-        } else if (distance > fullVolumeDistance) {
-          const t = (distance - fullVolumeDistance) /
-                    (maxHearDistance - fullVolumeDistance);
-          distanceFactor = Math.pow(1 - t, 1.8);
-        }
-      }
-
-      if (distanceFactor <= 0) return;
-
-      try {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        const now = audioCtx.currentTime;
-
-        if (type === 'produce') {
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(400, now);
-          osc.frequency.exponentialRampToValueAtTime(800, now + 0.1);
-          gain.gain.setValueAtTime(0.12 * distanceFactor, now);
-          gain.gain.exponentialRampToValueAtTime(0.01 * distanceFactor, now + 0.1);
-          osc.start(now);
-          osc.stop(now + 0.1);
-        } else if (type === 'laser') {
-          osc.type = 'sawtooth';
-          osc.frequency.setValueAtTime(650, now);
-          osc.frequency.exponentialRampToValueAtTime(150, now + 0.07);
-          gain.gain.setValueAtTime(0.06 * distanceFactor, now);
-          gain.gain.exponentialRampToValueAtTime(0.01 * distanceFactor, now + 0.07);
-          osc.start(now);
-          osc.stop(now + 0.07);
-        } else if (type === 'explode') {
-          osc.type = 'square';
-          osc.frequency.setValueAtTime(130, now);
-          osc.frequency.exponentialRampToValueAtTime(25, now + 0.2);
-          gain.gain.setValueAtTime(0.18 * distanceFactor, now);
-          gain.gain.exponentialRampToValueAtTime(0.01 * distanceFactor, now + 0.2);
-          osc.start(now);
-          osc.stop(now + 0.2);
-        } else if (type === 'mine') {
-          osc.type = 'triangle';
-          osc.frequency.setValueAtTime(800, now);
-          osc.frequency.exponentialRampToValueAtTime(1400, now + 0.06);
-          gain.gain.setValueAtTime(0.08 * distanceFactor, now);
-          gain.gain.exponentialRampToValueAtTime(0.01 * distanceFactor, now + 0.06);
-          osc.start(now);
-          osc.stop(now + 0.06);
-        }
-      } catch (e) {}
-    }
-
-    window.addEventListener('keydown', (e) => { keys[e.code] = true; });
-    window.addEventListener('keyup', (e) => { keys[e.code] = false; });
-
-    function handleMinimapClick(mx, my) {
-      const mmW = 160, mmH = 120;
-      const mmX = VIEW_W - mmW - 10;
-      const mmY = VIEW_H - mmH - 10;
-
-      if (mx >= mmX && mx <= mmX + mmW && my >= mmY && my <= mmY + mmH) {
-        const targetX = ((mx - mmX) / mmW) * WORLD_W;
-        const targetY = ((my - mmY) / mmH) * WORLD_H;
-        camX = Math.max(0, Math.min(WORLD_W - VIEW_W, targetX - VIEW_W / 2));
-        camY = Math.max(0, Math.min(WORLD_H - VIEW_H, targetY - VIEW_H / 2));
-        return true;
-      }
-      return false;
-    }
-
-    function getSupplyInfo(faction) {
-      const hqCount = entities.filter(e => e.faction === faction && e.type === 'hq' && !e.isUnderConstruction).length;
-      const depotCount = entities.filter(e => e.faction === faction && e.type === 'depot' && !e.isUnderConstruction).length;
-      const maxSupply = Math.min(200, (hqCount * 10) + (depotCount * 8));
-      const currentSupply = entities
-        .filter(e => e.faction === faction && UNIT_SPECS[e.type])
-        .reduce((sum, u) => sum + (UNIT_SPECS[u.type].supply || 1), 0);
-      return { current: currentSupply, max: maxSupply };
     }
 
     // SCV 최적 자원 분산 알고리즘 (특정 자원에 채굴자가 몰리지 않게 할당)
@@ -1215,7 +848,7 @@ function assignBestResource(scv) {
         productionQueue: [], isBuildingSCV: false, buildingTargetId: null, isManualMove: false, assignedRes: null,
         assignedBaseId: null,
         playerOrder: 'none', playerOrderTarget: null,
-        pathQueue: [], pathTargetKey: null,
+        pathQueue: [], pathTargetKey: null, pathRecalcCooldown: 0,
         amount: 0, maxAmount: 0
       };
 
@@ -2773,9 +2406,29 @@ function assignBestResource(scv) {
       ctx.strokeRect(vx, vy, vw, vh);
     }
 
-    function gameLoop() {
-      updateGameLogic();
-      render();
+    function gameLoop(now = performance.now()) {
+      const frameStart = performance.now();
+
+      try {
+        updateGameLogic();
+        render();
+      } catch (err) {
+        // 일시적인 렌더/AI 오류로 전체 게임 루프가 죽지 않도록 방어.
+        console.error('Game loop error:', err);
+      }
+
+      const frameCost = performance.now() - frameStart;
+      lastGameTickAt = now;
+
+      // 한 프레임이 비정상적으로 오래 걸렸다면 다음 프레임에서 정상적으로 재개한다.
+      // 상태를 정지시키지는 않는다.
+      if (frameCost > 120) {
+        // 과도한 경로 재탐색을 막기 위해 모든 유닛의 재탐색 쿨다운을 잠시 올린다.
+        entities.forEach(e => {
+          if (e.pathRecalcCooldown < 3) e.pathRecalcCooldown = 3;
+        });
+      }
+
       requestAnimationFrame(gameLoop);
     }
 
