@@ -210,6 +210,180 @@
       return terrain[terrainIndex(col, row)] || 'grass';
     }
 
+    function isTerrainBuildableAt(x, y) {
+      const t = getTerrainTypeAt(x, y);
+      return t === 'grass' || t === 'ramp';
+    }
+
+    function canGroundStep(fromX, fromY, toX, toY) {
+      const a = getTerrainTypeAt(fromX, fromY);
+      const b = getTerrainTypeAt(toX, toY);
+
+      if (a === 'water' || b === 'water') return false;
+
+      // 언덕은 같은 고도에서 이동 가능하지만,
+      // 평지와 언덕 사이의 높이 변화는 경사로 타일을 통해서만 허용.
+      if (a === 'grass' && b === 'hill') return false;
+      if (a === 'hill' && b === 'grass') return false;
+
+      return true;
+    }
+
+    function terrainCell(col, row) {
+      if (col < 0 || row < 0 || col >= TERRAIN_COLS || row >= TERRAIN_ROWS) return 'water';
+      return terrain[terrainIndex(col, row)] || 'grass';
+    }
+
+    function cellCenter(col, row) {
+      return {
+        x: col * TERRAIN_TILE + TERRAIN_TILE / 2,
+        y: row * TERRAIN_TILE + TERRAIN_TILE / 2
+      };
+    }
+
+    function findGroundPath(startX, startY, targetX, targetY) {
+      const sc = Math.max(0, Math.min(TERRAIN_COLS - 1, Math.floor(startX / TERRAIN_TILE)));
+      const sr = Math.max(0, Math.min(TERRAIN_ROWS - 1, Math.floor(startY / TERRAIN_TILE)));
+      const tc = Math.max(0, Math.min(TERRAIN_COLS - 1, Math.floor(targetX / TERRAIN_TILE)));
+      const tr = Math.max(0, Math.min(TERRAIN_ROWS - 1, Math.floor(targetY / TERRAIN_TILE)));
+
+      if (terrainCell(tc, tr) === 'water') return [];
+
+      const startKey = `${sc},${sr}`;
+      const targetKey = `${tc},${tr}`;
+
+      const queue = [{ col: sc, row: sr }];
+      const visited = new Set([startKey]);
+      const parent = new Map();
+
+      const dirs = [
+        [1, 0], [-1, 0], [0, 1], [0, -1],
+        [1, 1], [1, -1], [-1, 1], [-1, -1]
+      ];
+
+      let found = false;
+
+      while (queue.length) {
+        const cur = queue.shift();
+        const curKey = `${cur.col},${cur.row}`;
+
+        if (curKey === targetKey) {
+          found = true;
+          break;
+        }
+
+        const cp = cellCenter(cur.col, cur.row);
+
+        for (const [dc, dr] of dirs) {
+          const nc = cur.col + dc;
+          const nr = cur.row + dr;
+
+          if (nc < 0 || nr < 0 || nc >= TERRAIN_COLS || nr >= TERRAIN_ROWS) continue;
+
+          const key = `${nc},${nr}`;
+          if (visited.has(key)) continue;
+
+          if (terrainCell(nc, nr) === 'water') continue;
+
+          const np = cellCenter(nc, nr);
+          if (!canGroundStep(cp.x, cp.y, np.x, np.y)) continue;
+
+          visited.add(key);
+          parent.set(key, curKey);
+          queue.push({ col: nc, row: nr });
+        }
+      }
+
+      if (!found) return [];
+
+      const path = [];
+      let key = targetKey;
+
+      while (key !== startKey) {
+        const [c, r] = key.split(',').map(Number);
+        path.push(cellCenter(c, r));
+        key = parent.get(key);
+        if (!key) return [];
+      }
+
+      path.reverse();
+      return path;
+    }
+
+    function moveUnitToward(unit, targetX, targetY) {
+      if (!unit || unit.speed <= 0) return true;
+
+      // 공중유닛은 물/언덕의 이동 제한을 받지 않는다.
+      if (isAirUnit(unit)) {
+        const dx = targetX - unit.x;
+        const dy = targetY - unit.y;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist <= unit.speed + 1) {
+          unit.x = targetX;
+          unit.y = targetY;
+          return true;
+        }
+
+        unit.x += dx / dist * unit.speed;
+        unit.y += dy / dist * unit.speed;
+        return false;
+      }
+
+      const dx = targetX - unit.x;
+      const dy = targetY - unit.y;
+      const dist = Math.hypot(dx, dy);
+
+      if (dist <= unit.speed + 1) {
+        unit.x = targetX;
+        unit.y = targetY;
+        unit.pathQueue = [];
+        unit.pathTargetKey = null;
+        return true;
+      }
+
+      const nx = unit.x + dx / dist * unit.speed;
+      const ny = unit.y + dy / dist * unit.speed;
+
+      if (canGroundStep(unit.x, unit.y, nx, ny)) {
+        unit.x = nx;
+        unit.y = ny;
+        unit.pathQueue = [];
+        unit.pathTargetKey = null;
+        return false;
+      }
+
+      const targetKey = `${Math.floor(targetX / TERRAIN_TILE)},${Math.floor(targetY / TERRAIN_TILE)}`;
+
+      if (!unit.pathQueue || unit.pathTargetKey !== targetKey || unit.pathQueue.length === 0) {
+        unit.pathQueue = findGroundPath(unit.x, unit.y, targetX, targetY);
+        unit.pathTargetKey = targetKey;
+      }
+
+      if (!unit.pathQueue.length) return true;
+
+      const wp = unit.pathQueue[0];
+      const wx = wp.x - unit.x;
+      const wy = wp.y - unit.y;
+      const wdist = Math.hypot(wx, wy);
+
+      if (wdist <= unit.speed + 1) {
+        unit.x = wp.x;
+        unit.y = wp.y;
+        unit.pathQueue.shift();
+      } else {
+        const sx = unit.x + wx / wdist * unit.speed;
+        const sy = unit.y + wy / wdist * unit.speed;
+
+        if (canGroundStep(unit.x, unit.y, sx, sy)) {
+          unit.x = sx;
+          unit.y = sy;
+        }
+      }
+
+      return false;
+    }
+
     function drawTerrain() {
       const col0 = Math.max(0, Math.floor(camX / TERRAIN_TILE) - 1);
       const col1 = Math.min(TERRAIN_COLS - 1, Math.ceil((camX + VIEW_W) / TERRAIN_TILE) + 1);
@@ -453,8 +627,14 @@
     let resources = { min: 20, gas: 0, enemyMin: 20, enemyGas: 0 };
     let wave = 1;
     let waveTimer = 0;
+    let gameTime = 0;
     let buildMode = null;
     let gameOver = false;
+
+    const BUILD_UNLOCKS = {
+      barracks: 300,  // 약 5초 후
+      starport: 900   // 약 15초 후
+    };
 
     let tech = { barracks: false, academy: false, factory: false, armory: false, starport: false, lab: false };
 
@@ -471,18 +651,26 @@
     let isMinimapDragging = false;
 
     const UNIT_SPECS = {
-      scv:       { min: 20,  gas: 0,   supply: 1, req: true,         bType: 'hq',       time: 70,  name: 'SCV' },
-      marine:    { min: 15,  gas: 0,   supply: 1, req: 'barracks',    bType: 'barracks', time: 80,  name: '보병' },
-      medic:     { min: 25,  gas: 0,   supply: 1, req: 'academy',     bType: 'barracks', time: 100, name: '의무병' },
-      fighter:   { min: 30,  gas: 0,   supply: 2, req: 'barracks',    bType: 'barracks', time: 120, name: '전투기' },
-      scout:     { min: 25,  gas: 0,   supply: 2, req: 'barracks',    bType: 'barracks', time: 90,  name: '정찰기' },
-      tank:      { min: 60,  gas: 10,  supply: 3, req: 'factory',     bType: 'factory',  time: 180, name: '전차' },
-      siegetank: { min: 90,  gas: 30,  supply: 4, req: 'armory',      bType: 'factory',  time: 240, name: '공성전차' },
-      mech:      { min: 50,  gas: 15,  supply: 3, req: 'factory',     bType: 'factory',  time: 150, name: '메카' },
-      cruiser:   { min: 70,  gas: 30,  supply: 5, req: 'starport',    bType: 'starport', time: 220, name: '중순양함' },
-      carrier:   { min: 100, gas: 60,  supply: 6, req: 'starport',    bType: 'starport', time: 320, name: '항공모함' },
-      titan:     { min: 150, gas: 100, supply: 8, req: 'lab',         bType: 'starport', time: 420, name: '거대요새함' }
+      scv:       { min: 20,  gas: 0,   supply: 1, req: true,         bType: 'hq',       time: 70,  name: 'SCV',       air: false },
+      marine:    { min: 15,  gas: 0,   supply: 1, req: 'barracks',    bType: 'barracks', time: 80,  name: '보병',      air: false },
+      medic:     { min: 25,  gas: 0,   supply: 1, req: 'academy',     bType: 'barracks', time: 100, name: '의무병',    air: false },
+      fighter:   { min: 30,  gas: 0,   supply: 2, req: 'starport',    bType: 'starport', time: 120, name: '전투기',    air: true },
+      scout:     { min: 25,  gas: 0,   supply: 2, req: 'starport',    bType: 'starport', time: 90,  name: '정찰기',    air: true },
+      tank:      { min: 60,  gas: 10,  supply: 3, req: 'factory',     bType: 'factory',  time: 180, name: '전차',      air: false },
+      siegetank: { min: 90,  gas: 30,  supply: 4, req: 'armory',      bType: 'factory',  time: 240, name: '공성전차',  air: false },
+      mech:      { min: 50,  gas: 15,  supply: 3, req: 'factory',     bType: 'factory',  time: 150, name: '메카',      air: false },
+      cruiser:   { min: 70,  gas: 30,  supply: 5, req: 'starport',    bType: 'starport', time: 220, name: '중순양함',  air: true },
+      carrier:   { min: 100, gas: 60,  supply: 6, req: 'starport',    bType: 'starport', time: 320, name: '항공모함',  air: true },
+      titan:     { min: 150, gas: 100, supply: 8, req: 'lab',         bType: 'starport', time: 420, name: '요새함',    air: true }
     };
+
+    function isAirUnit(unit) {
+      return !!(unit && UNIT_SPECS[unit.type] && UNIT_SPECS[unit.type].air);
+    }
+
+    function isBuildUnlocked(type) {
+      return !BUILD_UNLOCKS[type] || gameTime >= BUILD_UNLOCKS[type];
+    }
 
     let toastTimer = null;
     function showToast(msg) {
@@ -809,8 +997,15 @@ function assignBestResource(scv) {
 
     function toggleBuild(type) {
       initAudio();
+
+      if (!isBuildUnlocked(type)) {
+        const seconds = Math.max(1, Math.ceil((BUILD_UNLOCKS[type] - gameTime) / 60));
+        showToast(`⏳ ${type === 'barracks' ? '병영' : '우주항'}은 약 ${seconds}초 후 건설할 수 있습니다.`);
+        return;
+      }
+
       resetBuildButtons();
-      if (buildMode === type) { buildMode = null; } 
+      if (buildMode === type) { buildMode = null; }
       else { buildMode = type; document.getElementById(`btn-${type}`).classList.add('active-mode'); }
     }
 
@@ -849,6 +1044,20 @@ function assignBestResource(scv) {
 
       const cost = buildCosts[buildMode];
       if (!cost) {
+        buildMode = null;
+        resetBuildButtons();
+        return;
+      }
+
+      if (!isBuildUnlocked(buildMode)) {
+        showToast('⏳ 아직 해금되지 않은 건물입니다.');
+        buildMode = null;
+        resetBuildButtons();
+        return;
+      }
+
+      if (!isTerrainBuildableAt(wx, wy) && buildMode !== 'refinery') {
+        showToast('⚠️ 바다/언덕에는 건설할 수 없습니다. 평지나 경사로를 선택하세요.');
         buildMode = null;
         resetBuildButtons();
         return;
@@ -931,7 +1140,14 @@ function assignBestResource(scv) {
       }
 
       const reqMet = (c.req === true) || (typeof c.req === 'string' && tech[c.req]);
-      if (!reqMet || resources.min < c.min || resources.gas < c.gas) return;
+      if (!reqMet) return;
+
+      if (c.air && !isBuildUnlocked('starport')) {
+        showToast('⏳ 공중유닛은 초반에 생산할 수 없습니다.');
+        return;
+      }
+
+      if (resources.min < c.min || resources.gas < c.gas) return;
 
       const prodBuilding = entities.find(e => e.faction === 'player' && e.type === c.bType && !e.isUnderConstruction && (!e.productionQueue || e.productionQueue.length < 5));
       if (prodBuilding) {
@@ -970,14 +1186,20 @@ function assignBestResource(scv) {
       const aiStateEl = document.getElementById('ai-state-text');
       if (aiStateEl) aiStateEl.innerText = '🟢 AI';
 
+      ['barracks', 'starport'].forEach(type => {
+        const btn = document.getElementById(`btn-${type}`);
+        if (btn) btn.disabled = !isBuildUnlocked(type);
+      });
+
       Object.keys(UNIT_SPECS).forEach(uType => {
         const btn = document.getElementById(`btn-${uType}`);
         if (btn) {
           const spec = UNIT_SPECS[uType];
           const reqOk = (spec.req === true) || tech[spec.req];
+          const timeOk = !spec.air || isBuildUnlocked('starport');
           const resOk = resources.min >= spec.min && resources.gas >= spec.gas;
           const supplyOk = (pSupply.current + spec.supply <= pSupply.max);
-          btn.disabled = !reqOk || !resOk || !supplyOk;
+          btn.disabled = !reqOk || !resOk || !supplyOk || !timeOk;
         }
       });
     }
@@ -993,6 +1215,7 @@ function assignBestResource(scv) {
         productionQueue: [], isBuildingSCV: false, buildingTargetId: null, isManualMove: false, assignedRes: null,
         assignedBaseId: null,
         playerOrder: 'none', playerOrderTarget: null,
+        pathQueue: [], pathTargetKey: null,
         amount: 0, maxAmount: 0
       };
 
@@ -1028,18 +1251,36 @@ function assignBestResource(scv) {
       return e;
     }
 
+    function findNearestLandPoint(x, y, maxRadius = 240) {
+      if (getTerrainTypeAt(x, y) !== 'water') return { x, y };
+
+      for (let r = TERRAIN_TILE; r <= maxRadius; r += TERRAIN_TILE) {
+        for (let a = 0; a < Math.PI * 2; a += Math.PI / 8) {
+          const px = x + Math.cos(a) * r;
+          const py = y + Math.sin(a) * r;
+
+          if (px < 30 || py < 30 || px > WORLD_W - 30 || py > WORLD_H - 30) continue;
+          if (getTerrainTypeAt(px, py) !== 'water') return { x: px, y: py };
+        }
+      }
+
+      return { x, y };
+    }
+
     function spawnCurvedResources(hqX, hqY, startAngle, endAngle, radius = 140) {
       const count = 7;
       for (let i = 0; i < count; i++) {
         let angle = startAngle + (endAngle - startAngle) * (i / (count - 1));
         let rx = hqX + Math.cos(angle) * radius;
         let ry = hqY + Math.sin(angle) * radius;
-        spawnEntity('resource_min', 'neutral', rx, ry);
+        const p = findNearestLandPoint(rx, ry);
+        spawnEntity('resource_min', 'neutral', p.x, p.y);
       }
       let gasAngle = startAngle - 0.3;
       let gx = hqX + Math.cos(gasAngle) * (radius + 20);
       let gy = hqY + Math.sin(gasAngle) * (radius + 20);
-      spawnEntity('resource_gas', 'neutral', gx, gy);
+      const gp = findNearestLandPoint(gx, gy);
+      spawnEntity('resource_gas', 'neutral', gp.x, gp.y);
     }
 
     function spawnObstacles() {
@@ -1064,7 +1305,7 @@ function assignBestResource(scv) {
       entities = []; bullets = []; particles = []; sparks = []; selectedUnits = [];
       resetFogOfWar();
       resources = { min: 20, gas: 0, enemyMin: 20, enemyGas: 0 };
-      wave = 1; waveTimer = 0; gameOver = false; window.enemyAITimer = 0;
+      wave = 1; waveTimer = 0; gameTime = 0; gameOver = false; window.enemyAITimer = 0;
       enemyAI.initialized = false; enemyAI.phase = 'OPENING'; enemyAI.timer = 0; enemyAI.attackTimer = 0; enemyAI.rallyTimer = 0; enemyAI.attackCount = 0; enemyAI.threatened = false; enemyAI.attackTarget = null; enemyAI.lastAttackSize = 0; enemyAI.rallyPoint = null;
       tech = { barracks: false, academy: false, factory: false, armory: false, starport: false, lab: false };
 
@@ -1463,6 +1704,7 @@ function assignBestResource(scv) {
     }
 
     function enemyBuild(type, minCost, gasCost = 0, time = 500) {
+      if (!isBuildUnlocked(type)) return false;
       if (resources.enemyMin < minCost || resources.enemyGas < gasCost) return false;
 
       const plan = enemyCanStartBuilding(type);
@@ -1628,6 +1870,7 @@ function assignBestResource(scv) {
     function enemyProduce(unitType, maxQueue = 2) {
       const spec = UNIT_SPECS[unitType];
       if (!spec) return false;
+      if (spec.air && !isBuildUnlocked('starport')) return false;
 
       const supply = getSupplyInfo('enemy');
       if (supply.current + spec.supply > supply.max) return false;
@@ -2008,6 +2251,7 @@ function assignBestResource(scv) {
     function updateGameLogic() {
       if (gameOver) return;
 
+      gameTime++;
       updateCamera();
       updateHumanlikeAI();
       updateFogOfWar();
@@ -2048,9 +2292,7 @@ function assignBestResource(scv) {
               const dist = Math.hypot(b.x - ent.x, b.y - ent.y);
 
               if (dist > b.radius + 10) {
-                const angle = Math.atan2(b.y - ent.y, b.x - ent.x);
-                ent.x += Math.cos(angle) * ent.speed;
-                ent.y += Math.sin(angle) * ent.speed;
+                moveUnitToward(ent, b.x, b.y);
               } else {
                 createSparks(ent.x, ent.y);
                 b.buildProgress++;
@@ -2099,9 +2341,7 @@ function assignBestResource(scv) {
                 const dist = Math.hypot(res.x - ent.x, res.y - ent.y);
 
                 if (dist > res.radius + 5) {
-                  const angle = Math.atan2(res.y - ent.y, res.x - ent.x);
-                  ent.x += Math.cos(angle) * ent.speed;
-                  ent.y += Math.sin(angle) * ent.speed;
+                  moveUnitToward(ent, res.x, res.y);
                 } else {
                   ent.mineTimer++;
 
@@ -2109,6 +2349,9 @@ function assignBestResource(scv) {
                     ent.cargo = res.resType;
                     res.amount = Math.max(0, res.amount - 8);
                     ent.mineTimer = 0;
+                    if (res.amount <= 0) {
+                      ent.assignedRes = null;
+                    }
                     playSound('mine', ent.x, ent.y);
                   }
                 }
@@ -2120,9 +2363,7 @@ function assignBestResource(scv) {
                 const dist = Math.hypot(hq.x - ent.x, hq.y - ent.y);
 
                 if (dist > hq.radius + 5) {
-                  const angle = Math.atan2(hq.y - ent.y, hq.x - ent.x);
-                  ent.x += Math.cos(angle) * ent.speed;
-                  ent.y += Math.sin(angle) * ent.speed;
+                  moveUnitToward(ent, hq.x, hq.y);
                 } else {
                   if (ent.cargo === 'min') {
                     if (ent.faction === 'player') resources.min += 10;
@@ -2148,9 +2389,7 @@ function assignBestResource(scv) {
             const dist = Math.hypot(ent.moveTarget.x - ent.x, ent.moveTarget.y - ent.y);
 
             if (dist > 3) {
-              const angle = Math.atan2(ent.moveTarget.y - ent.y, ent.moveTarget.x - ent.x);
-              ent.x += Math.cos(angle) * ent.speed;
-              ent.y += Math.sin(angle) * ent.speed;
+              moveUnitToward(ent, ent.moveTarget.x, ent.moveTarget.y);
             } else {
               ent.moveTarget = null;
             }
@@ -2219,9 +2458,7 @@ function assignBestResource(scv) {
             const dist = Math.hypot(target.x - ent.x, target.y - ent.y);
 
             if (!isStaticDefender && dist > ent.attackRange) {
-              const angle = Math.atan2(target.y - ent.y, target.x - ent.x);
-              ent.x += Math.cos(angle) * ent.speed;
-              ent.y += Math.sin(angle) * ent.speed;
+              moveUnitToward(ent, target.x, target.y);
             } else if (dist <= ent.attackRange && ent.cooldown <= 0) {
               target.hp -= ent.damage;
               ent.cooldown = ent.cooldownMax;
@@ -2248,9 +2485,7 @@ function assignBestResource(scv) {
           } else if (!isStaticDefender && ent.moveTarget) {
             const dist = Math.hypot(ent.moveTarget.x - ent.x, ent.moveTarget.y - ent.y);
             if (dist > 4) {
-              const angle = Math.atan2(ent.moveTarget.y - ent.y, ent.moveTarget.x - ent.x);
-              ent.x += Math.cos(angle) * ent.speed;
-              ent.y += Math.sin(angle) * ent.speed;
+              moveUnitToward(ent, ent.moveTarget.x, ent.moveTarget.y);
             } else {
               ent.moveTarget = null;
 
@@ -2272,7 +2507,10 @@ function assignBestResource(scv) {
         if (p.life <= 0) sparks.splice(i, 1);
       }
 
-      entities = entities.filter(e => e.hp > 0 || e.isUnderConstruction || e.type.startsWith('resource_') || e.type === 'obstacle');
+      entities = entities.filter(e => {
+        if (e.type === 'resource_min' && e.amount <= 0) return false;
+        return e.hp > 0 || e.isUnderConstruction || e.type === 'resource_gas' || e.type === 'obstacle';
+      });
 
       const pMaxHQ = entities.some(e => e.faction === 'player' && e.type === 'hq');
       const eMaxHQ = entities.some(e => e.faction === 'enemy' && e.type === 'hq');
