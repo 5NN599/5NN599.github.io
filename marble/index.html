@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>미니지 - 정통 40칸 부루마블 (이모지 선택 기능 추가)</title>
+  <title>미니지 - 부루마블</title>
   <style>
     :root { --bg: #f8f9fa; --text: #333; --canvas-bg: #0f172a; --border: #e9ecef; --btn-bg: #fff; }
     [data-theme="dark"] { --bg: #0d1117; --text: #c9d1d9; --canvas-bg: #0f172a; --border: #30363d; --btn-bg: #21262d; }
@@ -83,14 +83,11 @@
   </div>
 
   <script>
-    // 선택 가능한 이모지 목록
     const EMOJI_OPTIONS = ["🎈", "🚗", "🚀", "💎", "🦁", "🐱", "🐶", "🦊", "👑", "⚡", "🔥", "🍀", "🤖", "👻", "🦄", "⚽"];
 
-    // 테마 설정
     const savedTheme = localStorage.getItem('minig-theme');
     if (savedTheme && savedTheme !== 'white') document.documentElement.setAttribute('data-theme', savedTheme);
 
-    // 사운드 신디사이저
     let audioCtx = null;
     function initAudio() {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -122,7 +119,6 @@
       } catch(e) {}
     }
 
-    // 원작 40칸 부루마블 맵 데이터
     const TILES = [
       /* 00 */ { name: "출발지", type: "start", icon: "🚩" },
       /* 01 */ { name: "타이베이", type: "city", land: 5, villa: 5, bldg: 15, hotel: 25, rLand: 2, rVilla: 10, rBldg: 30, rHotel: 60, icon: "🇹🇼" },
@@ -640,70 +636,99 @@
     function openSellMenu() { gameState.awaitingAction = 'SELL_SELECT'; updateUI(); }
     function cancelSellMenu() { gameState.awaitingAction = 'CRISIS'; updateUI(); }
 
+    /* --- 복원 및 추가된 유실 함수 --- */
+
     function sellProperty(tileIdx, refundPrice) {
       const p = gameState.players[gameState.turn];
       const state = gameState.board[tileIdx];
+      const tile = TILES[tileIdx];
+
       p.money += refundPrice;
-      state.owner = -1; state.villa = false; state.bldg = false; state.hotel = false;
+      state.owner = -1;
+      state.villa = false;
+      state.bldg = false;
+      state.hotel = false;
+
       playSound('buy');
-      gameState.message = `${p.name}님이 ${TILES[tileIdx].name}을(를) 매각했습니다.`;
-      if (p.money >= 0) gameState.awaitingAction = null; else gameState.awaitingAction = 'CRISIS';
+      gameState.message = `${p.name}님이 ${tile.name}을(를) 매각하여 ${refundPrice}만 원을 확보했습니다.`;
+
+      if (p.money >= 0) {
+        gameState.awaitingAction = null;
+      } else {
+        gameState.awaitingAction = 'CRISIS';
+      }
+
       if (isHost) syncStateToNetwork();
       if (!gameState.awaitingAction) setTimeout(nextTurn, 1000);
     }
 
     function declareBankrupt() {
       const p = gameState.players[gameState.turn];
-      p.bankrupt = true; p.money = 0;
+      p.bankrupt = true;
+      p.money = 0;
+
+      // 소유한 부동산 몰수
       gameState.board.forEach(t => {
-        if (t.owner === gameState.turn) { t.owner = -1; t.villa = false; t.bldg = false; t.hotel = false; }
+        if (t.owner === gameState.turn) {
+          t.owner = -1; t.villa = false; t.bldg = false; t.hotel = false;
+        }
       });
+
+      playSound('rent');
+      gameState.message = `💀 ${p.name}님이 파산하셨습니다!`;
       gameState.awaitingAction = null;
-      gameState.message = `💥 ${p.name}님이 최종 파산하셨습니다.`;
+
       if (isHost) syncStateToNetwork();
       setTimeout(nextTurn, 1400);
     }
 
     function aiDecisionCrisis() {
       const p = gameState.players[gameState.turn];
-      if (p.loan < 300) takeLoan();
-      else {
-        const ownedIdx = gameState.board.findIndex(t => t.owner === gameState.turn);
-        if (ownedIdx !== -1) sellProperty(ownedIdx, 30);
-        else declareBankrupt();
+      if (p.loan < 300) {
+        takeLoan();
+        return;
+      }
+
+      // 소유한 부동산 중 첫 번째 매각
+      const ownIdx = gameState.board.findIndex(t => t.owner === gameState.turn);
+      if (ownIdx !== -1) {
+        const t = TILES[ownIdx];
+        const state = gameState.board[ownIdx];
+        let val = t.land + (state.villa?t.villa:0) + (state.bldg?t.bldg:0) + (state.hotel?t.hotel:0);
+        sellProperty(ownIdx, Math.floor(val * 0.8));
+      } else {
+        declareBankrupt();
       }
     }
 
     function nextTurn() {
+      // 승리 조건 체크 (파산하지 않은 플레이어가 1명인지)
+      const activePlayers = gameState.players.filter(p => !p.bankrupt);
+      if (activePlayers.length <= 1) {
+        gameState.status = 'gameover';
+        gameState.message = `🎉 게임 종료! ${activePlayers[0] ? activePlayers[0].name : '누군가'}의 최종 승리!`;
+        if (isHost) syncStateToNetwork();
+        return;
+      }
+
+      // 더블이 나온 경우 한 번 더 진행
       if (gameState.isDouble) {
         gameState.isDouble = false;
-        gameState.message = `✨ 더블! ${gameState.players[gameState.turn].name}님이 한 번 더 굴립니다!`;
+        gameState.message = `${gameState.players[gameState.turn].name}님의 더블 보너스 턴!`;
         if (isHost) syncStateToNetwork();
         checkTurnAndAI();
         return;
       }
 
-      const active = gameState.players.filter(p => !p.bankrupt);
-      if (active.length <= 1) {
-        const winner = active[0] || gameState.players[0];
-        gameState.status = 'gameover';
-        gameState.message = `🏆 축하합니다! ${winner.name}님이 최종 우승하셨습니다!`;
-        if (isHost) syncStateToNetwork();
-        return;
-      }
-
+      // 다음 플레이어로 턴 넘김
       do {
         gameState.turn = (gameState.turn + 1) % 4;
       } while (gameState.players[gameState.turn].bankrupt);
 
-      const nextP = gameState.players[gameState.turn];
-      gameState.message = `${nextP.name}(${nextP.emoji})의 순서입니다.`;
-
+      gameState.message = `${gameState.players[gameState.turn].name}님의 순서입니다.`;
       if (isHost) syncStateToNetwork();
       checkTurnAndAI();
     }
-
-    updateUI();
   </script>
 </body>
 </html>
