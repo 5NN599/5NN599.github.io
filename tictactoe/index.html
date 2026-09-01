@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>미니지 - 틱택토 (멀티플레이 지원)</title>
+    <title>미니지 - 틱택토 (초간단 P2P 멀티플레이)</title>
+    <!-- PeerJS CDN (자동 신호 중계 라이브러리) -->
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
         :root { --bg: #f8f9fa; --text: #333; --canvas-bg: #fff; --border: #e9ecef; --btn-bg: #fff; --win-color: #ffd43b; }
         [data-theme="beige"] { --bg: #f5ebe0; --text: #4e3d30; --canvas-bg: #eddfd0; --border: #ddcbbb; --btn-bg: #eddfd0; --win-color: #f7d070; }
@@ -24,11 +26,14 @@
         .status-container { font-size: 1.1rem; margin-bottom: 10px; font-weight: bold; min-height: 28px; }
         .ping-badge { font-size: 0.85rem; color: #12b886; font-weight: normal; margin-left: 8px; }
 
-        /* P2P 전용 모달 및 UI */
+        /* P2P 모달 디자인 */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 100; }
-        .modal-content { background: var(--canvas-bg); padding: 25px; border-radius: 16px; border: 2px solid var(--border); text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-width: 480px; width: 90%; }
-        textarea { width: 100%; height: 70px; margin: 6px 0; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-family: monospace; font-size: 0.8rem; resize: none; box-sizing: border-box; }
-        .p2p-step { text-align: left; background: rgba(0,0,0,0.03); padding: 10px; border-radius: 8px; margin-bottom: 10px; font-size: 0.88rem; }
+        .modal-content { background: var(--canvas-bg); padding: 25px; border-radius: 16px; border: 2px solid var(--border); text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-width: 420px; width: 90%; }
+        .p2p-card { background: rgba(0,0,0,0.03); border-radius: 12px; padding: 15px; margin: 12px 0; border: 1px solid var(--border); }
+        .room-code-display { font-size: 2.2rem; font-weight: bold; letter-spacing: 5px; color: #4dadf7; margin: 8px 0; user-select: all; }
+        .code-input { font-size: 1.3rem; text-align: center; letter-spacing: 4px; width: 140px; }
+        .divider { margin: 15px 0; border-top: 1px dashed var(--border); position: relative; }
+        .divider span { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: var(--canvas-bg); padding: 0 10px; font-size: 0.8rem; color: #888; }
     </style>
 </head>
 <body>
@@ -51,7 +56,7 @@
             </select>
         </span>
 
-        <button id="p2pSetupBtn" style="display:none; background:#4dadf7; color:#fff;" onclick="openP2PModal()">📡 연결 설정</button>
+        <button id="p2pSetupBtn" style="display:none; background:#4dadf7; color:#fff;" onclick="openP2PModal()">📡 방 설정</button>
     </div>
 
     <div class="status-container">
@@ -73,27 +78,31 @@
         </div>
     </div>
 
-    <!-- P2P 수동 연결 설정 모달 -->
+    <!-- P2P 자동 연결 모달 -->
     <div class="modal" id="p2pModal">
         <div class="modal-content">
-            <h3 style="margin-top:0;">🌐 1:1 P2P 수동 연결 설정</h3>
+            <h3 style="margin-top:0;">🌐 1:1 온라인 접속</h3>
             
-            <div class="p2p-step">
-                <strong>[방장] 1. 방 만들기</strong><br>
-                <button id="btnCreateRoom" onclick="handleCreateRoom(event)" style="margin-top:5px;">코드 생성 (Host)</button>
+            <!-- 방 생성 (방장) -->
+            <div class="p2p-card">
+                <strong>🏠 방 만들기 (방장)</strong><br>
+                <button id="btnCreateRoom" onclick="handleCreateRoom()" style="margin-top:10px; background:#4dadf7; color:#fff;">방 번호 생성</button>
+                <div id="roomCodeArea" style="display:none;">
+                    <div style="font-size:0.85rem; color:#666; margin-top:8px;">상대방에게 아래 6자리 숫자를 알려주세요</div>
+                    <div id="displayRoomCode" class="room-code-display">------</div>
+                    <div id="hostWaitStatus" style="font-size:0.85rem; color:#e03131;">⏳ 상대방 접속 대기 중...</div>
+                </div>
             </div>
 
-            <div class="p2p-step">
-                <strong>내 연결 코드 (상대에게 공유):</strong>
-                <textarea id="localCode" readonly placeholder="내 코드가 생성되면 여기에 표시됩니다."></textarea>
-                <button onclick="copyLocalCode()">📋 코드 복사</button>
-            </div>
+            <div class="divider"><span>또는</span></div>
 
-            <div class="p2p-step">
-                <strong>상대방 연결 코드 붙여넣기:</strong>
-                <textarea id="remoteCode" placeholder="상대방이 준 코드를 여기에 붙여넣으세요."></textarea>
-                <button id="btnJoinRoom" onclick="handleJoinRoom(event)">2. 방 참가 (Guest)</button>
-                <button id="btnCompleteHost" onclick="handleCompleteHost(event)">3. 참가자 승인 (Host)</button>
+            <!-- 방 참가 (참가자) -->
+            <div class="p2p-card">
+                <strong>🎮 방 참가하기 (참가자)</strong><br>
+                <div style="margin-top:10px;">
+                    <input type="text" id="inputRoomCode" class="code-input" maxlength="6" placeholder="000000">
+                    <button id="btnJoinRoom" onclick="handleJoinRoom()">입장</button>
+                </div>
             </div>
 
             <button onclick="closeModal('p2pModal')">❌ 닫기</button>
@@ -101,168 +110,11 @@
     </div>
 
     <script>
-        class P2PNetworkManager {
-            constructor() {
-                this.rtcConfig = {
-                    iceServers: [
-                        { urls: 'stun:stun.l.google.com:19302' },
-                        { urls: 'stun:stun1.l.google.com:19302' }
-                    ]
-                };
-                this.pc = null;
-                this.dataChannel = null;
-                this.isHost = false;
-                this.pingIntervalTimer = null;
-                this.currentPingMs = 0;
-                this.lastPingSentTime = 0;
-
-                this.onDataReceived = null;
-                this.onNetworkStatus = null;
-                this.onConnectionReady = null;
-            }
-
-            _waitForIceGathering(timeoutMs = 2500) {
-                return new Promise((resolve) => {
-                    if (this.pc.iceGatheringState === 'complete') {
-                        resolve();
-                        return;
-                    }
-                    
-                    const timer = setTimeout(() => {
-                        this.pc.removeEventListener('icegatheringstatechange', checkState);
-                        resolve();
-                    }, timeoutMs);
-
-                    const checkState = () => {
-                        if (this.pc.iceGatheringState === 'complete') {
-                            clearTimeout(timer);
-                            this.pc.removeEventListener('icegatheringstatechange', checkState);
-                            resolve();
-                        }
-                    };
-                    this.pc.addEventListener('icegatheringstatechange', checkState);
-                });
-            }
-
-            async createRoom() {
-                this.disconnect();
-                this.isHost = true;
-                this.pc = new RTCPeerConnection(this.rtcConfig);
-                this.dataChannel = this.pc.createDataChannel('gameChannel', { ordered: true });
-                this._setupDataChannelEvents();
-
-                const offer = await this.pc.createOffer();
-                await this.pc.setLocalDescription(offer);
-                await this._waitForIceGathering();
-
-                return btoa(JSON.stringify(this.pc.localDescription));
-            }
-
-            async joinRoom(hostOfferBase64) {
-                this.disconnect();
-                this.isHost = false;
-                this.pc = new RTCPeerConnection(this.rtcConfig);
-                this.pc.ondatachannel = (event) => {
-                    this.dataChannel = event.channel;
-                    this._setupDataChannelEvents();
-                };
-
-                const offerObj = JSON.parse(atob(hostOfferBase64));
-                await this.pc.setRemoteDescription(new RTCSessionDescription(offerObj));
-
-                const answer = await this.pc.createAnswer();
-                await this.pc.setLocalDescription(answer);
-                await this._waitForIceGathering();
-
-                return btoa(JSON.stringify(this.pc.localDescription));
-            }
-
-            async completeConnection(guestAnswerBase64) {
-                if (!this.pc) throw new Error("먼저 '코드 생성 (Host)' 버튼을 눌러 방을 만들어야 합니다.");
-                const answerObj = JSON.parse(atob(guestAnswerBase64));
-                await this.pc.setRemoteDescription(new RTCSessionDescription(answerObj));
-            }
-
-            _setupDataChannelEvents() {
-                if (!this.dataChannel) return;
-                this.dataChannel.onopen = () => {
-                    this._startHeartbeat();
-                    if (this.onConnectionReady) this.onConnectionReady();
-                };
-                this.dataChannel.onclose = () => this._stopHeartbeat();
-                this.dataChannel.onmessage = (event) => {
-                    try {
-                        const message = JSON.parse(event.data);
-                        this._handleSystemMessage(message);
-                    } catch (err) {}
-                };
-            }
-
-            _handleSystemMessage(msg) {
-                if (msg.type === '_PING_') {
-                    this._sendRaw({ type: '_PONG_', timestamp: msg.timestamp });
-                    return;
-                }
-                if (msg.type === '_PONG_') {
-                    this.currentPingMs = Date.now() - msg.timestamp;
-                    const pingEl = document.getElementById("ping-display");
-                    if (pingEl) pingEl.innerText = `📶 ${this.currentPingMs}ms`;
-                    return;
-                }
-                if (msg.type === '_GAME_DATA_') {
-                    this._validateAndProcessGameData(msg.payload);
-                }
-            }
-
-            _startHeartbeat() {
-                this._stopHeartbeat();
-                this.pingIntervalTimer = setInterval(() => {
-                    if (this.dataChannel && this.dataChannel.readyState === 'open') {
-                        this.lastPingSentTime = Date.now();
-                        this._sendRaw({ type: '_PING_', timestamp: this.lastPingSentTime });
-                    }
-                }, 1000);
-            }
-
-            _stopHeartbeat() {
-                if (this.pingIntervalTimer) {
-                    clearInterval(this.pingIntervalTimer);
-                    this.pingIntervalTimer = null;
-                }
-            }
-
-            _validateAndProcessGameData(data) {
-                if (this.currentPingMs >= 10000) {
-                    if (this.onNetworkStatus) this.onNetworkStatus('LAG_TIMEOUT', '네트워크 응답이 너무 늦어 연결을 중단합니다.');
-                    this.disconnect();
-                    return;
-                }
-                if (this.onDataReceived) this.onDataReceived(data);
-            }
-
-            sendGameData(payload) {
-                this._sendRaw({ type: '_GAME_DATA_', payload: payload });
-            }
-
-            _sendRaw(dataObject) {
-                if (this.dataChannel && this.dataChannel.readyState === 'open') {
-                    this.dataChannel.send(JSON.stringify(dataObject));
-                }
-            }
-
-            disconnect() {
-                this._stopHeartbeat();
-                if (this.dataChannel) this.dataChannel.close();
-                if (this.pc) this.pc.close();
-                this.dataChannel = null;
-                this.pc = null;
-                document.getElementById("ping-display").innerText = "";
-            }
-        }
-
+        // 테마 로드
         const savedTheme = localStorage.getItem('minig-theme');
         if (savedTheme && savedTheme !== 'white') document.documentElement.setAttribute('data-theme', savedTheme);
 
+        // 사운드 효과
         let audioCtx = null;
         function initAudio() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -297,14 +149,19 @@
             } catch(e){}
         }
 
+        // 게임 상태
         const boardElement = document.getElementById("board");
         let board = ["", "", "", "", "", "", "", "", ""];
         let isGameActive = true;
         let currentGameMode = 'ai';
-        
-        const p2p = new P2PNetworkManager();
         let mySymbol = 'O';
         let currentTurn = 'O';
+
+        // PeerJS P2P 통신 관리
+        let peer = null;
+        let conn = null;
+        let pingTimer = null;
+        let currentPing = 0;
 
         const winPatterns = [
             [0, 1, 2], [3, 4, 5], [6, 7, 8],
@@ -321,12 +178,12 @@
             if (currentGameMode === 'ai') {
                 statusEl.innerText = isGameActive ? `당신의 차례입니다 (${currentTurn})` : "게임 종료";
             } else {
-                if (!p2p.dataChannel || p2p.dataChannel.readyState !== 'open') {
+                if (!conn || !conn.open) {
                     statusEl.innerText = "📡 P2P 연결 대기 중...";
                 } else if (currentTurn === mySymbol) {
                     statusEl.innerText = `당신의 차례입니다 (${mySymbol})`;
                 } else {
-                    statusEl.innerText = `상대방의 차례입니다 (${currentTurn})`;
+                    statusEl.innerText = `상대방 차례입니다 (${currentTurn})`;
                 }
             }
         }
@@ -349,8 +206,8 @@
             if (!isGameActive || board[i] !== "") return;
 
             if (currentGameMode === 'p2p') {
-                if (!p2p.dataChannel || p2p.dataChannel.readyState !== 'open') {
-                    alert("상대방과 P2P 연결이 수립되지 않았습니다.");
+                if (!conn || !conn.open) {
+                    alert("상대방과 연결이 완료되지 않았습니다.");
                     return;
                 }
                 if (!isRemote && currentTurn !== mySymbol) return;
@@ -361,7 +218,7 @@
             playSound(symbol === 'O' ? 'hit_o' : 'hit_x');
 
             if (currentGameMode === 'p2p' && !isRemote) {
-                p2p.sendGameData({ action: 'MOVE', index: i });
+                conn.send({ type: 'MOVE', index: i });
             }
 
             const winPattern = getWinningPattern(board, symbol);
@@ -457,20 +314,103 @@
             }
         }
 
-        p2p.onConnectionReady = () => {
-            closeModal('p2pModal');
-            alert("✅ P2P 연결 성공! 게임을 시작합니다.");
-            resetGame(false);
-        };
+        // --- P2P (PeerJS) 자동 처리 핵심 로직 ---
 
-        p2p.onDataReceived = (data) => {
-            if (data.action === 'MOVE') makeMove(data.index, true);
-            else if (data.action === 'RESET') resetGame(false);
-        };
+        function disconnectP2P() {
+            if (pingTimer) clearInterval(pingTimer);
+            if (conn) conn.close();
+            if (peer) peer.destroy();
+            conn = null;
+            peer = null;
+            document.getElementById("ping-display").innerText = "";
+        }
 
-        p2p.onNetworkStatus = (type, message) => {
-            alert(`[네트워크 상태 안내]\n${message}`);
-        };
+        function setupConnectionEvents() {
+            conn.on('open', () => {
+                closeModal('p2pModal');
+                alert("✅ 상대방과 연결되었습니다! 게임을 시작합니다.");
+                resetGame(false);
+                startHeartbeat();
+            });
+
+            conn.on('data', (data) => {
+                if (data.type === 'MOVE') makeMove(data.index, true);
+                else if (data.type === 'RESET') resetGame(false);
+                else if (data.type === 'PING') conn.send({ type: 'PONG', time: data.time });
+                else if (data.type === 'PONG') {
+                    currentPing = Date.now() - data.time;
+                    document.getElementById("ping-display").innerText = `📶 ${currentPing}ms`;
+                }
+            });
+
+            conn.on('close', () => {
+                alert("❌ 상대방과의 연결이 끊어졌습니다.");
+                disconnectP2P();
+                updateStatusUI();
+            });
+        }
+
+        function startHeartbeat() {
+            if (pingTimer) clearInterval(pingTimer);
+            pingTimer = setInterval(() => {
+                if (conn && conn.open) {
+                    conn.send({ type: 'PING', time: Date.now() });
+                }
+            }, 1000);
+        }
+
+        function handleCreateRoom() {
+            disconnectP2P();
+            mySymbol = 'O';
+            const roomCode = Math.floor(100000 + Math.random() * 900000).toString(); // 6자리 방 번호
+            
+            document.getElementById("btnCreateRoom").disabled = true;
+            document.getElementById("btnCreateRoom").innerText = "⏳ 서버 등록 중...";
+
+            peer = new Peer('minig-ttt-' + roomCode);
+
+            peer.on('open', () => {
+                document.getElementById("roomCodeArea").style.display = "block";
+                document.getElementById("displayRoomCode").innerText = roomCode;
+                document.getElementById("btnCreateRoom").style.display = "none";
+            });
+
+            peer.on('connection', (c) => {
+                conn = c;
+                setupConnectionEvents();
+            });
+
+            peer.on('error', (err) => {
+                alert("방 생성 오류: " + err.type + "\n다시 시도해 주세요.");
+                document.getElementById("btnCreateRoom").disabled = false;
+                document.getElementById("btnCreateRoom").innerText = "방 번호 생성";
+            });
+        }
+
+        function handleJoinRoom() {
+            const roomCode = document.getElementById("inputRoomCode").value.trim();
+            if (roomCode.length !== 6) return alert("6자리 방 번호를 올바르게 입력해주세요.");
+
+            disconnectP2P();
+            mySymbol = 'X';
+
+            const btn = document.getElementById("btnJoinRoom");
+            btn.disabled = true;
+            btn.innerText = "⏳ 접속 중...";
+
+            peer = new Peer();
+
+            peer.on('open', () => {
+                conn = peer.connect('minig-ttt-' + roomCode);
+                setupConnectionEvents();
+            });
+
+            peer.on('error', (err) => {
+                alert("방을 찾을 수 없거나 연결 실패했습니다. 방 번호를 확인해 주세요.");
+                btn.disabled = false;
+                btn.innerText = "입장";
+            });
+        }
 
         function switchGameMode() {
             currentGameMode = document.getElementById("gameMode").value;
@@ -484,78 +424,10 @@
             } else {
                 diffBox.style.display = "inline-block";
                 p2pBtn.style.display = "none";
-                p2p.disconnect();
+                disconnectP2P();
                 mySymbol = 'O';
             }
             resetGame();
-        }
-
-        async function handleCreateRoom(e) {
-            const btn = e.target;
-            btn.innerText = "⏳ 생성 중...";
-            btn.disabled = true;
-
-            try {
-                mySymbol = 'O';
-                const code = await p2p.createRoom();
-                document.getElementById('localCode').value = code;
-                alert("방장 코드가 생성되었습니다! 복사하여 참가자에게 공유하세요.");
-            } catch (err) {
-                console.error(err);
-                alert("코드 생성 중 오류가 발생했습니다: " + err.message);
-            } finally {
-                btn.innerText = "코드 생성 (Host)";
-                btn.disabled = false;
-            }
-        }
-
-        async function handleJoinRoom(e) {
-            const btn = e.target;
-            const remoteCode = document.getElementById('remoteCode').value.trim();
-            if (!remoteCode) return alert("방장의 연결 코드를 입력해주세요.");
-
-            btn.innerText = "⏳ 참가 처리 중...";
-            btn.disabled = true;
-
-            try {
-                mySymbol = 'X';
-                const answerCode = await p2p.joinRoom(remoteCode);
-                document.getElementById('localCode').value = answerCode;
-                alert("참가자 코드가 생성되었습니다! 복사하여 방장에게 전달하세요.");
-            } catch (err) {
-                console.error(err);
-                alert("올바르지 않은 코드이거나 형식이 잘못되었습니다.");
-            } finally {
-                btn.innerText = "2. 방 참가 (Guest)";
-                btn.disabled = false;
-            }
-        }
-
-        async function handleCompleteHost(e) {
-            const btn = e.target;
-            const remoteCode = document.getElementById('remoteCode').value.trim();
-            if (!remoteCode) return alert("참가자의 코드를 입력해주세요.");
-
-            btn.innerText = "⏳ 승인 처리 중...";
-            btn.disabled = true;
-
-            try {
-                await p2p.completeConnection(remoteCode);
-            } catch (err) {
-                console.error(err);
-                alert("승인 중 오류가 발생했습니다: " + err.message);
-            } finally {
-                btn.innerText = "3. 참가자 승인 (Host)";
-                btn.disabled = false;
-            }
-        }
-
-        function copyLocalCode() {
-            const el = document.getElementById('localCode');
-            if(!el.value) return alert("복사할 코드가 없습니다.");
-            el.select();
-            navigator.clipboard.writeText(el.value);
-            alert("클립보드에 코드가 복사되었습니다!");
         }
 
         function showEndModal(text, color) {
@@ -574,8 +446,8 @@
             isGameActive = true;
             currentTurn = 'O';
 
-            if (currentGameMode === 'p2p' && sendNetworkSync && p2p.dataChannel && p2p.dataChannel.readyState === 'open') {
-                p2p.sendGameData({ action: 'RESET' });
+            if (currentGameMode === 'p2p' && sendNetworkSync && conn && conn.open) {
+                conn.send({ type: 'RESET' });
             }
 
             updateStatusUI();
