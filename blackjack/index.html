@@ -104,7 +104,7 @@
 
         .ping-badge { font-size: 0.85rem; color: #12b886; font-weight: normal; margin-left: 8px; }
 
-        /* P2P / 결과 안내 모달 */
+        /* P2P 안내 모달 */
         .modal { 
             display: none; 
             position: fixed; 
@@ -203,16 +203,7 @@
         <button onclick="leaveToMain()">🏠 메인으로 가기</button>
     </div>
 
-    <!-- 결과 안내 모달 -->
-    <div class="modal" id="overModal">
-        <div class="modal-content">
-            <h2 id="modalTitle" style="margin-top:0;">라운드 결과</h2>
-            <p id="modalDesc" style="font-size:1.1rem; margin:15px 0;"></p>
-            <button onclick="closeModal('overModal')">확인</button>
-        </div>
-    </div>
-
-    <!-- P2P 자동 연결 모달 -->
+    <!-- P2P 접속 모달 -->
     <div class="modal" id="p2pModal">
         <div class="modal-content">
             <h3 style="margin-top:0;">🌐 1:1 온라인 접속</h3>
@@ -280,10 +271,10 @@
                     osc.start(now); osc.stop(now + 0.08);
                 } else if (type === 'win') {
                     osc.type = 'square';
-                    osc.frequency.setValueAtTime(523.25, now); // C5
-                    osc.frequency.setValueAtTime(659.25, now + 0.08); // E5
-                    osc.frequency.setValueAtTime(783.99, now + 0.16); // G5
-                    osc.frequency.setValueAtTime(1046.5, now + 0.24); // C6
+                    osc.frequency.setValueAtTime(523.25, now);
+                    osc.frequency.setValueAtTime(659.25, now + 0.08);
+                    osc.frequency.setValueAtTime(783.99, now + 0.16);
+                    osc.frequency.setValueAtTime(1046.5, now + 0.24);
                     gain.gain.setValueAtTime(0.05, now);
                     gain.gain.linearRampToValueAtTime(0, now + 0.4);
                     osc.start(now); osc.stop(now + 0.4);
@@ -304,10 +295,10 @@
 
         let chips = 500;
         let currentBet = 0;
-        let p2Bet = 0; // P2P용 참가자 배팅액
+        let p2Bet = 0;
         let p2Chips = 500;
 
-        let gameState = 'BETTING'; // BETTING, PLAYER_TURN, P2_TURN, DEALER_TURN, ROUND_OVER
+        let gameState = 'BETTING'; // BETTING, PLAYER_TURN, DEALER_TURN, ROUND_OVER
         let currentGameMode = 'single'; // single, p2p
         let myRole = 'P1'; // P1(Host), P2(Guest)
         let activeTurn = 'P1';
@@ -327,7 +318,6 @@
         const SUITS = ['♠️', '♥️', '♦️', '♣️'];
         const VALUES = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
 
-        // 덱 생성 및 셔플
         function createDeck() {
             deck = [];
             for (let s of SUITS) {
@@ -346,8 +336,8 @@
             return deck.pop();
         }
 
-        // 카드 점수 계산 알고리즘 (A는 1 또는 11 자동 연산)
         function getHandScore(hand) {
+            if (!hand || hand.length === 0) return 0;
             let score = 0;
             let aces = 0;
             for (let card of hand) {
@@ -367,7 +357,6 @@
             return score;
         }
 
-        // UI 및 버튼 상태 업데이트
         function updateUI() {
             document.getElementById("chips-display").innerText = (currentGameMode === 'p2p' && myRole === 'P2') ? p2Chips : chips;
             document.getElementById("bet-display").innerText = (currentGameMode === 'p2p' && myRole === 'P2') ? p2Bet : currentBet;
@@ -376,8 +365,9 @@
             const btnHit = document.getElementById("btnHit");
             const btnStand = document.getElementById("btnStand");
 
-            if (gameState === 'BETTING') {
-                const myBet = (currentGameMode === 'p2p' && myRole === 'P2') ? p2Bet : currentBet;
+            const myBet = (currentGameMode === 'p2p' && myRole === 'P2') ? p2Bet : currentBet;
+
+            if (gameState === 'BETTING' || gameState === 'ROUND_OVER') {
                 btnDeal.disabled = (myBet <= 0);
                 btnHit.disabled = true;
                 btnStand.disabled = true;
@@ -395,17 +385,20 @@
             renderCanvas();
         }
 
-        // 배팅 제어
+        // 배팅 제어 (누르는 순간 소지금에서 즉시 차감)
         function addBet(amount) {
-            if (gameState !== 'BETTING') return;
+            if (gameState !== 'BETTING' && gameState !== 'ROUND_OVER') return;
+
             if (currentGameMode === 'p2p' && myRole === 'P2') {
-                if (p2Chips >= p2Bet + amount) {
+                if (p2Chips >= amount) {
+                    p2Chips -= amount;
                     p2Bet += amount;
                     playSound('bet');
-                    sendP2PData({ type: 'GUEST_BET', amount: p2Bet });
+                    sendP2PData({ type: 'GUEST_BET', bet: p2Bet, chips: p2Chips });
                 }
             } else {
-                if (chips >= currentBet + amount) {
+                if (chips >= amount) {
+                    chips -= amount;
                     currentBet += amount;
                     playSound('bet');
                 }
@@ -414,11 +407,14 @@
         }
 
         function clearBet() {
-            if (gameState !== 'BETTING') return;
+            if (gameState !== 'BETTING' && gameState !== 'ROUND_OVER') return;
+
             if (currentGameMode === 'p2p' && myRole === 'P2') {
+                p2Chips += p2Bet;
                 p2Bet = 0;
-                sendP2PData({ type: 'GUEST_BET', amount: 0 });
+                sendP2PData({ type: 'GUEST_BET', bet: 0, chips: p2Chips });
             } else {
+                chips += currentBet;
                 currentBet = 0;
             }
             playSound('bet');
@@ -426,7 +422,7 @@
         }
 
         function resetChips() {
-            if (gameState !== 'BETTING') return;
+            if (gameState !== 'BETTING' && gameState !== 'ROUND_OVER') return;
             if (currentGameMode === 'p2p' && myRole === 'P2') {
                 p2Chips = 500;
                 p2Bet = 0;
@@ -434,12 +430,21 @@
                 chips = 500;
                 currentBet = 0;
             }
+            dealerHand = []; p1Hand = []; p2Hand = [];
+            statusMessage = "자금이 리셋되었습니다. 배팅 후 [💵 Deal]을 누르세요.";
+            gameState = 'BETTING';
             updateUI();
         }
 
         // 라운드 시작 (Deal)
         function handleDeal() {
-            if (gameState !== 'BETTING') return;
+            if (gameState !== 'BETTING' && gameState !== 'ROUND_OVER') return;
+
+            const myBet = (currentGameMode === 'p2p' && myRole === 'P2') ? p2Bet : currentBet;
+            if (myBet <= 0) {
+                alert("배팅금을 먼저 설정해주세요!");
+                return;
+            }
 
             if (currentGameMode === 'p2p') {
                 if (myRole === 'P2') {
@@ -464,11 +469,8 @@
             p1Hand = [drawCard(), drawCard()];
             dealerHidden = true;
 
-            chips -= currentBet;
-
             if (currentGameMode === 'p2p') {
                 p2Hand = [drawCard(), drawCard()];
-                p2Chips -= p2Bet;
                 activeTurn = 'P1';
                 statusMessage = "P1 (방장)의 차례입니다.";
             } else {
@@ -480,7 +482,6 @@
             gameState = 'PLAYER_TURN';
             playSound('deal');
 
-            // 블랙잭 즉시 체크
             if (getHandScore(p1Hand) === 21) {
                 if (currentGameMode === 'p2p') activeTurn = 'P2';
                 else processDealerTurn();
@@ -489,7 +490,6 @@
             syncAndRender();
         }
 
-        // Hit 동작
         function handleHit() {
             if (gameState !== 'PLAYER_TURN') return;
 
@@ -520,7 +520,6 @@
             syncAndRender();
         }
 
-        // Stand 동작
         function handleStand() {
             if (gameState !== 'PLAYER_TURN') return;
 
@@ -543,7 +542,6 @@
             syncAndRender();
         }
 
-        // 딜러 AI 및 결과 판정
         function processDealerTurn() {
             gameState = 'DEALER_TURN';
             dealerHidden = false;
@@ -559,74 +557,63 @@
             }, 800);
         }
 
+        // 결과 계산 및 상금 정산
         function evaluateResults() {
             gameState = 'ROUND_OVER';
+            dealerHidden = false;
+
             const dealerScore = getHandScore(dealerHand);
             const p1Score = getHandScore(p1Hand);
 
-            let resultMsg = "";
-
             if (currentGameMode === 'single') {
                 if (p1Score > 21) {
-                    resultMsg = "버스트(Bust)! 21점을 초과하여 패배했습니다.";
+                    statusMessage = "💥 버스트(Bust)! 21점을 초과하여 패배했습니다.";
                     playSound('lose');
                 } else if (dealerScore > 21 || p1Score > dealerScore) {
                     const isBJ = (p1Score === 21 && p1Hand.length === 2);
                     const winAmt = isBJ ? Math.floor(currentBet * 2.5) : currentBet * 2;
-                    chips += winAmt;
-                    resultMsg = isBJ ? `🎉 블랙잭(Blackjack) 승리! (+${winAmt}G)` : `🎉 승리했습니다! (+${winAmt}G)`;
+                    chips += winAmt; // 원금 + 상금 즉시 합산
+                    statusMessage = isBJ ? `🎉 블랙잭 승리! (+${winAmt}G)` : `🎉 승리! (+${winAmt}G 획득)`;
                     playSound('win');
                 } else if (p1Score === dealerScore) {
-                    chips += currentBet;
-                    resultMsg = "🤝 무승부(Push)! 배팅금을 돌려받습니다.";
+                    chips += currentBet; // 무승부시 원금 돌려줌
+                    statusMessage = "🤝 무승부(Push)! 배팅금을 돌려받습니다.";
                     playSound('deal');
                 } else {
-                    resultMsg = "💻 딜러에게 패배했습니다.";
+                    statusMessage = "💻 딜러에게 패배했습니다.";
                     playSound('lose');
                 }
-                currentBet = 0;
-                showEndModal(resultMsg);
+                currentBet = 0; // 다음 판 배팅 준비
             } else {
-                // P2P 결과 연산 (P1과 P2 각자 계산)
                 let p1Res = "", p2Res = "";
                 
-                // P1 연산
+                // P1 정산
                 if (p1Score > 21) { p1Res = "P1 Bust 패"; }
                 else if (dealerScore > 21 || p1Score > dealerScore) {
-                    chips += (p1Score === 21 && p1Hand.length === 2) ? Math.floor(currentBet * 2.5) : currentBet * 2;
-                    p1Res = "P1 승리!";
+                    const winAmt = (p1Score === 21 && p1Hand.length === 2) ? Math.floor(currentBet * 2.5) : currentBet * 2;
+                    chips += winAmt;
+                    p1Res = `P1 승리(+${winAmt}G)`;
                 } else if (p1Score === dealerScore) { chips += currentBet; p1Res = "P1 무승부"; }
                 else { p1Res = "P1 패배"; }
 
-                // P2 연산
+                // P2 정산
                 const p2Score = getHandScore(p2Hand);
                 if (p2Score > 21) { p2Res = "P2 Bust 패"; }
                 else if (dealerScore > 21 || p2Score > dealerScore) {
-                    p2Chips += (p2Score === 21 && p2Hand.length === 2) ? Math.floor(p2Bet * 2.5) : p2Bet * 2;
-                    p2Res = "P2 승리!";
+                    const winAmt = (p2Score === 21 && p2Hand.length === 2) ? Math.floor(p2Bet * 2.5) : p2Bet * 2;
+                    p2Chips += winAmt;
+                    p2Res = `P2 승리(+${winAmt}G)`;
                 } else if (p2Score === dealerScore) { p2Chips += p2Bet; p2Res = "P2 무승부"; }
                 else { p2Res = "P2 패배"; }
 
-                resultMsg = `[라운드 결과]\n${p1Res} | ${p2Res}\n(딜러: ${dealerScore}점)`;
+                statusMessage = `[결과] ${p1Res} | ${p2Res} (다음 배팅을 진행하세요)`;
                 playSound(p1Res.includes('승리') || p2Res.includes('승리') ? 'win' : 'lose');
 
                 currentBet = 0;
                 p2Bet = 0;
-                showEndModal(resultMsg);
             }
 
-            statusMessage = "라운드가 종료되었습니다. 다시 배팅해 주세요.";
             syncAndRender();
-        }
-
-        function prepareNextRound() {
-            gameState = 'BETTING';
-            dealerHand = [];
-            p1Hand = [];
-            p2Hand = [];
-            dealerHidden = true;
-            statusMessage = "배팅액을 정한 후 [💵 Deal]을 누르세요.";
-            updateUI();
         }
 
         function syncAndRender() {
@@ -642,18 +629,16 @@
             updateUI();
         }
 
-        // 캔버스 정밀 그래픽 드로잉
+        // 캔버스 드로잉 (라운드가 끝나도 점수와 카드 패 유지)
         function renderCanvas() {
-            // 녹색 카지노 매트 테이블
             ctx.fillStyle = "#1b5e20";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 테이블 테두리 라인
             ctx.strokeStyle = "#2e7d32";
             ctx.lineWidth = 8;
             ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
 
-            // 중앙 메시지 바
+            // 중앙 안내 문구
             ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
             ctx.fillRect(20, 155, 440, 32);
             ctx.fillStyle = "#ffd54f";
@@ -661,20 +646,19 @@
             ctx.textAlign = "center";
             ctx.fillText(statusMessage, 240, 176);
 
-            // 딜러 영역 (상단)
+            // 딜러 영역 (끝난 경우 실제 점수 표시)
             ctx.fillStyle = "#ffffff";
             ctx.font = "bold 14px sans-serif";
-            const dealerScoreTxt = dealerHidden ? "??" : getHandScore(dealerHand);
+            const dealerScoreTxt = (dealerHand.length === 0) ? 0 : (dealerHidden ? "??" : getHandScore(dealerHand));
             ctx.fillText(`🎩 딜러 (Dealer) - ${dealerScoreTxt}점`, 240, 35);
             drawHandCards(dealerHand, 240, 50, dealerHidden);
 
-            // 플레이어 영역 (하단)
+            // 플레이어 영역
             if (currentGameMode === 'single') {
                 const pScore = getHandScore(p1Hand);
                 ctx.fillText(`👤 플레이어 (Player) - ${pScore}점`, 240, 215);
                 drawHandCards(p1Hand, 240, 230, false);
             } else {
-                // P2P 멀티플레이어 영역
                 const p1Score = getHandScore(p1Hand);
                 ctx.fillText(`👤 P1 (방장) - ${p1Score}점`, 130, 215);
                 drawHandCards(p1Hand, 130, 230, false);
@@ -703,7 +687,6 @@
             ctx.shadowBlur = 6;
             ctx.shadowOffsetY = 3;
 
-            // 카드 바탕
             ctx.fillStyle = isHidden ? "#1a365d" : "#ffffff";
             ctx.strokeStyle = "#cccccc";
             ctx.lineWidth = 1;
@@ -714,7 +697,6 @@
             ctx.restore();
 
             if (isHidden) {
-                // 카드 뒷면 무늬
                 ctx.fillStyle = "#2b6cb0";
                 ctx.beginPath();
                 ctx.roundRect(x + 4, y + 4, 38, 56, 3);
@@ -726,7 +708,6 @@
                 return;
             }
 
-            // 카드 문양 및 숫자
             const isRed = (card.suit === '♥️' || card.suit === '♦️');
             ctx.fillStyle = isRed ? "#e53e3e" : "#1a202c";
             ctx.font = "bold 11px sans-serif";
@@ -741,7 +722,7 @@
             ctx.fillText(card.suit, x + 23, y + 48);
         }
 
-        // --- P2P (PeerJS) 자동 신호 및 네트워크 통신 로직 ---
+        // --- P2P 로직 ---
 
         function handleCreateRoom() {
             disconnectP2P();
@@ -800,7 +781,6 @@
             conn.on('open', () => {
                 closeModal('p2pModal');
                 alert("✅ 1:1 온라인 연결 성공! 게임을 시작합니다.");
-                prepareNextRound();
                 startHeartbeat();
             });
 
@@ -813,7 +793,8 @@
                     statusMessage = s.statusMessage;
                     updateUI();
                 } else if (data.type === 'GUEST_BET') {
-                    p2Bet = data.amount;
+                    p2Bet = data.bet;
+                    p2Chips = data.chips;
                     updateUI();
                 } else if (data.type === 'GUEST_ACTION') {
                     if (data.action === 'HIT') handleHit();
@@ -866,19 +847,14 @@
                 disconnectP2P();
                 myRole = 'P1';
             }
-            prepareNextRound();
-        }
-
-        function showEndModal(msg) {
-            document.getElementById("modalDesc").innerText = msg;
-            document.getElementById("overModal").style.display = "flex";
+            dealerHand = []; p1Hand = []; p2Hand = [];
+            gameState = 'BETTING';
+            statusMessage = "배팅액을 정한 후 [💵 Deal]을 누르세요.";
+            updateUI();
         }
 
         function openP2PModal() { document.getElementById("p2pModal").style.display = "flex"; }
-        function closeModal(id) { 
-            document.getElementById(id).style.display = "none"; 
-            if (id === 'overModal') prepareNextRound();
-        }
+        function closeModal(id) { document.getElementById(id).style.display = "none"; }
 
         function leaveToMain() {
             if (currentGameMode === 'p2p' && conn && conn.open) {
@@ -887,7 +863,6 @@
             location.href = '../';
         }
 
-        // 초기 시작 렌더링
         updateUI();
     </script>
 </body>
