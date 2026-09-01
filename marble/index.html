@@ -3,67 +3,79 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>미니지 - 부루마블</title>
+  <title>미니지 - 정통 40칸 부루마블 (이모지 선택 기능 추가)</title>
   <style>
-    :root { --bg: #f8f9fa; --text: #333; --canvas-bg: #151b22; --border: #e9ecef; --btn-bg: #fff; }
-    [data-theme="dark"] { --bg: #0d1117; --text: #c9d1d9; --canvas-bg: #151b22; --border: #30363d; --btn-bg: #21262d; }
+    :root { --bg: #f8f9fa; --text: #333; --canvas-bg: #0f172a; --border: #e9ecef; --btn-bg: #fff; }
+    [data-theme="dark"] { --bg: #0d1117; --text: #c9d1d9; --canvas-bg: #0f172a; --border: #30363d; --btn-bg: #21262d; }
     [data-theme="beige"] { --bg: #f5ebe0; --text: #4e3d30; --canvas-bg: #1e1b18; --border: #ddcbbb; --btn-bg: #eddfd0; }
-    body { background-color: var(--bg) !important; color: var(--text) !important; text-align: center; font-family: sans-serif; padding-top: 15px; margin: 0; transition: 0.3s; }
-    button { background-color: var(--btn-bg) !important; color: var(--text) !important; border: 1px solid var(--border) !important; padding: 8px 16px; font-size: 0.95rem; border-radius: 8px; cursor: pointer; margin: 4px; font-weight: bold; }
-    #marble-panel { font-size: 1.25rem; font-weight: bold; color: #fcc419; margin-bottom: 5px; }
+    body { background-color: var(--bg) !important; color: var(--text) !important; text-align: center; font-family: sans-serif; padding-top: 10px; margin: 0; transition: 0.3s; }
+    button, select { background-color: var(--btn-bg) !important; color: var(--text) !important; border: 1px solid var(--border) !important; padding: 8px 14px; font-size: 0.85rem; border-radius: 8px; cursor: pointer; margin: 2px; font-weight: bold; }
+    button:hover { filter: brightness(0.95); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    select { padding: 4px 8px; cursor: pointer; font-size: 1.1rem; }
+    #marble-panel { font-size: 1.1rem; font-weight: bold; color: #fcc419; margin-bottom: 8px; min-height: 1.5em; }
 
-    /* 대기실 및 레이아웃 스타일 */
-    .container { max-width: 480px; margin: 0 auto; padding: 10px; }
-    .card { background-color: var(--btn-bg); border: 1px solid var(--border); border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    .player-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 15px 0; }
-    .player-slot { border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: rgba(0,0,0,0.03); font-size: 0.9rem; text-align: left; }
+    .container { max-width: 680px; margin: 0 auto; padding: 8px; }
+    .card { background-color: var(--btn-bg); border: 1px solid var(--border); border-radius: 12px; padding: 15px; margin-bottom: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .player-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
+    .player-slot { border: 1px solid var(--border); border-radius: 8px; padding: 8px; background: rgba(0,0,0,0.03); font-size: 0.85rem; text-align: left; display: flex; align-items: center; justify-content: space-between; }
     .player-slot.active { border-color: #fcc419; background: rgba(252, 196, 25, 0.1); }
-    input[type="text"] { width: 120px; padding: 8px; font-size: 1rem; text-align: center; border-radius: 6px; border: 1px solid var(--border); font-weight: bold; }
-    canvas { background-color: var(--canvas-bg); border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.3); vertical-align: middle; }
-    .status-board { font-size: 0.85rem; margin-top: 10px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
-    .p-status { border: 1px solid var(--border); padding: 6px; border-radius: 6px; }
+    input[type="text"] { width: 120px; padding: 6px; font-size: 0.95rem; text-align: center; border-radius: 6px; border: 1px solid var(--border); font-weight: bold; }
+    
+    /* 40칸 대형 보드 캔버스 */
+    canvas { background-color: var(--canvas-bg); border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.4); max-width: 100%; height: auto; vertical-align: middle; }
+    
+    .status-board { font-size: 0.8rem; margin-top: 10px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+    .p-status { border: 1px solid var(--border); padding: 8px; border-radius: 6px; text-align: left; background: var(--btn-bg); }
+    
+    #action-panel { margin-top: 8px; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--btn-bg); display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; }
+    .btn-action { font-size: 0.85rem; padding: 6px 10px; border-radius: 6px; }
+    .btn-buy { background: #40c057 !important; color: #fff !important; border: none !important; }
+    .btn-danger { background: #fa5252 !important; color: #fff !important; border: none !important; }
+    .btn-warn { background: #fd7e14 !important; color: #fff !important; border: none !important; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>🎲 아케이드 미니 부루마블</h1>
+    <h2 style="margin:5px 0 10px 0;">🎲 정통 40칸 부루마블</h2>
 
-    <!-- 1. 대기실 (로비) 화면 -->
+    <!-- 로비 대기실 -->
     <div id="lobby-panel" class="card">
-      <h3>🎮 멀티플레이어 대기실</h3>
+      <h3>🎮 멀티플레이 대기실</h3>
       <div style="margin-bottom: 12px;">
         방 번호: <input type="text" id="room-code-input" maxlength="4" placeholder="1234">
-        <button id="btn-create-room" onclick="createRoom()">방 만들기</button>
-        <button id="btn-join-room" onclick="joinRoom()">참가하기</button>
+        <button onclick="createRoom()">방 만들기</button>
+        <button onclick="joinRoom()">참가하기</button>
       </div>
 
-      <div id="room-info" style="display:none; font-weight:bold; color:#4dabf7; margin-bottom:10px;">
-        현재 방 번호: <span id="current-room-id"></span> (접속 코드)
+      <div id="room-info" style="display:none; font-weight:bold; color:#4dabf7; margin-bottom:8px;">
+        현재 방 번호: <span id="current-room-id"></span>
       </div>
 
       <div class="player-list">
-        <div id="slot-p1" class="player-slot"><b>P1 (🎈):</b> <span class="st">대기 중...</span></div>
-        <div id="slot-p2" class="player-slot"><b>P2 (🚗):</b> <span class="st">대기 중...</span></div>
-        <div id="slot-p3" class="player-slot"><b>P3 (🚀):</b> <span class="st">대기 중...</span></div>
-        <div id="slot-p4" class="player-slot"><b>P4 (💎):</b> <span class="st">대기 중...</span></div>
+        <div id="slot-p1" class="player-slot"><span><b>P1:</b> <span class="st">대기 중...</span></span></div>
+        <div id="slot-p2" class="player-slot"><span><b>P2:</b> <span class="st">대기 중...</span></span></div>
+        <div id="slot-p3" class="player-slot"><span><b>P3:</b> <span class="st">대기 중...</span></span></div>
+        <div id="slot-p4" class="player-slot"><span><b>P4:</b> <span class="st">대기 중...</span></span></div>
       </div>
 
       <div id="host-controls" style="display:none;">
-        <button onclick="startGame()" style="background:#40c057 !important; color:#fff !important; width:100%; font-size:1.1rem; padding:10px;">🚀 게임 시작 (방장)</button>
+        <button onclick="startGame()" style="background:#40c057 !important; color:#fff !important; width:100%; font-size:1rem; padding:10px;">🚀 게임 시작 (방장)</button>
       </div>
       <div id="guest-waiting" style="display:none; color:#868e96;">
         방장이 게임을 시작하기를 기다리고 있습니다...
       </div>
     </div>
 
-    <!-- 2. 게임 화면 -->
+    <!-- 게임 진행 화면 -->
     <div id="game-panel" style="display:none;">
       <div id="marble-panel">게임 준비 중...</div>
       
-      <canvas id="boardCanvas" width="400" height="400"></canvas>
+      <!-- 660x660 정통 40칸 보드 캔버스 (11x11 격자) -->
+      <canvas id="boardCanvas" width="660" height="660"></canvas>
 
-      <div style="margin-top: 10px;">
-        <button id="btn-roll" onclick="handleRollClick()" style="background:#fcc419 !important; color:#000 !important; font-size:1.1rem;">🎲 주사위 굴리기</button>
+      <div id="action-panel">
+        <button id="btn-roll" onclick="handleRollClick()" style="background:#fcc419 !important; color:#000 !important; font-size:1rem; padding:8px 18px;">🎲 주사위 2개 굴리기</button>
       </div>
 
       <div id="player-status-grid" class="status-board"></div>
@@ -71,222 +83,175 @@
   </div>
 
   <script>
-    // [규칙 1 필수] 메인 사이트 테마 속성 즉시 동기화
-    const savedTheme = localStorage.getItem('minig-theme');
-    if (savedTheme && savedTheme !== 'white') { 
-      document.documentElement.setAttribute('data-theme', savedTheme); 
-    }
+    // 선택 가능한 이모지 목록
+    const EMOJI_OPTIONS = ["🎈", "🚗", "🚀", "💎", "🦁", "🐱", "🐶", "🦊", "👑", "⚡", "🔥", "🍀", "🤖", "👻", "🦄", "⚽"];
 
-    // -------------------------------------------------------------
-    // 8비트 Web Audio API 사운드 신디사이저 믹서
-    // -------------------------------------------------------------
+    // 테마 설정
+    const savedTheme = localStorage.getItem('minig-theme');
+    if (savedTheme && savedTheme !== 'white') document.documentElement.setAttribute('data-theme', savedTheme);
+
+    // 사운드 신디사이저
     let audioCtx = null;
     function initAudio() {
-      if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
-      }
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
     }
 
     function playSound(type) {
       try {
-        initAudio();
-        if (!audioCtx) return;
+        initAudio(); if (!audioCtx) return;
         const now = audioCtx.currentTime;
-
         if (type === 'roll') {
-          // 주사위 굴릴 때 타타탓 소리
-          const osc = audioCtx.createOscillator();
-          const gain = audioCtx.createGain();
-          osc.type = 'square';
-          osc.frequency.setValueAtTime(160 + Math.random() * 120, now);
-          gain.gain.setValueAtTime(0.08, now);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
-          osc.connect(gain);
-          gain.connect(audioCtx.destination);
-          osc.start(now);
-          osc.stop(now + 0.04);
-        } 
-        else if (type === 'buy') {
-          // 건물 매입 '띠링~' 사운드
-          const freqs = [523.25, 659.25, 783.99]; // C5, E5, G5
-          freqs.forEach((f, i) => {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(f, now + i * 0.07);
-            gain.gain.setValueAtTime(0.12, now + i * 0.07);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.07 + 0.15);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start(now + i * 0.07);
-            osc.stop(now + i * 0.07 + 0.15);
+          const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+          osc.type = 'square'; osc.frequency.setValueAtTime(180 + Math.random() * 100, now);
+          gain.gain.setValueAtTime(0.05, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+          osc.connect(gain); gain.connect(audioCtx.destination); osc.start(now); osc.stop(now + 0.04);
+        } else if (type === 'buy') {
+          [523, 659, 783, 1046].forEach((f, i) => {
+            const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+            osc.type = 'triangle'; osc.frequency.setValueAtTime(f, now + i * 0.05);
+            gain.gain.setValueAtTime(0.08, now + i * 0.05); gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.05 + 0.1);
+            osc.connect(gain); gain.connect(audioCtx.destination); osc.start(now + i * 0.05); osc.stop(now + i * 0.05 + 0.1);
           });
-        } 
-        else if (type === 'rent') {
-          // 통행료 차감 웅장한 사운드
-          const osc = audioCtx.createOscillator();
-          const gain = audioCtx.createGain();
-          osc.type = 'sawtooth';
-          osc.frequency.setValueAtTime(220, now);
-          osc.frequency.exponentialRampToValueAtTime(55, now + 0.35);
-          gain.gain.setValueAtTime(0.2, now);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
-          osc.connect(gain);
-          gain.connect(audioCtx.destination);
-          osc.start(now);
-          osc.stop(now + 0.35);
-        }
-        else if (type === 'win') {
-          // 승리 효과음
-          [440, 554.37, 659.25, 880].forEach((f, i) => {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(f, now + i * 0.1);
-            gain.gain.setValueAtTime(0.15, now + i * 0.1);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.1 + 0.2);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start(now + i * 0.1);
-            osc.stop(now + i * 0.1 + 0.2);
-          });
+        } else if (type === 'rent') {
+          const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+          osc.type = 'sawtooth'; osc.frequency.setValueAtTime(220, now); osc.frequency.exponentialRampToValueAtTime(60, now + 0.25);
+          gain.gain.setValueAtTime(0.12, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+          osc.connect(gain); gain.connect(audioCtx.destination); osc.start(now); osc.stop(now + 0.25);
         }
       } catch(e) {}
     }
 
-    // -------------------------------------------------------------
-    // 게임 데이터 및 맵 좌표계 (4x4 외곽 12개 격자 칸)
-    // -------------------------------------------------------------
+    // 원작 40칸 부루마블 맵 데이터
     const TILES = [
-      { name: "출발지", type: "start", price: 0, rent: 0, icon: "🚩" },
-      { name: "서울", type: "city", price: 50, rent: 25, icon: "🏙️" },
-      { name: "도쿄", type: "city", price: 60, rent: 30, icon: "🗼" },
-      { name: "무인도", type: "island", price: 0, rent: 0, icon: "🏝️" },
-      { name: "파리", type: "city", price: 80, rent: 40, icon: "🥐" },
-      { name: "런던", type: "city", price: 100, rent: 50, icon: "🏰" },
-      { name: "우주선", type: "space", price: 0, rent: 0, icon: "🛸" },
-      { name: "뉴욕", type: "city", price: 120, rent: 60, icon: "🗽" },
-      { name: "시드니", type: "city", price: 140, rent: 70, icon: "🦘" },
-      { name: "황금열쇠", type: "key", price: 0, rent: 0, icon: "🔑" },
-      { name: "로마", type: "city", price: 160, rent: 80, icon: "🏛️" },
-      { name: "베이징", type: "city", price: 180, rent: 90, icon: "🐼" }
+      /* 00 */ { name: "출발지", type: "start", icon: "🚩" },
+      /* 01 */ { name: "타이베이", type: "city", land: 5, villa: 5, bldg: 15, hotel: 25, rLand: 2, rVilla: 10, rBldg: 30, rHotel: 60, icon: "🇹🇼" },
+      /* 02 */ { name: "홍콩", type: "city", land: 8, villa: 5, bldg: 15, hotel: 25, rLand: 4, rVilla: 12, rBldg: 35, rHotel: 70, icon: "🇭🇰" },
+      /* 03 */ { name: "마닐라", type: "city", land: 8, villa: 5, bldg: 15, hotel: 25, rLand: 4, rVilla: 12, rBldg: 35, rHotel: 70, icon: "🇵🇭" },
+      /* 04 */ { name: "싱가포르", type: "city", land: 10, villa: 10, bldg: 30, hotel: 50, rLand: 6, rVilla: 18, rBldg: 50, rHotel: 90, icon: "🇸🇬" },
+      /* 05 */ { name: "황금열쇠", type: "key", icon: "🔑" },
+      /* 06 */ { name: "카이로", type: "city", land: 14, villa: 10, bldg: 30, hotel: 50, rLand: 10, rVilla: 30, rBldg: 90, rHotel: 160, icon: "🇪🇬" },
+      /* 07 */ { name: "이스탄불", type: "city", land: 16, villa: 10, bldg: 30, hotel: 50, rLand: 12, rVilla: 35, rBldg: 100, rHotel: 180, icon: "🇹🇷" },
+      /* 08 */ { name: "아테네", type: "city", land: 16, villa: 10, bldg: 30, hotel: 50, rLand: 12, rVilla: 35, rBldg: 100, rHotel: 180, icon: "🇬🇷" },
+      /* 09 */ { name: "복지기금", type: "tax", icon: "🏛️" },
+      /* 10 */ { name: "무인도", type: "island", icon: "🏝️" },
+      /* 11 */ { name: "코펜하겐", type: "city", land: 20, villa: 15, bldg: 45, hotel: 75, rLand: 16, rVilla: 50, rBldg: 130, rHotel: 240, icon: "🇩🇰" },
+      /* 12 */ { name: "스톡홀름", type: "city", land: 22, villa: 15, bldg: 45, hotel: 75, rLand: 18, rVilla: 55, rBldg: 140, rHotel: 260, icon: "🇸🇪" },
+      /* 13 */ { name: "베른", type: "city", land: 22, villa: 15, bldg: 45, hotel: 75, rLand: 18, rVilla: 55, rBldg: 140, rHotel: 260, icon: "🇨🇭" },
+      /* 14 */ { name: "베를린", type: "city", land: 24, villa: 15, bldg: 45, hotel: 75, rLand: 20, rVilla: 60, rBldg: 150, rHotel: 280, icon: "🇩🇪" },
+      /* 15 */ { name: "황금열쇠", type: "key", icon: "🔑" },
+      /* 16 */ { name: "오타와", type: "city", land: 26, villa: 20, bldg: 60, hotel: 100, rLand: 22, rVilla: 70, rBldg: 170, rHotel: 310, icon: "🇨🇦" },
+      /* 17 */ { name: "부에노스", type: "city", land: 28, villa: 20, bldg: 60, hotel: 100, rLand: 24, rVilla: 75, rBldg: 180, rHotel: 330, icon: "🇦🇷" },
+      /* 18 */ { name: "상파울루", type: "city", land: 28, villa: 20, bldg: 60, hotel: 100, rLand: 24, rVilla: 75, rBldg: 180, rHotel: 330, icon: "🇧🇷" },
+      /* 19 */ { name: "시드니", type: "city", land: 30, villa: 20, bldg: 60, hotel: 100, rLand: 26, rVilla: 80, rBldg: 200, rHotel: 360, icon: "🇦🇺" },
+      /* 20 */ { name: "기금수령", type: "fund_get", icon: "💰" },
+      /* 21 */ { name: "하와이", type: "city", land: 32, villa: 25, bldg: 75, hotel: 125, rLand: 28, rVilla: 90, rBldg: 220, rHotel: 400, icon: "🌺" },
+      /* 22 */ { name: "리스본", type: "city", land: 32, villa: 25, bldg: 75, hotel: 125, rLand: 28, rVilla: 90, rBldg: 220, rHotel: 400, icon: "🇵🇹" },
+      /* 23 */ { name: "마드리드", type: "city", land: 35, villa: 25, bldg: 75, hotel: 125, rLand: 30, rVilla: 100, rBldg: 240, rHotel: 430, icon: "🇪🇸" },
+      /* 24 */ { name: "도쿄", type: "city", land: 35, villa: 25, bldg: 75, hotel: 125, rLand: 30, rVilla: 100, rBldg: 240, rHotel: 430, icon: "🇯🇵" },
+      /* 25 */ { name: "황금열쇠", type: "key", icon: "🔑" },
+      /* 26 */ { name: "파리", type: "city", land: 40, villa: 30, bldg: 90, hotel: 150, rLand: 35, rVilla: 110, rBldg: 270, rHotel: 500, icon: "🇫🇷" },
+      /* 27 */ { name: "로마", type: "city", land: 40, villa: 30, bldg: 90, hotel: 150, rLand: 35, rVilla: 110, rBldg: 270, rHotel: 500, icon: "🇮🇹" },
+      /* 28 */ { name: "런던", type: "city", land: 45, villa: 30, bldg: 90, hotel: 150, rLand: 40, rVilla: 120, rBldg: 300, rHotel: 550, icon: "🇬🇧" },
+      /* 29 */ { name: "뉴욕", type: "city", land: 45, villa: 30, bldg: 90, hotel: 150, rLand: 40, rVilla: 120, rBldg: 300, rHotel: 550, icon: "🇺🇸" },
+      /* 30 */ { name: "우주여행", type: "space", icon: "🚀" },
+      /* 31 */ { name: "콩코드", type: "city", land: 50, villa: 35, bldg: 100, hotel: 180, rLand: 45, rVilla: 130, rBldg: 330, rHotel: 600, icon: "✈️" },
+      /* 32 */ { name: "모스크바", type: "city", land: 55, villa: 35, bldg: 100, hotel: 180, rLand: 50, rVilla: 140, rBldg: 360, rHotel: 650, icon: "🇷🇺" },
+      /* 33 */ { name: "태평양호", type: "city", land: 60, villa: 35, bldg: 100, hotel: 180, rLand: 55, rVilla: 150, rBldg: 390, rHotel: 700, icon: "🚢" },
+      /* 34 */ { name: "컬럼비아", type: "city", land: 65, villa: 40, bldg: 120, hotel: 200, rLand: 60, rVilla: 170, rBldg: 430, rHotel: 800, icon: "🛰️" },
+      /* 35 */ { name: "황금열쇠", type: "key", icon: "🔑" },
+      /* 36 */ { name: "제네바", type: "city", land: 70, villa: 40, bldg: 120, hotel: 200, rLand: 65, rVilla: 180, rBldg: 460, rHotel: 850, icon: "🇨🇭" },
+      /* 37 */ { name: "몬트리올", type: "city", land: 75, villa: 40, bldg: 120, hotel: 200, rLand: 70, rVilla: 190, rBldg: 490, rHotel: 900, icon: "🇨🇦" },
+      /* 38 */ { name: "황금열쇠", type: "key", icon: "🔑" },
+      /* 39 */ { name: "서울", type: "city", land: 100, villa: 50, bldg: 150, hotel: 250, rLand: 100, rVilla: 300, rBldg: 700, rHotel: 1200, icon: "🇰🇷" }
     ];
 
-    // 12개 칸의 캔버스 (x, y) coordinates (각 격자 100x100)
-    const TILE_POS = [
-      { x: 0, y: 0 },     // 0: 출발지 (좌상단)
-      { x: 100, y: 0 },   // 1: 서울
-      { x: 200, y: 0 },   // 2: 도쿄
-      { x: 300, y: 0 },   // 3: 무인도 (우상단)
-      { x: 300, y: 100 }, // 4: 파리
-      { x: 300, y: 200 }, // 5: 런던
-      { x: 300, y: 300 }, // 6: 우주정거장 (우하단)
-      { x: 200, y: 300 }, // 7: 뉴욕
-      { x: 100, y: 300 }, // 8: 시드니
-      { x: 0, y: 300 },   // 9: 황금열쇠 (좌하단)
-      { x: 0, y: 200 },   // 10: 로마
-      { x: 0, y: 100 }    // 11: 베이징
-    ];
+    const TILE_POS = [];
+    const S = 60;
+    for (let i = 10; i >= 0; i--) TILE_POS.push({ x: i * S, y: 10 * S });
+    for (let j = 9; j >= 1; j--) TILE_POS.push({ x: 0, y: j * S });
+    for (let i = 0; i <= 10; i++) TILE_POS.push({ x: i * S, y: 0 });
+    for (let j = 1; j <= 9; j++) TILE_POS.push({ x: 10 * S, y: j * S });
 
     const PLAYER_CONFIG = [
-      { name: "P1", emoji: "🎈", color: "#ff6b6b" },
-      { name: "P2", emoji: "🚗", color: "#4dabf7" },
-      { name: "P3", emoji: "🚀", color: "#51cf66" },
-      { name: "P4", emoji: "💎", color: "#fcc419" }
+      { name: "P1", color: "#ff6b6b" },
+      { name: "P2", color: "#4dabf7" },
+      { name: "P3", color: "#51cf66" },
+      { name: "P4", color: "#fcc419" }
     ];
 
-    // -------------------------------------------------------------
-    // 멀티플레이어 네트워크 & 방 상태 모델
-    // -------------------------------------------------------------
     let roomCode = "";
-    let localPlayerIndex = -1; // 0: P1(Host), 1: P2, 2: P3, 3: P4
+    let localPlayerIndex = -1;
     let isHost = false;
     let broadcastChannel = null;
 
     let gameState = {
-      status: "lobby", // "lobby", "playing", "gameover"
+      status: "lobby",
       roomCode: "",
-      turn: 0, // 0..3
-      diceValue: 1,
+      turn: 0,
+      dice1: 1,
+      dice2: 1,
+      isDouble: false,
+      doubleCount: 0,
       isRolling: false,
+      awaitingAction: null,
+      socialFundPool: 0,
       message: "방장이 게임을 시작하기를 기다립니다.",
       players: [
-        { id: null, name: "P1", emoji: "🎈", isAI: true, money: 300, pos: 0, islandTurns: 0, bankrupt: false },
-        { id: null, name: "P2", emoji: "🚗", isAI: true, money: 300, pos: 0, islandTurns: 0, bankrupt: false },
-        { id: null, name: "P3", emoji: "🚀", isAI: true, money: 300, pos: 0, islandTurns: 0, bankrupt: false },
-        { id: null, name: "P4", emoji: "💎", isAI: true, money: 300, pos: 0, islandTurns: 0, bankrupt: false }
+        { id: null, name: "P1", emoji: "🎈", isAI: true, money: 300, loan: 0, pos: 0, islandTurns: 0, bankrupt: false },
+        { id: null, name: "P2", emoji: "🚗", isAI: true, money: 300, loan: 0, pos: 0, islandTurns: 0, bankrupt: false },
+        { id: null, name: "P3", emoji: "🚀", isAI: true, money: 300, loan: 0, pos: 0, islandTurns: 0, bankrupt: false },
+        { id: null, name: "P4", emoji: "💎", isAI: true, money: 300, loan: 0, pos: 0, islandTurns: 0, bankrupt: false }
       ],
-      board: TILES.map(t => ({ owner: -1, hasBuilding: false }))
+      board: TILES.map(() => ({ owner: -1, villa: false, bldg: false, hotel: false }))
     };
 
     const myClientId = 'usr_' + Math.random().toString(36).substr(2, 6);
 
-    // BroadcastChannel 및 LocalStorage 이중 동기화 수신기
     function setupNetwork(code) {
       if (broadcastChannel) broadcastChannel.close();
       roomCode = code;
       broadcastChannel = new BroadcastChannel('minig_marbles_' + roomCode);
-
-      broadcastChannel.onmessage = (e) => {
-        handleNetworkData(e.data);
-      };
-
-      window.addEventListener('storage', (e) => {
-        if (e.key === 'minig_state_' + roomCode && e.newValue) {
-          try {
-            handleNetworkData(JSON.parse(e.newValue));
-          } catch(err){}
-        }
-      });
+      broadcastChannel.onmessage = (e) => handleNetworkData(e.data);
     }
 
     function sendNetworkData(data) {
-      if (broadcastChannel) {
-        broadcastChannel.postMessage(data);
-      }
+      if (broadcastChannel) broadcastChannel.postMessage(data);
       localStorage.setItem('minig_state_' + roomCode, JSON.stringify(data));
     }
 
     function handleNetworkData(data) {
       if (!data) return;
-      
-      // 방 참가 요청 수신 (방장이 처리)
       if (data.type === 'JOIN_REQUEST' && isHost) {
-        let assignedSlot = -1;
+        let slot = -1;
         for (let i = 0; i < 4; i++) {
-          if (gameState.players[i].id === data.clientId) {
-            assignedSlot = i; break;
-          }
+          if (gameState.players[i].id === data.clientId) { slot = i; break; }
         }
-        if (assignedSlot === -1) {
+        if (slot === -1) {
           for (let i = 1; i < 4; i++) {
             if (gameState.players[i].isAI) {
-              assignedSlot = i;
-              gameState.players[i].isAI = false;
-              gameState.players[i].id = data.clientId;
-              break;
+              slot = i; gameState.players[i].isAI = false; gameState.players[i].id = data.clientId; break;
             }
           }
         }
-        if (assignedSlot !== -1) {
-          sendNetworkData({ type: 'JOIN_RESPONSE', targetId: data.clientId, slotIndex: assignedSlot });
+        if (slot !== -1) {
+          sendNetworkData({ type: 'JOIN_RESPONSE', targetId: data.clientId, slotIndex: slot });
           syncStateToNetwork();
         }
       }
-
       if (data.type === 'JOIN_RESPONSE' && data.targetId === myClientId) {
         localPlayerIndex = data.slotIndex;
       }
-
-      if (data.type === 'STATE_UPDATE') {
-        gameState = data.state;
-        updateUI();
-        if (gameState.status === 'playing') {
-          checkTurnAndAI();
+      if (data.type === 'CHANGE_EMOJI' && isHost) {
+        const slot = gameState.players.findIndex(p => p.id === data.clientId);
+        if (slot !== -1) {
+          gameState.players[slot].emoji = data.emoji;
+          syncStateToNetwork();
         }
+      }
+      if (data.type === 'STATE_UPDATE') {
+        gameState = data.state; updateUI();
+        if (gameState.status === 'playing') checkTurnAndAI();
       }
     }
 
@@ -295,28 +260,29 @@
       updateUI();
     }
 
-    // -------------------------------------------------------------
-    // 방 생성 & 참가 시스템
-    // -------------------------------------------------------------
+    function changeMyEmoji(newEmoji) {
+      if (localPlayerIndex === -1) return;
+      if (isHost) {
+        gameState.players[localPlayerIndex].emoji = newEmoji;
+        syncStateToNetwork();
+      } else {
+        sendNetworkData({ type: 'CHANGE_EMOJI', clientId: myClientId, emoji: newEmoji });
+      }
+    }
+
     function createRoom() {
       initAudio();
       const input = document.getElementById('room-code-input').value.trim();
       roomCode = input || Math.floor(1000 + Math.random() * 9000).toString();
       document.getElementById('room-code-input').value = roomCode;
-
-      isHost = true;
-      localPlayerIndex = 0;
+      isHost = true; localPlayerIndex = 0;
       gameState.roomCode = roomCode;
-      gameState.players[0].id = myClientId;
-      gameState.players[0].isAI = false;
-
+      gameState.players[0].id = myClientId; gameState.players[0].isAI = false;
       setupNetwork(roomCode);
-      
       document.getElementById('room-info').style.display = 'block';
       document.getElementById('current-room-id').innerText = roomCode;
       document.getElementById('host-controls').style.display = 'block';
       document.getElementById('guest-waiting').style.display = 'none';
-
       syncStateToNetwork();
     }
 
@@ -324,50 +290,45 @@
       initAudio();
       const input = document.getElementById('room-code-input').value.trim();
       if (!input) { alert("방 번호를 입력해주세요!"); return; }
-
-      roomCode = input;
-      isHost = false;
+      roomCode = input; isHost = false;
       setupNetwork(roomCode);
-
       document.getElementById('room-info').style.display = 'block';
       document.getElementById('current-room-id').innerText = roomCode;
       document.getElementById('host-controls').style.display = 'none';
       document.getElementById('guest-waiting').style.display = 'block';
-
-      // 방장에게 참가 요청
       sendNetworkData({ type: 'JOIN_REQUEST', clientId: myClientId });
     }
 
     function startGame() {
       if (!isHost) return;
-      gameState.status = "playing";
-      gameState.turn = 0;
-      gameState.message = "게임 시작! P1(🎈)의 순서입니다.";
-      syncStateToNetwork();
-      checkTurnAndAI();
+      gameState.status = "playing"; gameState.turn = 0;
+      gameState.message = `게임 시작! P1(${gameState.players[0].emoji})의 순서입니다.`;
+      syncStateToNetwork(); checkTurnAndAI();
     }
 
-    // -------------------------------------------------------------
-    // 게임 메인 엔진 및 UI 렌더링
-    // -------------------------------------------------------------
     const canvas = document.getElementById('boardCanvas');
     const ctx = canvas.getContext('2d');
 
     function updateUI() {
-      // 대기실 UI 세팅
       for (let i = 0; i < 4; i++) {
         const slotEl = document.getElementById(`slot-p${i+1}`);
         const p = gameState.players[i];
         let statusText = "🤖 AI 컴퓨터";
-        if (!p.isAI) {
-          statusText = (i === localPlayerIndex) ? "👤 나 (접속됨)" : "👤 플레이어 참가됨";
+        if (!p.isAI) statusText = (i === localPlayerIndex) ? "👤 나 (접속됨)" : "👤 플레이어";
+        
+        let emojiPickerHtml = "";
+        if (i === localPlayerIndex && gameState.status === 'lobby') {
+          emojiPickerHtml = `<select onchange="changeMyEmoji(this.value)">
+            ${EMOJI_OPTIONS.map(e => `<option value="${e}" ${e === p.emoji ? 'selected' : ''}>${e}</option>`).join('')}
+          </select>`;
+        } else {
+          emojiPickerHtml = `<span style="font-size:1.2rem; margin-left:4px;">${p.emoji}</span>`;
         }
-        slotEl.querySelector('.st').innerText = statusText;
-        if (i === localPlayerIndex) slotEl.classList.add('active');
-        else slotEl.classList.remove('active');
+
+        slotEl.innerHTML = `<div><b>P${i+1}:</b> ${emojiPickerHtml}</div><span class="st">${statusText}</span>`;
+        if (i === localPlayerIndex) slotEl.classList.add('active'); else slotEl.classList.remove('active');
       }
 
-      // 화면 전환
       if (gameState.status === 'playing' || gameState.status === 'gameover') {
         document.getElementById('lobby-panel').style.display = 'none';
         document.getElementById('game-panel').style.display = 'block';
@@ -376,16 +337,9 @@
         document.getElementById('game-panel').style.display = 'none';
       }
 
-      // 상태 메시지 표시
       document.getElementById('marble-panel').innerText = gameState.message;
+      renderActionPanel();
 
-      // 주사위 버튼 상태 제어
-      const btnRoll = document.getElementById('btn-roll');
-      const isMyTurn = (gameState.turn === localPlayerIndex) && !gameState.players[localPlayerIndex].isAI;
-      btnRoll.disabled = !isMyTurn || gameState.isRolling || gameState.status === 'gameover';
-      btnRoll.style.opacity = btnRoll.disabled ? "0.5" : "1.0";
-
-      // 하단 플레이어 상태판 업데이트
       const grid = document.getElementById('player-status-grid');
       grid.innerHTML = "";
       gameState.players.forEach((p, idx) => {
@@ -393,265 +347,351 @@
         div.className = 'p-status';
         if (idx === gameState.turn) div.style.borderColor = "#fcc419";
         const stateStr = p.bankrupt ? "💀 파산" : (p.islandTurns > 0 ? "🏝️ 무인도" : `${p.money}만 원`);
-        div.innerHTML = `<b>${PLAYER_CONFIG[idx].emoji} ${p.name}</b>: ${stateStr}`;
+        const loanStr = p.loan > 0 ? ` <span style="color:#fa5252;">(대출:${p.loan}만)</span>` : "";
+        div.innerHTML = `<b>${p.emoji} ${p.name}</b>: ${stateStr}${loanStr}`;
         grid.appendChild(div);
       });
 
       drawBoard();
     }
 
-    // Canvas 400x400 보드판 드로잉
-    function drawBoard() {
-      ctx.clearRect(0, 0, 400, 400);
+    function renderActionPanel() {
+      const panel = document.getElementById('action-panel');
+      panel.innerHTML = "";
+      const isMyTurn = (gameState.turn === localPlayerIndex) && !gameState.players[localPlayerIndex].isAI;
 
-      // 1. 격자 칸 렌더링
-      for (let i = 0; i < 12; i++) {
+      if (!isMyTurn || gameState.status === 'gameover') {
+        panel.innerHTML = `<span style="color:#868e96; font-size:0.85rem;">상대방 턴 진행 중...</span>`;
+        return;
+      }
+
+      if (gameState.awaitingAction === 'BUY') {
+        const p = gameState.players[localPlayerIndex];
+        const tile = TILES[p.pos];
+        const bState = gameState.board[p.pos];
+
+        let html = `<div style="width:100%; margin-bottom:4px; font-weight:bold; font-size:0.9rem;">${tile.name} 매입:</div>`;
+        html += `<button class="btn-action" onclick="confirmBuy('NONE')">구매 안 함</button>`;
+        if (!bState.villa && p.money >= tile.villa) html += `<button class="btn-action btn-buy" onclick="confirmBuy('VILLA')">🏘️ 별장 (+${tile.villa}만)</button>`;
+        if (!bState.bldg && p.money >= tile.bldg) html += `<button class="btn-action btn-buy" onclick="confirmBuy('BLDG')">🏢 빌딩 (+${tile.bldg}만)</button>`;
+        if (!bState.hotel && p.money >= tile.hotel) html += `<button class="btn-action btn-buy" onclick="confirmBuy('HOTEL')">🏨 호텔 (+${tile.hotel}만)</button>`;
+        panel.innerHTML = html;
+      } else if (gameState.awaitingAction === 'CRISIS') {
+        const p = gameState.players[localPlayerIndex];
+        let html = `<div style="width:100%; margin-bottom:4px; color:#fa5252; font-weight:bold; font-size:0.85rem;">⚠️ 자금 부족! 해결 방법을 선택하세요:</div>`;
+        if (p.loan < 300) html += `<button class="btn-action btn-warn" onclick="takeLoan()">🏦 대출 받기 (+100만 원)</button>`;
+        const hasProperty = gameState.board.some(t => t.owner === localPlayerIndex);
+        if (hasProperty) html += `<button class="btn-action btn-warn" onclick="openSellMenu()">🏠 매각하기</button>`;
+        html += `<button class="btn-action btn-danger" onclick="declareBankrupt()">💀 즉시 파산</button>`;
+        panel.innerHTML = html;
+      } else if (gameState.awaitingAction === 'SELL_SELECT') {
+        let html = `<div style="width:100%; margin-bottom:4px; font-weight:bold; font-size:0.85rem;">매각할 소유지를 선택하세요:</div>`;
+        gameState.board.forEach((t, idx) => {
+          if (t.owner === localPlayerIndex) {
+            const tile = TILES[idx];
+            let val = tile.land + (t.villa?tile.villa:0) + (t.bldg?tile.bldg:0) + (t.hotel?tile.hotel:0);
+            const refund = Math.floor(val * 0.8);
+            html += `<button class="btn-action btn-warn" onclick="sellProperty(${idx}, ${refund})">${tile.name} (+${refund}만)</button>`;
+          }
+        });
+        html += `<button class="btn-action" onclick="cancelSellMenu()">취소</button>`;
+        panel.innerHTML = html;
+      } else {
+        const btn = document.createElement('button');
+        btn.id = 'btn-roll';
+        btn.innerHTML = '🎲 주사위 2개 굴리기';
+        btn.style.cssText = 'background:#fcc419 !important; color:#000 !important; font-size:0.95rem; padding:8px 18px;';
+        btn.disabled = gameState.isRolling;
+        btn.onclick = handleRollClick;
+        panel.appendChild(btn);
+      }
+    }
+
+    function drawBoard() {
+      ctx.clearRect(0, 0, 660, 660);
+
+      for (let i = 0; i < 40; i++) {
         const pos = TILE_POS[i];
         const tile = TILES[i];
         const state = gameState.board[i];
 
-        // 바탕 칸
-        ctx.fillStyle = "#1e293b";
-        ctx.fillRect(pos.x, pos.y, 100, 100);
+        ctx.fillStyle = "#1e293b"; ctx.fillRect(pos.x, pos.y, 60, 60);
+        ctx.strokeStyle = "#334155"; ctx.lineWidth = 1; ctx.strokeRect(pos.x, pos.y, 60, 60);
 
-        // 테두리
-        ctx.strokeStyle = "#334155";
-        ctx.lineWidth = 2;
-        ctx.strokeRect(pos.x, pos.y, 100, 100);
-
-        // 소유주 컬러 바
         if (state.owner !== -1) {
           ctx.fillStyle = PLAYER_CONFIG[state.owner].color;
-          ctx.fillRect(pos.x, pos.y, 100, 15);
+          ctx.fillRect(pos.x, pos.y, 60, 10);
         }
 
-        // 아이콘 & 타일 이름
-        ctx.font = "20px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText(tile.icon, pos.x + 50, pos.y + 42);
+        ctx.font = "12px sans-serif"; ctx.textAlign = "center";
+        ctx.fillText(tile.icon, pos.x + 30, pos.y + 25);
 
-        ctx.fillStyle = "#f8fafc";
-        ctx.font = "bold 12px sans-serif";
-        ctx.fillText(tile.name, pos.x + 50, pos.y + 62);
+        ctx.fillStyle = "#f8fafc"; ctx.font = "bold 9px sans-serif";
+        ctx.fillText(tile.name, pos.x + 30, pos.y + 38);
 
-        // 가격 표시
         if (tile.type === 'city') {
-          ctx.fillStyle = "#94a3b8";
-          ctx.font = "10px sans-serif";
-          const bldg = state.hasBuilding ? "🏢" : "";
-          ctx.fillText(`${tile.price}만 ${bldg}`, pos.x + 50, pos.y + 82);
+          let bIcons = "";
+          if (state.villa) bIcons += "🏘️";
+          if (state.bldg) bIcons += "🏢";
+          if (state.hotel) bIcons += "🏨";
+          ctx.fillStyle = "#fcc419"; ctx.font = "8px sans-serif";
+          ctx.fillText(bIcons || `${tile.land}만`, pos.x + 30, pos.y + 52);
         }
       }
 
-      // 2. 중앙 오락실 보드판 구역 (200x200)
-      ctx.fillStyle = "#0f172a";
-      ctx.fillRect(100, 100, 200, 200);
-      ctx.strokeStyle = "#fcc419";
-      ctx.lineWidth = 3;
-      ctx.strokeRect(102, 102, 196, 196);
+      ctx.fillStyle = "#0f172a"; ctx.fillRect(60, 60, 540, 540);
+      ctx.strokeStyle = "#fcc419"; ctx.lineWidth = 2; ctx.strokeRect(62, 62, 536, 536);
 
-      // 주사위 렌더링
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(170, 150, 60, 60);
-      ctx.strokeStyle = "#000000";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(170, 150, 60, 60);
+      ctx.fillStyle = "#fcc419"; ctx.font = "bold 22px sans-serif"; ctx.textAlign = "center";
+      ctx.fillText("부 루 마 블", 330, 200);
+      ctx.fillStyle = "#94a3b8"; ctx.font = "14px sans-serif";
+      ctx.fillText(`🏛️ 모금된 사회복지기금: ${gameState.socialFundPool}만 원`, 330, 235);
 
-      ctx.fillStyle = "#000000";
-      ctx.font = "bold 32px sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText(gameState.diceValue, 200, 192);
+      drawDice(270, 280, gameState.dice1);
+      drawDice(340, 280, gameState.dice2);
 
-      // 3. 플레이어 말 (🎈, 🚗, 🚀, 💎) 위치 계산 및 렌더링
+      if (gameState.isDouble) {
+        ctx.fillStyle = "#ff6b6b"; ctx.font = "bold 18px sans-serif";
+        ctx.fillText("✨ DOUBLE! 한 번 더! ✨", 330, 370);
+      }
+
       gameState.players.forEach((p, idx) => {
         if (p.bankrupt) return;
         const base = TILE_POS[p.pos];
         const offsets = [
-          { dx: 25, dy: 25 },
-          { dx: 75, dy: 25 },
-          { dx: 25, dy: 75 },
-          { dx: 75, dy: 75 }
+          { dx: 18, dy: 18 }, { dx: 42, dy: 18 },
+          { dx: 18, dy: 42 }, { dx: 42, dy: 42 }
         ];
         const pt = offsets[idx];
 
-        // 말 원형 배경
         ctx.beginPath();
-        ctx.arc(base.x + pt.dx, base.y + pt.dy, 14, 0, Math.PI * 2);
-        ctx.fillStyle = PLAYER_CONFIG[idx].color;
-        ctx.fill();
-        ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
+        ctx.arc(base.x + pt.dx, base.y + pt.dy, 9, 0, Math.PI * 2);
+        ctx.fillStyle = PLAYER_CONFIG[idx].color; ctx.fill();
+        ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1; ctx.stroke();
 
-        // 이모지
-        ctx.font = "14px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText(p.emoji, base.x + pt.dx, base.y + pt.dy + 5);
+        ctx.font = "9px sans-serif"; ctx.textAlign = "center";
+        ctx.fillText(p.emoji, base.x + pt.dx, base.y + pt.dy + 3);
       });
     }
 
-    // -------------------------------------------------------------
-    // 주사위 굴리기 및 턴 로직 처리
-    // -------------------------------------------------------------
-    function handleRollClick() {
-      if (gameState.isRolling) return;
-      if (gameState.turn !== localPlayerIndex) return;
+    function drawDice(x, y, value) {
+      ctx.fillStyle = "#ffffff"; ctx.fillRect(x, y, 45, 45);
+      ctx.strokeStyle = "#000000"; ctx.lineWidth = 2; ctx.strokeRect(x, y, 45, 45);
+      ctx.fillStyle = "#000000"; ctx.font = "bold 24px sans-serif"; ctx.textAlign = "center";
+      ctx.fillText(value, x + 22, y + 32);
+    }
 
+    function handleRollClick() {
+      if (gameState.isRolling || gameState.awaitingAction) return;
+      if (gameState.turn !== localPlayerIndex) return;
       triggerDiceRoll();
     }
 
     function checkTurnAndAI() {
       if (gameState.status !== 'playing') return;
+      const currP = gameState.players[gameState.turn];
+      if (currP.bankrupt) { nextTurn(); return; }
 
-      const currPlayer = gameState.players[gameState.turn];
-
-      if (currPlayer.bankrupt) {
-        nextTurn();
-        return;
-      }
-
-      // AI의 턴인 경우 자동으로 주사위 실행 (방장이 연산 주도)
-      if (currPlayer.isAI && isHost && !gameState.isRolling) {
-        setTimeout(() => {
-          triggerDiceRoll();
-        }, 1000);
+      if (currP.isAI && isHost) {
+        if (gameState.awaitingAction === 'BUY') setTimeout(aiDecisionBuy, 800);
+        else if (gameState.awaitingAction === 'CRISIS') setTimeout(aiDecisionCrisis, 800);
+        else if (!gameState.isRolling && !gameState.awaitingAction) setTimeout(triggerDiceRoll, 800);
       }
     }
 
     function triggerDiceRoll() {
-      gameState.isRolling = true;
+      gameState.isRolling = true; gameState.isDouble = false;
       let count = 0;
-
-      // 주사위 회전 가속 셔플 애니메이션
       const interval = setInterval(() => {
-        gameState.diceValue = Math.floor(Math.random() * 6) + 1;
-        playSound('roll');
-        drawBoard();
+        gameState.dice1 = Math.floor(Math.random() * 6) + 1;
+        gameState.dice2 = Math.floor(Math.random() * 6) + 1;
+        playSound('roll'); drawBoard();
         count++;
 
         if (count > 10) {
           clearInterval(interval);
           gameState.isRolling = false;
-          executeMove(gameState.diceValue);
+
+          if (gameState.dice1 === gameState.dice2) {
+            gameState.isDouble = true; gameState.doubleCount++; playSound('buy');
+          } else {
+            gameState.isDouble = false; gameState.doubleCount = 0;
+          }
+
+          if (gameState.doubleCount === 3) {
+            gameState.doubleCount = 0; gameState.isDouble = false;
+            const p = gameState.players[gameState.turn];
+            p.pos = 10; p.islandTurns = 3;
+            gameState.message = `🚨 3연속 더블! ${p.name}님이 무인도로 구금됩니다!`;
+            if (isHost) syncStateToNetwork();
+            setTimeout(nextTurn, 1400);
+            return;
+          }
+
+          executeMove(gameState.dice1 + gameState.dice2);
         }
-      }, 60);
+      }, 50);
     }
 
-    function executeMove(dice) {
+    function executeMove(steps) {
       const p = gameState.players[gameState.turn];
 
-      // 무인도 탈출 검사
       if (p.islandTurns > 0) {
         p.islandTurns--;
         gameState.message = `${p.name}님이 무인도에서 휴식 중입니다. (남은 턴: ${p.islandTurns})`;
+        gameState.isDouble = false;
         if (isHost) syncStateToNetwork();
-        setTimeout(nextTurn, 1200);
+        setTimeout(nextTurn, 1400);
         return;
       }
 
-      let step = 0;
+      let count = 0;
       const moveInterval = setInterval(() => {
-        p.pos = (p.pos + 1) % 12;
-        step++;
-        playSound('roll');
-        drawBoard();
+        p.pos = (p.pos + 1) % 40;
+        count++; playSound('roll'); drawBoard();
 
-        // 출발 통과 월급 지급 수식
         if (p.pos === 0) {
-          p.money += 50;
-          gameState.message = `${p.name}님이 시작점을 통과하여 월급 50만 원을 받았습니다!`;
+          p.money += 20;
+          gameState.message = `${p.name}님이 월급 20만 원을 받았습니다!`;
         }
 
-        if (step >= dice) {
+        if (count >= steps) {
           clearInterval(moveInterval);
           handleTileEvent(p);
         }
-      }, 200);
+      }, 120);
     }
 
-    // 타일 도착 이벤트 처리
     function handleTileEvent(p) {
-      const pos = p.pos;
-      const tile = TILES[pos];
-      const state = gameState.board[pos];
+      const tile = TILES[p.pos];
+      const state = gameState.board[p.pos];
 
-      // 1. 도시 타일
       if (tile.type === 'city') {
         if (state.owner === -1) {
-          // 빈 땅 매입 연산
-          if (p.money >= tile.price) {
-            p.money -= tile.price;
-            state.owner = gameState.turn;
-            state.hasBuilding = true;
-            playSound('buy');
-            gameState.message = `${p.name}님이 ${tile.name}을(를) ${tile.price}만 원에 매입했습니다!`;
-          } else {
-            gameState.message = `${p.name}님이 ${tile.name} 매입 자금이 부족합니다.`;
-          }
-        } 
-        else if (state.owner !== gameState.turn) {
-          // 상대 땅 통행료 강제 징수
-          const ownerPlayer = gameState.players[state.owner];
-          const rentVal = tile.rent * (state.hasBuilding ? 2 : 1);
+          gameState.awaitingAction = 'BUY';
+          gameState.message = `${p.name}님이 빈 땅 ${tile.name}에 도착했습니다. 건물을 매입하시겠습니까?`;
+        } else if (state.owner !== gameState.turn) {
+          const owner = gameState.players[state.owner];
+          let rent = tile.rLand + (state.villa?tile.rVilla:0) + (state.bldg?tile.rBldg:0) + (state.hotel?tile.rHotel:0);
 
-          p.money -= rentVal;
-          ownerPlayer.money += rentVal;
-          playSound('rent');
-          gameState.message = `${p.name}님이 ${ownerPlayer.name}의 ${tile.name}에 도착하여 통행료 ${rentVal}만 원을 지불했습니다!`;
-
-          // 파산 검사
-          if (p.money <= 0) {
-            handleBankruptcy(p);
-          }
+          p.money -= rent; owner.money += rent; playSound('rent');
+          gameState.message = `${p.name}님이 ${owner.name}의 ${tile.name} 통행료 ${rent}만 원을 지불했습니다!`;
+          if (p.money < 0) gameState.awaitingAction = 'CRISIS';
         }
-      } 
-      // 2. 특수 칸 이벤트
-      else if (tile.type === 'island') {
-        p.islandTurns = 1;
-        gameState.message = `${p.name}님이 무인도에 갇혔습니다! (1턴 쉼)`;
-      } 
-      else if (tile.type === 'space') {
-        p.pos = 1; // 서울로 워프
-        gameState.message = `${p.name}님이 우주선에 탑승하여 서울로 즉시 이동합니다!`;
-        playSound('win');
-      } 
-      else if (tile.type === 'key') {
-        const bonus = (Math.floor(Math.random() * 3) + 1) * 30;
-        p.money += bonus;
+      } else if (tile.type === 'island') {
+        p.islandTurns = 3;
+        gameState.message = `🏝️ 무인도 도착! 3턴 동안 갇히게 됩니다.`;
+      } else if (tile.type === 'tax') {
+        const tax = 15; p.money -= tax; gameState.socialFundPool += tax; playSound('rent');
+        gameState.message = `🏛️ 사회복지기금 15만 원을 기부하셨습니다.`;
+        if (p.money < 0) gameState.awaitingAction = 'CRISIS';
+      } else if (tile.type === 'fund_get') {
+        const getFund = gameState.socialFundPool || 30;
+        p.money += getFund; gameState.socialFundPool = 0; playSound('buy');
+        gameState.message = `💰 축하합니다! 사회복지기금 ${getFund}만 원을 수령했습니다!`;
+      } else if (tile.type === 'space') {
+        p.pos = 39;
+        gameState.message = `🚀 우주여행! 서울(🇰🇷)로 즉시 이동합니다.`;
         playSound('buy');
-        gameState.message = `🔑 황금열쇠! 보너스 찬스 (+${bonus}만 원 획득)`;
+      } else if (tile.type === 'key') {
+        const bonus = (Math.floor(Math.random() * 5) + 1) * 10;
+        p.money += bonus; playSound('buy');
+        gameState.message = `🔑 황금열쇠 행운! (+${bonus}만 원 획득)`;
       }
 
       if (isHost) syncStateToNetwork();
-      setTimeout(nextTurn, 1500);
+      if (!gameState.awaitingAction) setTimeout(nextTurn, 1400);
     }
 
-    function handleBankruptcy(p) {
-      p.bankrupt = true;
-      p.money = 0;
-      // 소유 부동산 몰수
+    function confirmBuy(buildType) {
+      const p = gameState.players[gameState.turn];
+      const tile = TILES[p.pos];
+      const state = gameState.board[p.pos];
+      state.owner = gameState.turn;
+
+      if (buildType === 'VILLA') { p.money -= tile.villa; state.villa = true; }
+      else if (buildType === 'BLDG') { p.money -= tile.bldg; state.bldg = true; }
+      else if (buildType === 'HOTEL') { p.money -= tile.hotel; state.hotel = true; }
+
+      playSound('buy'); gameState.awaitingAction = null;
+      gameState.message = `${p.name}님이 ${tile.name} 매입을 완료했습니다.`;
+      if (isHost) syncStateToNetwork();
+      setTimeout(nextTurn, 1000);
+    }
+
+    function aiDecisionBuy() {
+      const p = gameState.players[gameState.turn];
+      const tile = TILES[p.pos];
+      if (p.money >= tile.hotel + 30) confirmBuy('HOTEL');
+      else if (p.money >= tile.bldg + 20) confirmBuy('BLDG');
+      else if (p.money >= tile.villa) confirmBuy('VILLA');
+      else confirmBuy('NONE');
+    }
+
+    function takeLoan() {
+      const p = gameState.players[gameState.turn];
+      p.money += 100; p.loan += 100; playSound('buy');
+      gameState.message = `${p.name}님이 대출 100만 원을 받았습니다.`;
+      if (p.money >= 0) gameState.awaitingAction = null;
+      if (isHost) syncStateToNetwork();
+      if (!gameState.awaitingAction) setTimeout(nextTurn, 1000);
+    }
+
+    function openSellMenu() { gameState.awaitingAction = 'SELL_SELECT'; updateUI(); }
+    function cancelSellMenu() { gameState.awaitingAction = 'CRISIS'; updateUI(); }
+
+    function sellProperty(tileIdx, refundPrice) {
+      const p = gameState.players[gameState.turn];
+      const state = gameState.board[tileIdx];
+      p.money += refundPrice;
+      state.owner = -1; state.villa = false; state.bldg = false; state.hotel = false;
+      playSound('buy');
+      gameState.message = `${p.name}님이 ${TILES[tileIdx].name}을(를) 매각했습니다.`;
+      if (p.money >= 0) gameState.awaitingAction = null; else gameState.awaitingAction = 'CRISIS';
+      if (isHost) syncStateToNetwork();
+      if (!gameState.awaitingAction) setTimeout(nextTurn, 1000);
+    }
+
+    function declareBankrupt() {
+      const p = gameState.players[gameState.turn];
+      p.bankrupt = true; p.money = 0;
       gameState.board.forEach(t => {
-        if (t.owner === gameState.turn) {
-          t.owner = -1;
-          t.hasBuilding = false;
-        }
+        if (t.owner === gameState.turn) { t.owner = -1; t.villa = false; t.bldg = false; t.hotel = false; }
       });
-      gameState.message = `💥 ${p.name}님이 통행료를 감당하지 못하고 파산했습니다!`;
+      gameState.awaitingAction = null;
+      gameState.message = `💥 ${p.name}님이 최종 파산하셨습니다.`;
+      if (isHost) syncStateToNetwork();
+      setTimeout(nextTurn, 1400);
+    }
+
+    function aiDecisionCrisis() {
+      const p = gameState.players[gameState.turn];
+      if (p.loan < 300) takeLoan();
+      else {
+        const ownedIdx = gameState.board.findIndex(t => t.owner === gameState.turn);
+        if (ownedIdx !== -1) sellProperty(ownedIdx, 30);
+        else declareBankrupt();
+      }
     }
 
     function nextTurn() {
-      // 승리 조건 검사 (남은 플레이어 1명)
-      const activePlayers = gameState.players.filter(p => !p.bankrupt);
-      if (activePlayers.length <= 1) {
-        const winner = activePlayers[0] || gameState.players[0];
+      if (gameState.isDouble) {
+        gameState.isDouble = false;
+        gameState.message = `✨ 더블! ${gameState.players[gameState.turn].name}님이 한 번 더 굴립니다!`;
+        if (isHost) syncStateToNetwork();
+        checkTurnAndAI();
+        return;
+      }
+
+      const active = gameState.players.filter(p => !p.bankrupt);
+      if (active.length <= 1) {
+        const winner = active[0] || gameState.players[0];
         gameState.status = 'gameover';
-        gameState.message = `🏆 축하합니다! ${winner.name}님이 최종 승리하였습니다!`;
-        playSound('win');
+        gameState.message = `🏆 축하합니다! ${winner.name}님이 최종 우승하셨습니다!`;
         if (isHost) syncStateToNetwork();
         return;
       }
 
-      // 다음 턴 순환
       do {
         gameState.turn = (gameState.turn + 1) % 4;
       } while (gameState.players[gameState.turn].bankrupt);
@@ -663,7 +703,6 @@
       checkTurnAndAI();
     }
 
-    // 초기 실행
     updateUI();
   </script>
 </body>
