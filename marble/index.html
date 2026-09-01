@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>미니지 - 부루마블</title>
+  <style>
+    :root { --bg: #f8f9fa; --text: #333; --canvas-bg: #151b22; --border: #e9ecef; --btn-bg: #fff; }
+    [data-theme="dark"] { --bg: #0d1117; --text: #c9d1d9; --canvas-bg: #151b22; --border: #30363d; --btn-bg: #21262d; }
+    [data-theme="beige"] { --bg: #f5ebe0; --text: #4e3d30; --canvas-bg: #1e1b18; --border: #ddcbbb; --btn-bg: #eddfd0; }
+    body { background-color: var(--bg) !important; color: var(--text) !important; text-align: center; font-family: sans-serif; padding-top: 15px; margin: 0; transition: 0.3s; }
+    button { background-color: var(--btn-bg) !important; color: var(--text) !important; border: 1px solid var(--border) !important; padding: 8px 16px; font-size: 0.95rem; border-radius: 8px; cursor: pointer; margin: 4px; font-weight: bold; }
+    #marble-panel { font-size: 1.25rem; font-weight: bold; color: #fcc419; margin-bottom: 5px; }
+
+    /* 대기실 및 레이아웃 스타일 */
+    .container { max-width: 480px; margin: 0 auto; padding: 10px; }
+    .card { background-color: var(--btn-bg); border: 1px solid var(--border); border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .player-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 15px 0; }
+    .player-slot { border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: rgba(0,0,0,0.03); font-size: 0.9rem; text-align: left; }
+    .player-slot.active { border-color: #fcc419; background: rgba(252, 196, 25, 0.1); }
+    input[type="text"] { width: 120px; padding: 8px; font-size: 1rem; text-align: center; border-radius: 6px; border: 1px solid var(--border); font-weight: bold; }
+    canvas { background-color: var(--canvas-bg); border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.3); vertical-align: middle; }
+    .status-board { font-size: 0.85rem; margin-top: 10px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+    .p-status { border: 1px solid var(--border); padding: 6px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎲 아케이드 미니 부루마블</h1>
+
+    <!-- 1. 대기실 (로비) 화면 -->
+    <div id="lobby-panel" class="card">
+      <h3>🎮 멀티플레이어 대기실</h3>
+      <div style="margin-bottom: 12px;">
+        방 번호: <input type="text" id="room-code-input" maxlength="4" placeholder="1234">
+        <button id="btn-create-room" onclick="createRoom()">방 만들기</button>
+        <button id="btn-join-room" onclick="joinRoom()">참가하기</button>
+      </div>
+
+      <div id="room-info" style="display:none; font-weight:bold; color:#4dabf7; margin-bottom:10px;">
+        현재 방 번호: <span id="current-room-id"></span> (접속 코드)
+      </div>
+
+      <div class="player-list">
+        <div id="slot-p1" class="player-slot"><b>P1 (🎈):</b> <span class="st">대기 중...</span></div>
+        <div id="slot-p2" class="player-slot"><b>P2 (🚗):</b> <span class="st">대기 중...</span></div>
+        <div id="slot-p3" class="player-slot"><b>P3 (🚀):</b> <span class="st">대기 중...</span></div>
+        <div id="slot-p4" class="player-slot"><b>P4 (💎):</b> <span class="st">대기 중...</span></div>
+      </div>
+
+      <div id="host-controls" style="display:none;">
+        <button onclick="startGame()" style="background:#40c057 !important; color:#fff !important; width:100%; font-size:1.1rem; padding:10px;">🚀 게임 시작 (방장)</button>
+      </div>
+      <div id="guest-waiting" style="display:none; color:#868e96;">
+        방장이 게임을 시작하기를 기다리고 있습니다...
+      </div>
+    </div>
+
+    <!-- 2. 게임 화면 -->
+    <div id="game-panel" style="display:none;">
+      <div id="marble-panel">게임 준비 중...</div>
+      
+      <canvas id="boardCanvas" width="400" height="400"></canvas>
+
+      <div style="margin-top: 10px;">
+        <button id="btn-roll" onclick="handleRollClick()" style="background:#fcc419 !important; color:#000 !important; font-size:1.1rem;">🎲 주사위 굴리기</button>
+      </div>
+
+      <div id="player-status-grid" class="status-board"></div>
+    </div>
+  </div>
+
+  <script>
+    // [규칙 1 필수] 메인 사이트 테마 속성 즉시 동기화
+    const savedTheme = localStorage.getItem('minig-theme');
+    if (savedTheme && savedTheme !== 'white') { 
+      document.documentElement.setAttribute('data-theme', savedTheme); 
+    }
+
+    // -------------------------------------------------------------
+    // 8비트 Web Audio API 사운드 신디사이저 믹서
+    // -------------------------------------------------------------
+    let audioCtx = null;
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function playSound(type) {
+      try {
+        initAudio();
+        if (!audioCtx) return;
+        const now = audioCtx.currentTime;
+
+        if (type === 'roll') {
+          // 주사위 굴릴 때 타타탓 소리
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(160 + Math.random() * 120, now);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now);
+          osc.stop(now + 0.04);
+        } 
+        else if (type === 'buy') {
+          // 건물 매입 '띠링~' 사운드
+          const freqs = [523.25, 659.25, 783.99]; // C5, E5, G5
+          freqs.forEach((f, i) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(f, now + i * 0.07);
+            gain.gain.setValueAtTime(0.12, now + i * 0.07);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.07 + 0.15);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now + i * 0.07);
+            osc.stop(now + i * 0.07 + 0.15);
+          });
+        } 
+        else if (type === 'rent') {
+          // 통행료 차감 웅장한 사운드
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(220, now);
+          osc.frequency.exponentialRampToValueAtTime(55, now + 0.35);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now);
+          osc.stop(now + 0.35);
+        }
+        else if (type === 'win') {
+          // 승리 효과음
+          [440, 554.37, 659.25, 880].forEach((f, i) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(f, now + i * 0.1);
+            gain.gain.setValueAtTime(0.15, now + i * 0.1);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.1 + 0.2);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now + i * 0.1);
+            osc.stop(now + i * 0.1 + 0.2);
+          });
+        }
+      } catch(e) {}
+    }
+
+    // -------------------------------------------------------------
+    // 게임 데이터 및 맵 좌표계 (4x4 외곽 12개 격자 칸)
+    // -------------------------------------------------------------
+    const TILES = [
+      { name: "출발지", type: "start", price: 0, rent: 0, icon: "🚩" },
+      { name: "서울", type: "city", price: 50, rent: 25, icon: "🏙️" },
+      { name: "도쿄", type: "city", price: 60, rent: 30, icon: "🗼" },
+      { name: "무인도", type: "island", price: 0, rent: 0, icon: "🏝️" },
+      { name: "파리", type: "city", price: 80, rent: 40, icon: "🥐" },
+      { name: "런던", type: "city", price: 100, rent: 50, icon: "🏰" },
+      { name: "우주선", type: "space", price: 0, rent: 0, icon: "🛸" },
+      { name: "뉴욕", type: "city", price: 120, rent: 60, icon: "🗽" },
+      { name: "시드니", type: "city", price: 140, rent: 70, icon: "🦘" },
+      { name: "황금열쇠", type: "key", price: 0, rent: 0, icon: "🔑" },
+      { name: "로마", type: "city", price: 160, rent: 80, icon: "🏛️" },
+      { name: "베이징", type: "city", price: 180, rent: 90, icon: "🐼" }
+    ];
+
+    // 12개 칸의 캔버스 (x, y) coordinates (각 격자 100x100)
+    const TILE_POS = [
+      { x: 0, y: 0 },     // 0: 출발지 (좌상단)
+      { x: 100, y: 0 },   // 1: 서울
+      { x: 200, y: 0 },   // 2: 도쿄
+      { x: 300, y: 0 },   // 3: 무인도 (우상단)
+      { x: 300, y: 100 }, // 4: 파리
+      { x: 300, y: 200 }, // 5: 런던
+      { x: 300, y: 300 }, // 6: 우주정거장 (우하단)
+      { x: 200, y: 300 }, // 7: 뉴욕
+      { x: 100, y: 300 }, // 8: 시드니
+      { x: 0, y: 300 },   // 9: 황금열쇠 (좌하단)
+      { x: 0, y: 200 },   // 10: 로마
+      { x: 0, y: 100 }    // 11: 베이징
+    ];
+
+    const PLAYER_CONFIG = [
+      { name: "P1", emoji: "🎈", color: "#ff6b6b" },
+      { name: "P2", emoji: "🚗", color: "#4dabf7" },
+      { name: "P3", emoji: "🚀", color: "#51cf66" },
+      { name: "P4", emoji: "💎", color: "#fcc419" }
+    ];
+
+    // -------------------------------------------------------------
+    // 멀티플레이어 네트워크 & 방 상태 모델
+    // -------------------------------------------------------------
+    let roomCode = "";
+    let localPlayerIndex = -1; // 0: P1(Host), 1: P2, 2: P3, 3: P4
+    let isHost = false;
+    let broadcastChannel = null;
+
+    let gameState = {
+      status: "lobby", // "lobby", "playing", "gameover"
+      roomCode: "",
+      turn: 0, // 0..3
+      diceValue: 1,
+      isRolling: false,
+      message: "방장이 게임을 시작하기를 기다립니다.",
+      players: [
+        { id: null, name: "P1", emoji: "🎈", isAI: true, money: 300, pos: 0, islandTurns: 0, bankrupt: false },
+        { id: null, name: "P2", emoji: "🚗", isAI: true, money: 300, pos: 0, islandTurns: 0, bankrupt: false },
+        { id: null, name: "P3", emoji: "🚀", isAI: true, money: 300, pos: 0, islandTurns: 0, bankrupt: false },
+        { id: null, name: "P4", emoji: "💎", isAI: true, money: 300, pos: 0, islandTurns: 0, bankrupt: false }
+      ],
+      board: TILES.map(t => ({ owner: -1, hasBuilding: false }))
+    };
+
+    const myClientId = 'usr_' + Math.random().toString(36).substr(2, 6);
+
+    // BroadcastChannel 및 LocalStorage 이중 동기화 수신기
+    function setupNetwork(code) {
+      if (broadcastChannel) broadcastChannel.close();
+      roomCode = code;
+      broadcastChannel = new BroadcastChannel('minig_marbles_' + roomCode);
+
+      broadcastChannel.onmessage = (e) => {
+        handleNetworkData(e.data);
+      };
+
+      window.addEventListener('storage', (e) => {
+        if (e.key === 'minig_state_' + roomCode && e.newValue) {
+          try {
+            handleNetworkData(JSON.parse(e.newValue));
+          } catch(err){}
+        }
+      });
+    }
+
+    function sendNetworkData(data) {
+      if (broadcastChannel) {
+        broadcastChannel.postMessage(data);
+      }
+      localStorage.setItem('minig_state_' + roomCode, JSON.stringify(data));
+    }
+
+    function handleNetworkData(data) {
+      if (!data) return;
+      
+      // 방 참가 요청 수신 (방장이 처리)
+      if (data.type === 'JOIN_REQUEST' && isHost) {
+        let assignedSlot = -1;
+        for (let i = 0; i < 4; i++) {
+          if (gameState.players[i].id === data.clientId) {
+            assignedSlot = i; break;
+          }
+        }
+        if (assignedSlot === -1) {
+          for (let i = 1; i < 4; i++) {
+            if (gameState.players[i].isAI) {
+              assignedSlot = i;
+              gameState.players[i].isAI = false;
+              gameState.players[i].id = data.clientId;
+              break;
+            }
+          }
+        }
+        if (assignedSlot !== -1) {
+          sendNetworkData({ type: 'JOIN_RESPONSE', targetId: data.clientId, slotIndex: assignedSlot });
+          syncStateToNetwork();
+        }
+      }
+
+      if (data.type === 'JOIN_RESPONSE' && data.targetId === myClientId) {
+        localPlayerIndex = data.slotIndex;
+      }
+
+      if (data.type === 'STATE_UPDATE') {
+        gameState = data.state;
+        updateUI();
+        if (gameState.status === 'playing') {
+          checkTurnAndAI();
+        }
+      }
+    }
+
+    function syncStateToNetwork() {
+      sendNetworkData({ type: 'STATE_UPDATE', state: gameState });
+      updateUI();
+    }
+
+    // -------------------------------------------------------------
+    // 방 생성 & 참가 시스템
+    // -------------------------------------------------------------
+    function createRoom() {
+      initAudio();
+      const input = document.getElementById('room-code-input').value.trim();
+      roomCode = input || Math.floor(1000 + Math.random() * 9000).toString();
+      document.getElementById('room-code-input').value = roomCode;
+
+      isHost = true;
+      localPlayerIndex = 0;
+      gameState.roomCode = roomCode;
+      gameState.players[0].id = myClientId;
+      gameState.players[0].isAI = false;
+
+      setupNetwork(roomCode);
+      
+      document.getElementById('room-info').style.display = 'block';
+      document.getElementById('current-room-id').innerText = roomCode;
+      document.getElementById('host-controls').style.display = 'block';
+      document.getElementById('guest-waiting').style.display = 'none';
+
+      syncStateToNetwork();
+    }
+
+    function joinRoom() {
+      initAudio();
+      const input = document.getElementById('room-code-input').value.trim();
+      if (!input) { alert("방 번호를 입력해주세요!"); return; }
+
+      roomCode = input;
+      isHost = false;
+      setupNetwork(roomCode);
+
+      document.getElementById('room-info').style.display = 'block';
+      document.getElementById('current-room-id').innerText = roomCode;
+      document.getElementById('host-controls').style.display = 'none';
+      document.getElementById('guest-waiting').style.display = 'block';
+
+      // 방장에게 참가 요청
+      sendNetworkData({ type: 'JOIN_REQUEST', clientId: myClientId });
+    }
+
+    function startGame() {
+      if (!isHost) return;
+      gameState.status = "playing";
+      gameState.turn = 0;
+      gameState.message = "게임 시작! P1(🎈)의 순서입니다.";
+      syncStateToNetwork();
+      checkTurnAndAI();
+    }
+
+    // -------------------------------------------------------------
+    // 게임 메인 엔진 및 UI 렌더링
+    // -------------------------------------------------------------
+    const canvas = document.getElementById('boardCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function updateUI() {
+      // 대기실 UI 세팅
+      for (let i = 0; i < 4; i++) {
+        const slotEl = document.getElementById(`slot-p${i+1}`);
+        const p = gameState.players[i];
+        let statusText = "🤖 AI 컴퓨터";
+        if (!p.isAI) {
+          statusText = (i === localPlayerIndex) ? "👤 나 (접속됨)" : "👤 플레이어 참가됨";
+        }
+        slotEl.querySelector('.st').innerText = statusText;
+        if (i === localPlayerIndex) slotEl.classList.add('active');
+        else slotEl.classList.remove('active');
+      }
+
+      // 화면 전환
+      if (gameState.status === 'playing' || gameState.status === 'gameover') {
+        document.getElementById('lobby-panel').style.display = 'none';
+        document.getElementById('game-panel').style.display = 'block';
+      } else {
+        document.getElementById('lobby-panel').style.display = 'block';
+        document.getElementById('game-panel').style.display = 'none';
+      }
+
+      // 상태 메시지 표시
+      document.getElementById('marble-panel').innerText = gameState.message;
+
+      // 주사위 버튼 상태 제어
+      const btnRoll = document.getElementById('btn-roll');
+      const isMyTurn = (gameState.turn === localPlayerIndex) && !gameState.players[localPlayerIndex].isAI;
+      btnRoll.disabled = !isMyTurn || gameState.isRolling || gameState.status === 'gameover';
+      btnRoll.style.opacity = btnRoll.disabled ? "0.5" : "1.0";
+
+      // 하단 플레이어 상태판 업데이트
+      const grid = document.getElementById('player-status-grid');
+      grid.innerHTML = "";
+      gameState.players.forEach((p, idx) => {
+        const div = document.createElement('div');
+        div.className = 'p-status';
+        if (idx === gameState.turn) div.style.borderColor = "#fcc419";
+        const stateStr = p.bankrupt ? "💀 파산" : (p.islandTurns > 0 ? "🏝️ 무인도" : `${p.money}만 원`);
+        div.innerHTML = `<b>${PLAYER_CONFIG[idx].emoji} ${p.name}</b>: ${stateStr}`;
+        grid.appendChild(div);
+      });
+
+      drawBoard();
+    }
+
+    // Canvas 400x400 보드판 드로잉
+    function drawBoard() {
+      ctx.clearRect(0, 0, 400, 400);
+
+      // 1. 격자 칸 렌더링
+      for (let i = 0; i < 12; i++) {
+        const pos = TILE_POS[i];
+        const tile = TILES[i];
+        const state = gameState.board[i];
+
+        // 바탕 칸
+        ctx.fillStyle = "#1e293b";
+        ctx.fillRect(pos.x, pos.y, 100, 100);
+
+        // 테두리
+        ctx.strokeStyle = "#334155";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(pos.x, pos.y, 100, 100);
+
+        // 소유주 컬러 바
+        if (state.owner !== -1) {
+          ctx.fillStyle = PLAYER_CONFIG[state.owner].color;
+          ctx.fillRect(pos.x, pos.y, 100, 15);
+        }
+
+        // 아이콘 & 타일 이름
+        ctx.font = "20px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(tile.icon, pos.x + 50, pos.y + 42);
+
+        ctx.fillStyle = "#f8fafc";
+        ctx.font = "bold 12px sans-serif";
+        ctx.fillText(tile.name, pos.x + 50, pos.y + 62);
+
+        // 가격 표시
+        if (tile.type === 'city') {
+          ctx.fillStyle = "#94a3b8";
+          ctx.font = "10px sans-serif";
+          const bldg = state.hasBuilding ? "🏢" : "";
+          ctx.fillText(`${tile.price}만 ${bldg}`, pos.x + 50, pos.y + 82);
+        }
+      }
+
+      // 2. 중앙 오락실 보드판 구역 (200x200)
+      ctx.fillStyle = "#0f172a";
+      ctx.fillRect(100, 100, 200, 200);
+      ctx.strokeStyle = "#fcc419";
+      ctx.lineWidth = 3;
+      ctx.strokeRect(102, 102, 196, 196);
+
+      // 주사위 렌더링
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(170, 150, 60, 60);
+      ctx.strokeStyle = "#000000";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(170, 150, 60, 60);
+
+      ctx.fillStyle = "#000000";
+      ctx.font = "bold 32px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(gameState.diceValue, 200, 192);
+
+      // 3. 플레이어 말 (🎈, 🚗, 🚀, 💎) 위치 계산 및 렌더링
+      gameState.players.forEach((p, idx) => {
+        if (p.bankrupt) return;
+        const base = TILE_POS[p.pos];
+        const offsets = [
+          { dx: 25, dy: 25 },
+          { dx: 75, dy: 25 },
+          { dx: 25, dy: 75 },
+          { dx: 75, dy: 75 }
+        ];
+        const pt = offsets[idx];
+
+        // 말 원형 배경
+        ctx.beginPath();
+        ctx.arc(base.x + pt.dx, base.y + pt.dy, 14, 0, Math.PI * 2);
+        ctx.fillStyle = PLAYER_CONFIG[idx].color;
+        ctx.fill();
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // 이모지
+        ctx.font = "14px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(p.emoji, base.x + pt.dx, base.y + pt.dy + 5);
+      });
+    }
+
+    // -------------------------------------------------------------
+    // 주사위 굴리기 및 턴 로직 처리
+    // -------------------------------------------------------------
+    function handleRollClick() {
+      if (gameState.isRolling) return;
+      if (gameState.turn !== localPlayerIndex) return;
+
+      triggerDiceRoll();
+    }
+
+    function checkTurnAndAI() {
+      if (gameState.status !== 'playing') return;
+
+      const currPlayer = gameState.players[gameState.turn];
+
+      if (currPlayer.bankrupt) {
+        nextTurn();
+        return;
+      }
+
+      // AI의 턴인 경우 자동으로 주사위 실행 (방장이 연산 주도)
+      if (currPlayer.isAI && isHost && !gameState.isRolling) {
+        setTimeout(() => {
+          triggerDiceRoll();
+        }, 1000);
+      }
+    }
+
+    function triggerDiceRoll() {
+      gameState.isRolling = true;
+      let count = 0;
+
+      // 주사위 회전 가속 셔플 애니메이션
+      const interval = setInterval(() => {
+        gameState.diceValue = Math.floor(Math.random() * 6) + 1;
+        playSound('roll');
+        drawBoard();
+        count++;
+
+        if (count > 10) {
+          clearInterval(interval);
+          gameState.isRolling = false;
+          executeMove(gameState.diceValue);
+        }
+      }, 60);
+    }
+
+    function executeMove(dice) {
+      const p = gameState.players[gameState.turn];
+
+      // 무인도 탈출 검사
+      if (p.islandTurns > 0) {
+        p.islandTurns--;
+        gameState.message = `${p.name}님이 무인도에서 휴식 중입니다. (남은 턴: ${p.islandTurns})`;
+        if (isHost) syncStateToNetwork();
+        setTimeout(nextTurn, 1200);
+        return;
+      }
+
+      let step = 0;
+      const moveInterval = setInterval(() => {
+        p.pos = (p.pos + 1) % 12;
+        step++;
+        playSound('roll');
+        drawBoard();
+
+        // 출발 통과 월급 지급 수식
+        if (p.pos === 0) {
+          p.money += 50;
+          gameState.message = `${p.name}님이 시작점을 통과하여 월급 50만 원을 받았습니다!`;
+        }
+
+        if (step >= dice) {
+          clearInterval(moveInterval);
+          handleTileEvent(p);
+        }
+      }, 200);
+    }
+
+    // 타일 도착 이벤트 처리
+    function handleTileEvent(p) {
+      const pos = p.pos;
+      const tile = TILES[pos];
+      const state = gameState.board[pos];
+
+      // 1. 도시 타일
+      if (tile.type === 'city') {
+        if (state.owner === -1) {
+          // 빈 땅 매입 연산
+          if (p.money >= tile.price) {
+            p.money -= tile.price;
+            state.owner = gameState.turn;
+            state.hasBuilding = true;
+            playSound('buy');
+            gameState.message = `${p.name}님이 ${tile.name}을(를) ${tile.price}만 원에 매입했습니다!`;
+          } else {
+            gameState.message = `${p.name}님이 ${tile.name} 매입 자금이 부족합니다.`;
+          }
+        } 
+        else if (state.owner !== gameState.turn) {
+          // 상대 땅 통행료 강제 징수
+          const ownerPlayer = gameState.players[state.owner];
+          const rentVal = tile.rent * (state.hasBuilding ? 2 : 1);
+
+          p.money -= rentVal;
+          ownerPlayer.money += rentVal;
+          playSound('rent');
+          gameState.message = `${p.name}님이 ${ownerPlayer.name}의 ${tile.name}에 도착하여 통행료 ${rentVal}만 원을 지불했습니다!`;
+
+          // 파산 검사
+          if (p.money <= 0) {
+            handleBankruptcy(p);
+          }
+        }
+      } 
+      // 2. 특수 칸 이벤트
+      else if (tile.type === 'island') {
+        p.islandTurns = 1;
+        gameState.message = `${p.name}님이 무인도에 갇혔습니다! (1턴 쉼)`;
+      } 
+      else if (tile.type === 'space') {
+        p.pos = 1; // 서울로 워프
+        gameState.message = `${p.name}님이 우주선에 탑승하여 서울로 즉시 이동합니다!`;
+        playSound('win');
+      } 
+      else if (tile.type === 'key') {
+        const bonus = (Math.floor(Math.random() * 3) + 1) * 30;
+        p.money += bonus;
+        playSound('buy');
+        gameState.message = `🔑 황금열쇠! 보너스 찬스 (+${bonus}만 원 획득)`;
+      }
+
+      if (isHost) syncStateToNetwork();
+      setTimeout(nextTurn, 1500);
+    }
+
+    function handleBankruptcy(p) {
+      p.bankrupt = true;
+      p.money = 0;
+      // 소유 부동산 몰수
+      gameState.board.forEach(t => {
+        if (t.owner === gameState.turn) {
+          t.owner = -1;
+          t.hasBuilding = false;
+        }
+      });
+      gameState.message = `💥 ${p.name}님이 통행료를 감당하지 못하고 파산했습니다!`;
+    }
+
+    function nextTurn() {
+      // 승리 조건 검사 (남은 플레이어 1명)
+      const activePlayers = gameState.players.filter(p => !p.bankrupt);
+      if (activePlayers.length <= 1) {
+        const winner = activePlayers[0] || gameState.players[0];
+        gameState.status = 'gameover';
+        gameState.message = `🏆 축하합니다! ${winner.name}님이 최종 승리하였습니다!`;
+        playSound('win');
+        if (isHost) syncStateToNetwork();
+        return;
+      }
+
+      // 다음 턴 순환
+      do {
+        gameState.turn = (gameState.turn + 1) % 4;
+      } while (gameState.players[gameState.turn].bankrupt);
+
+      const nextP = gameState.players[gameState.turn];
+      gameState.message = `${nextP.name}(${nextP.emoji})의 순서입니다.`;
+
+      if (isHost) syncStateToNetwork();
+      checkTurnAndAI();
+    }
+
+    // 초기 실행
+    updateUI();
+  </script>
+</body>
+</html>
