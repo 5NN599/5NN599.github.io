@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>미니지 - 레이싱</title>
+    <style>
+        :root {
+            --bg: #f8f9fa; --text: #333;
+            --canvas-bg: #151b22; --border: #e9ecef;
+            --btn-bg: #fff;
+        }
+        [data-theme="dark"] {
+            --bg: #0d1117; --text: #c9d1d9;
+            --canvas-bg: #0d1117; --border: #30363d;
+            --btn-bg: #21262d;
+        }
+        [data-theme="beige"] {
+            --bg: #f5ebe0; --text: #4e3d30;
+            --canvas-bg: #1e1b18; --border: #ddcbbb;
+            --btn-bg: #eddfd0;
+        }
+        body {
+            background-color: var(--bg) !important;
+            color: var(--text) !important;
+            text-align: center; font-family: sans-serif;
+            padding-top: 15px; margin: 0; transition: 0.3s;
+            overflow: hidden;
+        }
+        canvas {
+            background-color: #212529;
+            display: block; margin: 10px auto;
+            border: 4px solid var(--border); border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        }
+        button {
+            background-color: var(--btn-bg) !important;
+            color: var(--text) !important;
+            border: 1px solid var(--border) !important;
+            padding: 8px 16px; font-size: 0.95rem;
+            border-radius: 8px; cursor: pointer; margin: 4px;
+            font-weight: bold;
+        }
+        #score-board {
+            font-size: 1.3rem; font-weight: bold;
+            color: #fcc419; margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🏎️ 레트로 하이웨이 레이싱</h1>
+    <div id="score-board">⏱️ 주행 거리: 0m | ⚡ 속도: 180km/h</div>
+    <canvas id="racingCanvas" width="320" height="460"></canvas>
+    <div>
+        <button onclick="location.href='../'">🏠 오락실 메인</button>
+    </div>
+    <script>
+        // 1. 최상단 실시간 메인 오락실 CSS 변수 테마 완벽 동기화
+        const savedTheme = localStorage.getItem('minig-theme');
+        if (savedTheme && savedTheme !== 'white') {
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        }
+
+        // 🎵 주파수 오디오 이펙터 믹서 주입
+        let audioCtx = null;
+        function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+        function playSound(type) {
+            initAudio(); try {
+                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                osc.connect(gain); gain.connect(audioCtx.destination); const now = audioCtx.currentTime;
+                if (type === 'move') { osc.type = 'sine'; osc.frequency.setValueAtTime(300, now); osc.frequency.linearRampToValueAtTime(450, now + 0.05); gain.gain.setValueAtTime(0.01, now); gain.gain.linearRampToValueAtTime(0, now + 0.05); osc.start(now); osc.stop(now + 0.05); }
+                else if (type === 'crash') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(180, now); osc.frequency.linearRampToValueAtTime(30, now + 0.3); gain.gain.setValueAtTime(0.06, now); gain.gain.linearRampToValueAtTime(0, now + 0.3); osc.start(now); osc.stop(now + 0.3); }
+            } catch (e) {}
+        }
+
+        const canvas = document.getElementById('racingCanvas'); const ctx = canvas.getContext('2d');
+        
+        // 도로 데이터 기틀 수식 (3차선 도로 망 구축)
+        const LANES =;
+        let player = { lane: 1, x: LANES[1], y: 370, targetX: LANES[1], emoji: "🏎️" };
+        let enemies = [], lineOffset = 0, score = 0, speed = 10, isGameOver = false;
+
+        function spawnEnemy() {
+            if (Math.random() < 0.04 && enemies.length < 4) {
+                let laneIdx = Math.floor(Math.random() * 3);
+                // 전방 차량 중복 겹침 오차 스폰 차단
+                if (enemies.some(e => e.lane === laneIdx && e.y < 120)) return;
+                let emojis = ["🚘", "🚌", "🚖", "🚚", "🚨"];
+                enemies.push({
+                    lane: laneIdx, x: LANES[laneIdx], y: -50,
+                    spd: 3 + Math.random() * 3, emoji: emojis[Math.floor(Math.random() * emojis.length)]
+                });
+            }
+        }
+
+        function loop() {
+            if (isGameOver) return; requestAnimationFrame(loop);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. 아스팔트 배경 및 중앙 점선 애니메이션 드로잉
+            ctx.fillStyle = "#343a40"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#fff";
+            ctx.fillRect(15, 0, 6, canvas.height); ctx.fillRect(canvas.width - 21, 0, 6, canvas.height);
+
+            lineOffset += speed; if (lineOffset > 40) lineOffset = 0;
+            ctx.fillStyle = "#fcc419";
+            for (let y = lineOffset - 40; y < canvas.height; y += 40) {
+                ctx.fillRect(105, y, 4, 20); ctx.fillRect(195, y, 4, 20);
+            }
+
+            // 2. 플레이어 내 차 슬라이딩 무빙 물리 연산
+            player.x += (player.targetX - player.x) * 0.25;
+            ctx.font = "38px sans-serif"; ctx.textAlign = "center";
+            ctx.fillText(player.emoji, player.x + 20, player.y + 35);
+
+            // 3. 외계 적선 유도차량 하강 및 충돌 피격 박스 연산
+            spawnEnemy();
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                let en = enemies[i]; en.y += speed - en.spd;
+                ctx.fillText(en.emoji, en.x + 20, en.y + 35);
+
+                // 상하좌우 히트박스 충돌 감지 공식
+                if (en.lane === player.lane && Math.abs(en.y - player.y) < 32) {
+                    isGameOver = true; playSound('crash');
+                    ctx.font = "bold 24px sans-serif"; ctx.fillStyle = "#fa5252";
+                    ctx.fillText("💥 CRASH COLLISION!", canvas.width / 2, canvas.height / 2);
+                    alert(`🏁 최종 주행 거리: ${Math.floor(score)}m\n다시 도전해 보세요!`);
+                    location.reload(); return;
+                }
+                if (en.y > canvas.height + 50) enemies.splice(i, 1);
+            }
+
+            score += speed * 0.05; speed = 10 + Math.floor(score * 0.02);
+            document.getElementById('score-board').innerText = `⏱️ 주행 거리: ${Math.floor(score)}m | ⚡ 속도: ${180 + Math.floor(score * 0.2)}km/h`;
+        }
+
+        // 키보드 조작 인터페이스 연동 (좌우 차선 교체)
+        document.addEventListener('keydown', e => {
+            if (isGameOver) return;
+            if ((e.key === 'ArrowLeft' || e.key === 'a') && player.lane > 0) { player.lane--; player.targetX = LANES[player.lane]; playSound('move'); }
+            if ((e.key === 'ArrowRight' || e.key === 'd') && player.lane < 2) { player.lane++; player.targetX = LANES[player.lane]; playSound('move'); }
+        });
+
+        loop();
+    </script>
+</body>
+</html>
