@@ -13,6 +13,604 @@
         .controls { margin-bottom: 15px; display: flex; justify-content: center; gap: 10px; align-items: center; flex-wrap: wrap; }
         select, input, button { padding: 8px 14px; font-size: 0.95rem; border-radius: 6px; border: 1px solid var(--border); background: var(--canvas-bg); color: var(--text); cursor: pointer; transition: 0.2s; }
         button:hover { filter: brightness(0.95); }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        
+        .board { display: grid; grid-template-columns: repeat(3, 100px); grid-gap: 8px; justify-content: center; margin: 15px auto; }
+        .cell { width: 100px; height: 100px; background-color: var(--canvas-bg); border: 2px solid var(--border); border-radius: 12px; font-size: 2.5rem; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text); user-select: none; transition: transform 0.1s, background-color 0.2s; }
+        .cell:hover { opacity: 0.9; transform: scale(1.02); }
+        .cell.win { background-color: var(--win-color); animation: pulse 0.6s infinite alternate; }
+        @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.05); } }
+        
+        .status-container { font-size: 1.1rem; margin-bottom: 10px; font-weight: bold; min-height: 28px; }
+        .ping-badge { font-size: 0.85rem; color: #12b886; font-weight: normal; margin-left: 8px; }
+
+        /* P2P 전용 모달 및 UI */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 100; }
+        .modal-content { background: var(--canvas-bg); padding: 25px; border-radius: 16px; border: 2px solid var(--border); text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-width: 480px; width: 90%; }
+        textarea { width: 100%; height: 70px; margin: 6px 0; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-family: monospace; font-size: 0.8rem; resize: none; box-sizing: border-box; }
+        .p2p-step { text-align: left; background: rgba(0,0,0,0.03); padding: 10px; border-radius: 8px; margin-bottom: 10px; font-size: 0.88rem; }
+    </style>
+</head>
+<body>
+    <h1>❌ 틱택토</h1>
+    
+    <div class="controls">
+        <label for="gameMode">모드: </label>
+        <select id="gameMode" onchange="switchGameMode()">
+            <option value="ai">VS 컴퓨터 (싱글)</option>
+            <option value="p2p">1:1 온라인 (P2P)</option>
+        </select>
+
+        <span id="aiDiffContainer">
+            <label for="difficulty">난이도: </label>
+            <select id="difficulty" onchange="resetGame()">
+                <option value="easy">쉬움 (랜덤)</option>
+                <option value="normal" selected>보통</option>
+                <option value="hard">어려움</option>
+                <option value="expert">극한 🔥 (무적)</option>
+            </select>
+        </span>
+
+        <button id="p2pSetupBtn" style="display:none; background:#4dadf7; color:#fff;" onclick="openP2PModal()">📡 연결 설정</button>
+    </div>
+
+    <div class="status-container">
+        <span id="status">당신의 차례입니다 (O)</span>
+        <span id="ping-display" class="ping-badge"></span>
+    </div>
+
+    <div class="board" id="board"></div>
+
+    <button onclick="resetGame()">🔄 게임 리셋</button>
+    <button onclick="location.href='../'">🏠 메인으로 가기</button>
+
+    <!-- 결과 안내 모달 -->
+    <div class="modal" id="overModal">
+        <div class="modal-content">
+            <h2 id="modalTitle" style="margin-top:0;">결과</h2>
+            <button onclick="resetGame()">🔄 다시 하기</button>
+            <button onclick="closeModal('overModal')">닫기</button>
+        </div>
+    </div>
+
+    <!-- P2P 수동 연결 설정 모달 -->
+    <div class="modal" id="p2pModal">
+        <div class="modal-content">
+            <h3 style="margin-top:0;">🌐 1:1 P2P 수동 연결 설정</h3>
+            
+            <div class="p2p-step">
+                <strong>[방장] 1. 방 만들기</strong><br>
+                <button id="btnCreateRoom" onclick="handleCreateRoom(event)" style="margin-top:5px;">코드 생성 (Host)</button>
+            </div>
+
+            <div class="p2p-step">
+                <strong>내 연결 코드 (상대에게 공유):</strong>
+                <textarea id="localCode" readonly placeholder="내 코드가 생성되면 여기에 표시됩니다."></textarea>
+                <button onclick="copyLocalCode()">📋 코드 복사</button>
+            </div>
+
+            <div class="p2p-step">
+                <strong>상대방 연결 코드 붙여넣기:</strong>
+                <textarea id="remoteCode" placeholder="상대방이 준 코드를 여기에 붙여넣으세요."></textarea>
+                <button id="btnJoinRoom" onclick="handleJoinRoom(event)">2. 방 참가 (Guest)</button>
+                <button id="btnCompleteHost" onclick="handleCompleteHost(event)">3. 참가자 승인 (Host)</button>
+            </div>
+
+            <button onclick="closeModal('p2pModal')">❌ 닫기</button>
+        </div>
+    </div>
+
+    <script>
+        /* ==========================================================================
+           1. WebRTC P2P 네트워크 매니저 (타임아웃 및 예외 처리 보완)
+           ========================================================================== */
+        class P2PNetworkManager {
+            constructor() {
+                this.rtcConfig = {
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' }
+                    ]
+                };
+                this.pc = null;
+                this.dataChannel = null;
+                this.isHost = false;
+                this.pingIntervalTimer = null;
+                this.currentPingMs = 0;
+                this.lastPingSentTime = 0;
+
+                this.onDataReceived = null;
+                this.onNetworkStatus = null;
+                this.onConnectionReady = null;
+            }
+
+            // 후보군 수집에 최대 2.5초 대기 제한을 걸어 무한 대기를 방지합니다.
+            _waitForIceGathering(timeoutMs = 2500) {
+                return new Promise((resolve) => {
+                    if (this.pc.iceGatheringState === 'complete') {
+                        resolve();
+                        return;
+                    }
+                    
+                    const timer = setTimeout(() => {
+                        this.pc.removeEventListener('icegatheringstatechange', checkState);
+                        resolve(); // 타임아웃되어도 현재까지 모인 후보 정보로 진행
+                    }, timeoutMs);
+
+                    const checkState = () => {
+                        if (this.pc.iceGatheringState === 'complete') {
+                            clearTimeout(timer);
+                            this.pc.removeEventListener('icegatheringstatechange', checkState);
+                            resolve();
+                        }
+                    };
+                    this.pc.addEventListener('icegatheringstatechange', checkState);
+                });
+            }
+
+            async createRoom() {
+                this.disconnect();
+                this.isHost = true;
+                this.pc = new RTCPeerConnection(this.rtcConfig);
+                this.dataChannel = this.pc.createDataChannel('gameChannel', { ordered: true });
+                this._setupDataChannelEvents();
+
+                const offer = await this.pc.createOffer();
+                await this.pc.setLocalDescription(offer);
+                await this._waitForIceGathering();
+
+                return btoa(JSON.stringify(this.pc.localDescription));
+            }
+
+            async joinRoom(hostOfferBase64) {
+                this.disconnect();
+                this.isHost = false;
+                this.pc = new RTCPeerConnection(this.rtcConfig);
+                this.pc.ondatachannel = (event) => {
+                    this.dataChannel = event.channel;
+                    this._setupDataChannelEvents();
+                };
+
+                const offerObj = JSON.parse(atob(hostOfferBase64));
+                await this.pc.setRemoteDescription(new RTCSessionDescription(offerObj));
+
+                const answer = await this.pc.createAnswer();
+                await this.pc.setLocalDescription(answer);
+                await this._waitForIceGathering();
+
+                return btoa(JSON.stringify(this.pc.localDescription));
+            }
+
+            async completeConnection(guestAnswerBase64) {
+                if (!this.pc) throw new Error("먼저 '코드 생성 (Host)' 버튼을 눌러 방을 만들어야 합니다.");
+                const answerObj = JSON.parse(atob(guestAnswerBase64));
+                await this.pc.setRemoteDescription(new RTCSessionDescription(answerObj));
+            }
+
+            _setupDataChannelEvents() {
+                if (!this.dataChannel) return;
+                this.dataChannel.onopen = () => {
+                    this._startHeartbeat();
+                    if (this.onConnectionReady) this.onConnectionReady();
+                };
+                this.dataChannel.onclose = () => this._stopHeartbeat();
+                this.dataChannel.onmessage = (event) => {
+                    try {
+                        const message = JSON.parse(event.data);
+                        this._handleSystemMessage(message);
+                    } catch (err) {}
+                };
+            }
+
+            _handleSystemMessage(msg) {
+                if (msg.type === '_PING_') {
+                    this._sendRaw({ type: '_PONG_', timestamp: msg.timestamp });
+                    return;
+                }
+                if (msg.type === '_PONG_') {
+                    this.currentPingMs = Date.now() - msg.timestamp;
+                    const pingEl = document.getElementById("ping-display");
+                    if (pingEl) pingEl.innerText = `📶 ${this.currentPingMs}ms`;
+                    return;
+                }
+                if (msg.type === '_GAME_DATA_') {
+                    this._validateAndProcessGameData(msg.payload);
+                }
+            }
+
+            _startHeartbeat() {
+                this._stopHeartbeat();
+                this.pingIntervalTimer = setInterval(() => {
+                    if (this.dataChannel && this.dataChannel.readyState === 'open') {
+                        this.lastPingSentTime = Date.now();
+                        this._sendRaw({ type: '_PING_', timestamp: this.lastPingSentTime });
+                    }
+                }, 1000);
+            }
+
+            _stopHeartbeat() {
+                if (this.pingIntervalTimer) {
+                    clearInterval(this.pingIntervalTimer);
+                    this.pingIntervalTimer = null;
+                }
+            }
+
+            _validateAndProcessGameData(data) {
+                if (this.currentPingMs >= 10000) {
+                    if (this.onNetworkStatus) this.onNetworkStatus('LAG_TIMEOUT', '네트워크 응답이 너무 늦어 연결을 중단합니다.');
+                    this.disconnect();
+                    return;
+                }
+                if (this.onDataReceived) this.onDataReceived(data);
+            }
+
+            sendGameData(payload) {
+                this._sendRaw({ type: '_GAME_DATA_', payload: payload });
+            }
+
+            _sendRaw(dataObject) {
+                if (this.dataChannel && this.dataChannel.readyState === 'open') {
+                    this.dataChannel.send(JSON.stringify(dataObject));
+                }
+            }
+
+            disconnect() {
+                this._stopHeartbeat();
+                if (this.dataChannel) this.dataChannel.close();
+                if (this.pc) this.pc.close();
+                this.dataChannel = null;
+                this.pc = null;
+                document.getElementById("ping-display").innerText = "";
+            }
+        }
+
+        /* ==========================================================================
+           2. 틱택토 게임 및 UI 연결
+           ========================================================================== */
+        const savedTheme = localStorage.getItem('minig-theme');
+        if (savedTheme && savedTheme !== 'white') document.documentElement.setAttribute('data-theme', savedTheme);
+
+        let audioCtx = null;
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playSound(type) {
+            try {
+                initAudio();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                const now = audioCtx.currentTime;
+
+                if (type === 'hit_o') {
+                    osc.type = 'square'; osc.frequency.setValueAtTime(600, now); osc.frequency.linearRampToValueAtTime(300, now + 0.05);
+                    gain.gain.setValueAtTime(0.04, now); gain.gain.linearRampToValueAtTime(0, now + 0.05); osc.start(now); osc.stop(now + 0.05);
+                } else if (type === 'hit_x') {
+                    osc.type = 'square'; osc.frequency.setValueAtTime(450, now); osc.frequency.linearRampToValueAtTime(200, now + 0.05);
+                    gain.gain.setValueAtTime(0.04, now); gain.gain.linearRampToValueAtTime(0, now + 0.05); osc.start(now); osc.stop(now + 0.05);
+                } else if (type === 'win') {
+                    osc.type = 'square'; osc.frequency.setValueAtTime(523.25, now); osc.frequency.setValueAtTime(659.25, now + 0.06); osc.frequency.setValueAtTime(783.99, now + 0.12); osc.frequency.setValueAtTime(1046.5, now + 0.18);
+                    gain.gain.setValueAtTime(0.03, now); gain.gain.linearRampToValueAtTime(0, now + 0.3); osc.start(now); osc.stop(now + 0.3);
+                } else if (type === 'lose') {
+                    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(250, now); osc.frequency.linearRampToValueAtTime(60, now + 0.3);
+                    gain.gain.setValueAtTime(0.08, now); gain.gain.linearRampToValueAtTime(0, now + 0.3); osc.start(now); osc.stop(now + 0.3);
+                } else if (type === 'draw') {
+                    osc.type = 'triangle'; osc.frequency.setValueAtTime(350, now); osc.frequency.setValueAtTime(350, now + 0.08);
+                    gain.gain.setValueAtTime(0.05, now); gain.gain.linearRampToValueAtTime(0, now + 0.16); osc.start(now); osc.stop(now + 0.16);
+                }
+            } catch(e){}
+        }
+
+        const boardElement = document.getElementById("board");
+        let board = ["", "", "", "", "", "", "", "", ""];
+        let isGameActive = true;
+        let currentGameMode = 'ai';
+        
+        const p2p = new P2PNetworkManager();
+        let mySymbol = 'O';
+        let currentTurn = 'O';
+
+        const winPatterns = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8],
+            [0, 3, 6], [1, 4, 7], [2, 5, 8],
+            [0, 4, 8], [2, 4, 6]
+        ];
+
+        function checkWin(b, p) { return winPatterns.some(pattern => pattern.every(index => b[index] === p)); }
+        function getWinningPattern(b, p) { return winPatterns.find(pattern => pattern.every(index => b[index] === p)); }
+        function checkDraw(b) { return b.every(cell => cell !== ""); }
+
+        function updateStatusUI() {
+            const statusEl = document.getElementById("status");
+            if (currentGameMode === 'ai') {
+                statusEl.innerText = isGameActive ? `당신의 차례입니다 (${currentTurn})` : "게임 종료";
+            } else {
+                if (!p2p.dataChannel || p2p.dataChannel.readyState !== 'open') {
+                    statusEl.innerText = "📡 P2P 연결 대기 중...";
+                } else if (currentTurn === mySymbol) {
+                    statusEl.innerText = `당신의 차례입니다 (${mySymbol})`;
+                } else {
+                    statusEl.innerText = `상대방의 차례입니다 (${currentTurn})`;
+                }
+            }
+        }
+
+        function createBoard(winPattern = null) {
+            boardElement.innerHTML = "";
+            board.forEach((val, i) => {
+                const cell = document.createElement("div");
+                cell.classList.add("cell");
+                cell.innerText = val;
+                if (val === "O") cell.style.color = "#4dadf7";
+                if (val === "X") cell.style.color = "#ff6b6b";
+                if (winPattern && winPattern.includes(i)) cell.classList.add("win");
+                cell.addEventListener("click", () => makeMove(i));
+                boardElement.appendChild(cell);
+            });
+        }
+
+        function makeMove(i, isRemote = false) {
+            if (!isGameActive || board[i] !== "") return;
+
+            if (currentGameMode === 'p2p') {
+                if (!p2p.dataChannel || p2p.dataChannel.readyState !== 'open') {
+                    alert("상대방과 P2P 연결이 수립되지 않았습니다.");
+                    return;
+                }
+                if (!isRemote && currentTurn !== mySymbol) return;
+            }
+
+            const symbol = currentTurn;
+            board[i] = symbol;
+            playSound(symbol === 'O' ? 'hit_o' : 'hit_x');
+
+            if (currentGameMode === 'p2p' && !isRemote) {
+                p2p.sendGameData({ action: 'MOVE', index: i });
+            }
+
+            const winPattern = getWinningPattern(board, symbol);
+            if (winPattern) {
+                createBoard(winPattern);
+                isGameActive = false;
+                const isIWin = (currentGameMode === 'ai' && symbol === 'O') || (currentGameMode === 'p2p' && symbol === mySymbol);
+                playSound(isIWin ? 'win' : 'lose');
+                setTimeout(() => showEndModal(isIWin ? "🎉 승리했습니다!" : "💻 패배했습니다...", isIWin ? "#4dadf7" : "#ff6b6b"), 200);
+                return;
+            }
+
+            if (checkDraw(board)) {
+                createBoard();
+                playSound('draw');
+                isGameActive = false;
+                setTimeout(() => showEndModal("🤝 무승부입니다!", "#777"), 200);
+                return;
+            }
+
+            currentTurn = currentTurn === 'O' ? 'X' : 'O';
+            createBoard();
+            updateStatusUI();
+
+            if (currentGameMode === 'ai' && currentTurn === 'X' && isGameActive) {
+                isGameActive = false;
+                document.getElementById("status").innerText = "컴퓨터가 생각 중...";
+                setTimeout(computerMove, 300);
+            }
+        }
+
+        /* AI 로직 */
+        function computerMove() {
+            const diff = document.getElementById("difficulty").value;
+            let move;
+            if (diff === "easy") move = getRandomMove();
+            else if (diff === "normal") move = Math.random() < 0.4 ? getBestMove() : getRandomMove();
+            else if (diff === "hard") move = Math.random() < 0.8 ? getBestMove() : getRandomMove();
+            else move = getBestMove();
+
+            isGameActive = true;
+            if (move !== undefined) makeMove(move, true);
+        }
+
+        function getRandomMove() {
+            let empties = board.map((v, i) => v === "" ? i : null).filter(v => v !== null);
+            return empties[Math.floor(Math.random() * empties.length)];
+        }
+
+        function getBestMove() {
+            let bestScore = -Infinity;
+            let move;
+            for (let i = 0; i < 9; i++) {
+                if (board[i] === "") {
+                    board[i] = "X";
+                    let score = minimax(board, 0, false);
+                    board[i] = "";
+                    if (score > bestScore) {
+                        bestScore = score;
+                        move = i;
+                    }
+                }
+            }
+            return move;
+        }
+
+        function minimax(b, depth, isMaximizing) {
+            if (checkWin(b, "X")) return 10 - depth;
+            if (checkWin(b, "O")) return depth - 10;
+            if (b.every(c => c !== "")) return 0;
+
+            if (isMaximizing) {
+                let bestScore = -Infinity;
+                for (let i = 0; i < 9; i++) {
+                    if (b[i] === "") {
+                        b[i] = "X";
+                        let score = minimax(b, depth + 1, false);
+                        b[i] = "";
+                        bestScore = Math.max(score, bestScore);
+                    }
+                }
+                return bestScore;
+            } else {
+                let bestScore = Infinity;
+                for (let i = 0; i < 9; i++) {
+                    if (b[i] === "") {
+                        b[i] = "O";
+                        let score = minimax(b, depth + 1, true);
+                        b[i] = "";
+                        bestScore = Math.min(score, bestScore);
+                    }
+                }
+                return bestScore;
+            }
+        }
+
+        /* ==========================================================================
+           3. P2P 이벤트 핸들러 및 버튼 로딩 처리
+           ========================================================================== */
+        p2p.onConnectionReady = () => {
+            closeModal('p2pModal');
+            alert("✅ P2P 연결 성공! 게임을 시작합니다.");
+            resetGame(false);
+        };
+
+        p2p.onDataReceived = (data) => {
+            if (data.action === 'MOVE') makeMove(data.index, true);
+            else if (data.action === 'RESET') resetGame(false);
+        };
+
+        p2p.onNetworkStatus = (type, message) => {
+            alert(`[네트워크 상태 안내]\n${message}`);
+        };
+
+        function switchGameMode() {
+            currentGameMode = document.getElementById("gameMode").value;
+            const diffBox = document.getElementById("aiDiffContainer");
+            const p2pBtn = document.getElementById("p2pSetupBtn");
+
+            if (currentGameMode === 'p2p') {
+                diffBox.style.display = "none";
+                p2pBtn.style.display = "inline-block";
+                openP2PModal();
+            } else {
+                diffBox.style.display = "inline-block";
+                p2pBtn.style.display = "none";
+                p2p.disconnect();
+                mySymbol = 'O';
+            }
+            resetGame();
+        }
+
+        async function handleCreateRoom(e) {
+            const btn = e.target;
+            btn.innerText = "⏳ 생성 중...";
+            btn.disabled = true;
+
+            try {
+                mySymbol = 'O';
+                const code = await p2p.createRoom();
+                document.getElementById('localCode').value = code;
+                alert("방장 코드가 생성되었습니다! 복사하여 참가자에게 공유하세요.");
+            } catch (err) {
+                console.error(err);
+                alert("코드 생성 중 오류가 발생했습니다: " + err.message);
+            } finally {
+                btn.innerText = "코드 생성 (Host)";
+                btn.disabled = false;
+            }
+        }
+
+        async function handleJoinRoom(e) {
+            const btn = e.target;
+            const remoteCode = document.getElementById('remoteCode').value.trim();
+            if (!remoteCode) return alert("방장의 연결 코드를 입력해주세요.");
+
+            btn.innerText = "⏳ 참가 처리 중...";
+            btn.disabled = true;
+
+            try {
+                mySymbol = 'X';
+                const answerCode = await p2p.joinRoom(remoteCode);
+                document.getElementById('localCode').value = answerCode;
+                alert("참가자 코드가 생성되었습니다! 복사하여 방장에게 전달하세요.");
+            } catch (err) {
+                console.error(err);
+                alert("올바르지 않은 코드이거나 형식이 잘못되었습니다.");
+            } finally {
+                btn.innerText = "2. 방 참가 (Guest)";
+                btn.disabled = false;
+            }
+        }
+
+        async function handleCompleteHost(e) {
+            const btn = e.target;
+            const remoteCode = document.getElementById('remoteCode').value.trim();
+            if (!remoteCode) return alert("참가자의 코드를 입력해주세요.");
+
+            btn.innerText = "⏳ 승인 처리 중...";
+            btn.disabled = true;
+
+            try {
+                await p2p.completeConnection(remoteCode);
+            } catch (err) {
+                console.error(err);
+                alert("승인 중 오류가 발생했습니다: " + err.message);
+            } finally {
+                btn.innerText = "3. 참가자 승인 (Host)";
+                btn.disabled = false;
+            }
+        }
+
+        function copyLocalCode() {
+            const el = document.getElementById('localCode');
+            if(!el.value) return alert("복사할 코드가 없습니다.");
+            el.select();
+            navigator.clipboard.writeText(el.value);
+            alert("클립보드에 코드가 복사되었습니다!");
+        }
+
+        function showEndModal(text, color) {
+            const title = document.getElementById("modalTitle");
+            title.innerText = text;
+            title.style.color = color;
+            document.getElementById("overModal").style.display = "flex";
+        }
+
+        function openP2PModal() { document.getElementById("p2pModal").style.display = "flex"; }
+        function closeModal(id) { document.getElementById(id).style.display = "none"; }
+
+        function resetGame(sendNetworkSync = true) {
+            closeModal('overModal');
+            board = ["", "", "", "", "", "", "", "", ""];
+            isGameActive = true;
+            currentTurn = 'O';
+
+            if (currentGameMode === 'p2p' && sendNetworkSync && p2p.dataChannel && p2p.dataChannel.readyState === 'open') {
+                p2p.sendGameData({ action: 'RESET' });
+            }
+
+            updateStatusUI();
+            createBoard();
+        }
+
+        createBoard();
+    </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>미니지 - 틱택토 (멀티플레이 지원)</title>
+    <style>
+        :root { --bg: #f8f9fa; --text: #333; --canvas-bg: #fff; --border: #e9ecef; --btn-bg: #fff; --win-color: #ffd43b; }
+        [data-theme="beige"] { --bg: #f5ebe0; --text: #4e3d30; --canvas-bg: #eddfd0; --border: #ddcbbb; --btn-bg: #eddfd0; --win-color: #f7d070; }
+        [data-theme="dark"] { --bg: #0d1117; --text: #c9d1d9; --canvas-bg: #161b22; --border: #30363d; --btn-bg: #21262d; --win-color: #f08c00; }
+        
+        body { text-align: center; background-color: var(--bg); color: var(--text); font-family: sans-serif; padding-top: 20px; margin: 0; transition: 0.3s; }
+        .controls { margin-bottom: 15px; display: flex; justify-content: center; gap: 10px; align-items: center; flex-wrap: wrap; }
+        select, input, button { padding: 8px 14px; font-size: 0.95rem; border-radius: 6px; border: 1px solid var(--border); background: var(--canvas-bg); color: var(--text); cursor: pointer; transition: 0.2s; }
+        button:hover { filter: brightness(0.95); }
         
         .board { display: grid; grid-template-columns: repeat(3, 100px); grid-gap: 8px; justify-content: center; margin: 15px auto; }
         .cell { width: 100px; height: 100px; background-color: var(--canvas-bg); border: 2px solid var(--border); border-radius: 12px; font-size: 2.5rem; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text); user-select: none; transition: transform 0.1s, background-color 0.2s; }
