@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>미니지 - 갤럭시 블리츠</title>
+  <title>미니지- 갤럭시 블리츠</title>
   <style>
     :root { --bg: #f8f9fa; --text: #333; --canvas-bg: #05070a; --border: #30363d; --btn-bg: #fff; }
     [data-theme="dark"] { --bg: #0d1117; --text: #c9d1d9; --canvas-bg: #020305; --border: #30363d; --btn-bg: #21262d; }
@@ -236,165 +236,94 @@
     }
 
     function generateTerrain(mapType = selectedMap) {
-      terrain = new Array(TERRAIN_COLS * TERRAIN_ROWS);
+      terrain = new Array(TERRAIN_COLS * TERRAIN_ROWS).fill('grass');
 
-      for (let row = 0; row < TERRAIN_ROWS; row++) {
-        for (let col = 0; col < TERRAIN_COLS; col++) {
-          const x = col * TERRAIN_TILE + TERRAIN_TILE / 2;
-          const y = row * TERRAIN_TILE + TERRAIN_TILE / 2;
-
-          // 기본 평지.
-          let type = 'grass';
-
-          // 굽이치는 강 + 넓은 만.
-          const riverY =
-            1200 +
-            Math.sin(x / 430) * 180 +
-            Math.sin(x / 170) * 45;
-
-          const riverWidth = 125 + 30 * Math.sin(x / 250 + 0.5);
-
-          if (Math.abs(y - riverY) < riverWidth) {
-            type = 'water';
-          }
-
-          // 중앙 하부의 작은 호수.
-          const lakeDist = Math.hypot(x - 1540, y - 1770);
-          if (lakeDist < 245) {
-            type = 'water';
-          }
-
-          // 고지대: 강/호수와 겹치면 물을 우선.
-          const hillA = Math.hypot((x - 780) / 1.15, y - 760);
-          const hillB = Math.hypot((x - 2320) / 1.2, y - 820);
-          const hillC = Math.hypot((x - 1580) / 1.0, y - 430);
-
-          if (type !== 'water' &&
-              (hillA < 360 || hillB < 380 || hillC < 310)) {
-            type = 'hill';
-          }
-
-          // 경사로: 강을 건너는 주요 연결 지점.
-          const crossings = [
-            { x: 1020, y: 1200 },
-            { x: 1940, y: 1140 },
-            { x: 1540, y: 1490 }
-          ];
-
-          for (const c of crossings) {
-            if (Math.hypot(x - c.x, y - c.y) < 145) {
-              type = 'ramp';
-              break;
-            }
-          }
-
-          terrain[terrainIndex(col, row)] = type;
+      const set = (c,r,t) => {
+        if (c>=0 && r>=0 && c<TERRAIN_COLS && r<TERRAIN_ROWS) terrain[terrainIndex(c,r)] = t;
+      };
+      const circle = (cx,cy,rad,t) => {
+        const c0=Math.floor((cx-rad)/TERRAIN_TILE), c1=Math.ceil((cx+rad)/TERRAIN_TILE);
+        const r0=Math.floor((cy-rad)/TERRAIN_TILE), r1=Math.ceil((cy+rad)/TERRAIN_TILE);
+        for(let r=r0;r<=r1;r++) for(let c=c0;c<=c1;c++){
+          const x=c*TERRAIN_TILE+TERRAIN_TILE/2, y=r*TERRAIN_TILE+TERRAIN_TILE/2;
+          if(Math.hypot(x-cx,y-cy)<=rad) set(c,r,t);
         }
+      };
+      const ellipse=(cx,cy,rx,ry,t) => {
+        const c0=Math.floor((cx-rx)/TERRAIN_TILE), c1=Math.ceil((cx+rx)/TERRAIN_TILE);
+        const r0=Math.floor((cy-ry)/TERRAIN_TILE), r1=Math.ceil((cy+ry)/TERRAIN_TILE);
+        for(let r=r0;r<=r1;r++) for(let c=c0;c<=c1;c++){
+          const x=c*TERRAIN_TILE+TERRAIN_TILE/2, y=r*TERRAIN_TILE+TERRAIN_TILE/2;
+          const dx=(x-cx)/rx, dy=(y-cy)/ry;
+          if(dx*dx+dy*dy<=1) set(c,r,t);
+        }
+      };
+      const line=(x1,y1,x2,y2,w,t) => {
+        const n=Math.ceil(Math.hypot(x2-x1,y2-y1)/35);
+        for(let i=0;i<=n;i++){
+          const q=i/Math.max(1,n);
+          circle(x1+(x2-x1)*q,y1+(y2-y1)*q,w,t);
+        }
+      };
+
+      if(mapType==='CONTINENT'){
+        // 넓은 대륙형. 강이 전장을 가로지르지만 다수의 넓은 교차점이 있다.
+        line(0,1160,WORLD_W,1260,125,'water');
+        ellipse(650,560,330,250,'hill');
+        ellipse(2550,600,360,280,'hill');
+        ellipse(1600,430,280,210,'hill');
+
+        [560,1600,2640].forEach(x=>circle(x,1210,120,'ramp'));
+
+        // 측면 우회로와 중앙 주 이동축
+        line(340,2050,1250,1450,75,'grass');
+        line(1250,1450,1950,950,75,'grass');
+        line(1950,950,2860,400,75,'grass');
+      } else if(mapType==='ISLANDS'){
+        // 섬 형태. 각 육괴가 서로 다른 크기/형태를 가진다.
+        terrain.fill('water');
+        ellipse(380,2040,500,390,'grass');
+        ellipse(780,680,560,430,'grass');
+        ellipse(1580,1180,620,470,'grass');
+        ellipse(2490,640,510,400,'grass');
+        ellipse(2620,1810,520,420,'grass');
+
+        ellipse(760,600,180,140,'hill');
+        ellipse(1580,1040,250,180,'hill');
+        ellipse(2490,560,190,150,'hill');
+        ellipse(2610,1790,220,170,'hill');
+
+        // 자연스러운 다리/경사로 연결망
+        line(780,1160,1170,1120,82,'ramp');
+        line(1990,1110,2330,860,82,'ramp');
+        line(1510,1510,1220,1810,82,'ramp');
+        line(1880,1510,2290,1720,82,'ramp');
+        line(1000,1900,1370,1570,82,'ramp');
+      } else {
+        // 협곡형. 좌/우 고지대와 중앙 수역, 3개의 주 초크.
+        terrain.fill('grass');
+        ellipse(1600,1200,430,980,'water');
+
+        ellipse(700,650,390,320,'hill');
+        ellipse(2500,650,390,320,'hill');
+        ellipse(700,1770,400,340,'hill');
+        ellipse(2500,1770,400,340,'hill');
+
+        [610,1200,1790].forEach(y=>circle(1600,y,130,'ramp'));
+
+        // 각 초크는 본진 양쪽을 실제로 연결한다.
+        line(350,2050,920,1800,80,'grass');
+        line(920,1800,1600,1790,80,'ramp');
+        line(1600,1790,2250,1500,80,'grass');
+
+        line(2850,350,2350,650,80,'grass');
+        line(2350,650,1600,1200,80,'ramp');
+        line(1600,1200,950,1500,80,'grass');
       }
 
-      // 전장별 추가 지형 특징.
-      if (mapType === 'ISLANDS') {
-        // 군도: 여러 섬과 넓은 수역.
-        for (let row = 0; row < TERRAIN_ROWS; row++) {
-          for (let col = 0; col < TERRAIN_COLS; col++) {
-            const x = col * TERRAIN_TILE + TERRAIN_TILE / 2;
-            const y = row * TERRAIN_TILE + TERRAIN_TILE / 2;
-
-            const lakeA = Math.hypot((x - 1450) / 1.2, (y - 850) / 1.0) < 420;
-            const lakeB = Math.hypot((x - 2200) / 1.0, (y - 1650) / 0.9) < 410;
-            const lakeC = Math.hypot((x - 900) / 1.1, (y - 1550) / 1.0) < 300;
-
-            if (lakeA || lakeB || lakeC) {
-              terrain[terrainIndex(col, row)] = 'water';
-            }
-
-            // 작은 섬 띠
-            const ringA = Math.hypot((x - 1500) / 1.0, (y - 850) / 0.9);
-            if (ringA > 520 && ringA < 700) {
-              terrain[terrainIndex(col, row)] = 'water';
-            }
-          }
-        }
-
-        // 군도 특유의 연결 경사로.
-        [
-          { x: 1080, y: 1100 },
-          { x: 1800, y: 1100 },
-          { x: 1500, y: 1450 }
-        ].forEach(rp => {
-          for (let row = 0; row < TERRAIN_ROWS; row++) {
-            for (let col = 0; col < TERRAIN_COLS; col++) {
-              const x = col * TERRAIN_TILE + TERRAIN_TILE / 2;
-              const y = row * TERRAIN_TILE + TERRAIN_TILE / 2;
-              if (Math.hypot(x - rp.x, y - rp.y) < 135) {
-                terrain[terrainIndex(col, row)] = 'ramp';
-              }
-            }
-          }
-        });
-      } else if (mapType === 'CHOKE') {
-        // 협곡: 중앙에 거대한 호수/협곡, 몇 개의 좁은 육상 통로.
-        for (let row = 0; row < TERRAIN_ROWS; row++) {
-          for (let col = 0; col < TERRAIN_COLS; col++) {
-            const x = col * TERRAIN_TILE + TERRAIN_TILE / 2;
-            const y = row * TERRAIN_TILE + TERRAIN_TILE / 2;
-
-            const trench =
-              Math.abs(x - WORLD_W / 2) < 310 &&
-              y > 450 && y < 1950;
-
-            const lakeTop =
-              Math.hypot((x - 900) / 1.0, (y - 500) / 0.8) < 320;
-
-            const lakeBottom =
-              Math.hypot((x - 2300) / 1.0, (y - 1850) / 0.9) < 340;
-
-            if (trench || lakeTop || lakeBottom) {
-              terrain[terrainIndex(col, row)] = 'water';
-            }
-          }
-        }
-
-        // 방어 가능한 핵심 경사로 3개.
-        [
-          { x: WORLD_W / 2 - 360, y: 700 },
-          { x: WORLD_W / 2 + 360, y: 1200 },
-          { x: WORLD_W / 2 - 360, y: 1750 }
-        ].forEach(rp => {
-          for (let row = 0; row < TERRAIN_ROWS; row++) {
-            for (let col = 0; col < TERRAIN_COLS; col++) {
-              const x = col * TERRAIN_TILE + TERRAIN_TILE / 2;
-              const y = row * TERRAIN_TILE + TERRAIN_TILE / 2;
-              if (Math.hypot(x - rp.x, y - rp.y) < 140) {
-                terrain[terrainIndex(col, row)] = 'ramp';
-              }
-            }
-          }
-        });
-      }
-
-      // 기지 주변은 넓은 평지로 확보.
-      [
-        { x: 350, y: WORLD_H - 350 },
-        { x: WORLD_W - 350, y: 350 }
-      ].forEach(base => {
-        const minCol = Math.floor((base.x - 420) / TERRAIN_TILE);
-        const maxCol = Math.floor((base.x + 420) / TERRAIN_TILE);
-        const minRow = Math.floor((base.y - 420) / TERRAIN_TILE);
-        const maxRow = Math.floor((base.y + 420) / TERRAIN_TILE);
-
-        for (let row = minRow; row <= maxRow; row++) {
-          for (let col = minCol; col <= maxCol; col++) {
-            if (col < 0 || row < 0 || col >= TERRAIN_COLS || row >= TERRAIN_ROWS) continue;
-            if (Math.hypot(
-              col * TERRAIN_TILE + TERRAIN_TILE / 2 - base.x,
-              row * TERRAIN_TILE + TERRAIN_TILE / 2 - base.y
-            ) < 340) {
-              terrain[terrainIndex(col, row)] = 'grass';
-            }
-          }
-        }
-      });
+      // 시작 기지는 무조건 충분한 평지 위에 둔다.
+      circle(350,WORLD_H-350,360,'grass');
+      circle(WORLD_W-350,350,360,'grass');
     }
 
     function getTerrainTypeAt(x, y) {
@@ -764,7 +693,57 @@
       return row * FOG_COLS + col;
     }
 
-    function markFogCircle(x, y, radius) {
+    function terrainHeightAtWorld(x, y) {
+      const t = getTerrainTypeAt(x, y);
+      if (t === 'hill') return 1;
+      if (t === 'ramp') return 0.5;
+      return 0;
+    }
+
+    function isGroundVisionBlocked(observer, targetX, targetY) {
+      if (!observer || isAirUnit(observer)) return false;
+
+      const observerHeight = terrainHeightAtWorld(observer.x, observer.y);
+      const targetHeight = terrainHeightAtWorld(targetX, targetY);
+
+      // 낮은 지대에서는 언덕의 내부를 볼 수 없다.
+      if (targetHeight === 1 && observerHeight < 1) return true;
+
+      // 언덕 뒤쪽에 있는 지형은 능선에 막힌 것으로 처리한다.
+      // 경사로 위에서는 연결된 시야가 확보된다.
+      const dx = targetX - observer.x;
+      const dy = targetY - observer.y;
+      const distance = Math.hypot(dx, dy);
+
+      if (distance <= 90) return false;
+
+      const samples = Math.min(28, Math.ceil(distance / 45));
+      let previousHeight = observerHeight;
+
+      for (let i = 1; i < samples; i++) {
+        const t = i / samples;
+        const sx = observer.x + dx * t;
+        const sy = observer.y + dy * t;
+        const h = terrainHeightAtWorld(sx, sy);
+
+        // 낮은 곳에서 높은 곳으로 가는 도중에 언덕 능선이 끼면 차단.
+        if (h === 1 && observerHeight < 1) return true;
+
+        // 높은 곳 위에서 반대편 고지대를 볼 때도 능선이 가린다.
+        if (observerHeight === 1 && h === 1 && previousHeight === 1) {
+          // 연속된 고지대는 통과 가능하지만 끝 지형 자체까지는 보도록 한다.
+        }
+
+        previousHeight = h;
+      }
+
+      return false;
+    }
+
+    function markFogCircle(observer, radius) {
+      const x = observer.x;
+      const y = observer.y;
+
       const minCol = Math.max(0, Math.floor((x - radius) / FOG_TILE));
       const maxCol = Math.min(FOG_COLS - 1, Math.floor((x + radius) / FOG_TILE));
       const minRow = Math.max(0, Math.floor((y - radius) / FOG_TILE));
@@ -774,11 +753,13 @@
         for (let col = minCol; col <= maxCol; col++) {
           const cx = col * FOG_TILE + FOG_TILE / 2;
           const cy = row * FOG_TILE + FOG_TILE / 2;
-          if (Math.hypot(cx - x, cy - y) <= radius + FOG_TILE * 0.45) {
-            const idx = fogIndex(col, row);
-            fogVisible[idx] = 1;
-            fogExplored[idx] = 1;
-          }
+
+          if (Math.hypot(cx - x, cy - y) > radius + FOG_TILE * 0.45) continue;
+          if (isGroundVisionBlocked(observer, cx, cy)) continue;
+
+          const idx = fogIndex(col, row);
+          fogVisible[idx] = 1;
+          fogExplored[idx] = 1;
         }
       }
     }
@@ -789,6 +770,8 @@
       entities.forEach(e => {
         if (e.faction !== 'player') return;
 
+        // 건설 중 건물도 좁은 시야는 주지만,
+        // 언덕 아래에 있으면 언덕 너머의 시야를 뚫지는 못한다.
         let vision = 190;
 
         if (e.type === 'hq') vision = 420;
@@ -797,13 +780,11 @@
         else if (e.type === 'bunker') vision = 270;
         else if (e.speed > 0) vision = 240;
 
-        // 건설 중인 건물은 완성 건물보다 시야가 크게 좁다.
-        // 예: 터렛 300 -> 110, 벙커 270 -> 100.
         if (e.isUnderConstruction) {
           vision = Math.max(80, Math.floor(vision * 0.36));
         }
 
-        markFogCircle(e.x, e.y, vision);
+        markFogCircle(e, vision);
       });
     }
 
@@ -1044,97 +1025,86 @@
     }
 
     // SCV 최적 자원 분산 알고리즘 (특정 자원에 채굴자가 몰리지 않게 할당)
-    function assignBaseResource(scv, baseX, baseY, maxDist = 300) {
-      const validResources = entities.filter(r =>
-        (r.type === 'resource_min' || (r.type === 'resource_gas' && r.hasRefinery)) &&
-        r.amount > 0 &&
-        Math.hypot(r.x - baseX, r.y - baseY) <= maxDist
-      );
-      if (validResources.length === 0) return null;
+    const MINERAL_WORKER_CAP = 2;
+    const GAS_WORKER_CAP = 3;
 
-      let bestRes = null;
-      let bestScore = Infinity;
-      validResources.forEach(res => {
-        const miners = entities.filter(e => e.type === 'scv' && e.assignedRes === res && e !== scv).length;
-        const dist = Math.hypot(res.x - scv.x, res.y - scv.y);
-        const score = dist + miners * 180;
-        if (score < bestScore) {
-          bestScore = score;
-          bestRes = res;
-        }
-      });
-      return bestRes;
+    function resourceWorkerCount(res, except=null) {
+      return entities.filter(e =>
+        e.type === 'scv' && e.hp > 0 && e !== except && e.assignedRes === res
+      ).length;
     }
 
-    function nearestFriendlyHQ(faction, x, y) {
-      let best = null;
-      let bestDist = Infinity;
-      entities.forEach(h => {
-        if (h.faction !== faction || h.type !== 'hq' || h.isUnderConstruction) return;
-        const d = Math.hypot(h.x - x, h.y - y);
-        if (d < bestDist) {
-          bestDist = d;
-          best = h;
-        }
+    function resourceWorkerCap(res) {
+      return res && res.type === 'resource_gas' ? GAS_WORKER_CAP : MINERAL_WORKER_CAP;
+    }
+
+    function chooseBestResourceForSCV(scv, baseX, baseY, maxDist=380) {
+      const candidates=entities.filter(r=>
+        (r.type==='resource_min' || (r.type==='resource_gas' && r.hasRefinery)) &&
+        r.amount>0 &&
+        Math.hypot(r.x-baseX,r.y-baseY)<=maxDist &&
+        resourceWorkerCount(r,scv)<resourceWorkerCap(r)
+      );
+
+      let best=null, bestScore=Infinity;
+      candidates.forEach(res=>{
+        const miners=resourceWorkerCount(res,scv);
+        const dist=Math.hypot(res.x-scv.x,res.y-scv.y);
+        const score=dist + miners*600;
+        if(score<bestScore){bestScore=score;best=res;}
+      });
+      return best;
+    }
+
+    function assignBaseResource(scv, baseX, baseY, maxDist=300) {
+      const res=chooseBestResourceForSCV(scv,baseX,baseY,maxDist) || assignBestResource(scv);
+      scv.assignedRes=res||null;
+      return scv.assignedRes;
+    }
+
+    function nearestFriendlyHQ(faction,x,y){
+      let best=null,bestDist=Infinity;
+      entities.forEach(h=>{
+        if(h.faction!==faction || h.type!=='hq' || h.isUnderConstruction) return;
+        const d=Math.hypot(h.x-x,h.y-y);
+        if(d<bestDist){bestDist=d;best=h;}
       });
       return best;
     }
 
     function assignResourceForNearestBase(scv) {
-      const base = nearestFriendlyHQ(scv.faction, scv.x, scv.y);
-      if (!base) {
-        scv.assignedRes = null;
-        scv.assignedBaseId = null;
-        return null;
-      }
-
-      let res = assignBaseResource(scv, base.x, base.y, 380);
-      if (!res) res = assignBestResource(scv);
-
-      scv.assignedRes = res || null;
-      scv.assignedBaseId = res ? base.id : null;
+      const base=nearestFriendlyHQ(scv.faction,scv.x,scv.y);
+      if(!base){scv.assignedRes=null;scv.assignedBaseId=null;return null;}
+      const res=chooseBestResourceForSCV(scv,base.x,base.y,420) || assignBestResource(scv);
+      scv.assignedRes=res||null;
+      scv.assignedBaseId=res?base.id:null;
       return res;
     }
 
     function assignEnemyBaseResource(scv) {
-      const base = nearestFriendlyHQ('enemy', scv.x, scv.y);
-      if (!base) {
-        scv.assignedRes = null;
-        scv.assignedBaseId = null;
-        return null;
-      }
-
-      let res = assignBaseResource(scv, base.x, base.y, 380);
-      if (!res) res = assignBestResource(scv);
-
-      scv.assignedRes = res || null;
-      scv.assignedBaseId = res ? base.id : null;
+      const base=nearestFriendlyHQ('enemy',scv.x,scv.y);
+      if(!base){scv.assignedRes=null;scv.assignedBaseId=null;return null;}
+      const res=chooseBestResourceForSCV(scv,base.x,base.y,420) || assignBestResource(scv);
+      scv.assignedRes=res||null;
+      scv.assignedBaseId=res?base.id:null;
       return res;
     }
 
-function assignBestResource(scv) {
-      const validResources = entities.filter(r => 
-        (r.type === 'resource_min' || (r.type === 'resource_gas' && r.hasRefinery)) && r.amount > 0
+    function assignBestResource(scv) {
+      const candidates=entities.filter(r=>
+        (r.type==='resource_min' || (r.type==='resource_gas' && r.hasRefinery)) &&
+        r.amount>0 &&
+        resourceWorkerCount(r,scv)<resourceWorkerCap(r)
       );
-      if (validResources.length === 0) return null;
 
-      let bestRes = null;
-      let minScore = Infinity;
-
-      validResources.forEach(res => {
-        const dist = Math.hypot(res.x - scv.x, res.y - scv.y);
-        // 이 자원을 채굴 중인 다른 SCV 수 계산
-        const miners = entities.filter(e => e.type === 'scv' && e.assignedRes === res && e !== scv).length;
-        // 거리와 현재 일꾼 수를 종합하여 점수 계산
-        const score = dist + (miners * 180);
-
-        if (score < minScore) {
-          minScore = score;
-          bestRes = res;
-        }
+      let best=null,bestScore=Infinity;
+      candidates.forEach(res=>{
+        const miners=resourceWorkerCount(res,scv);
+        const dist=Math.hypot(res.x-scv.x,res.y-scv.y);
+        const score=dist + miners*600;
+        if(score<bestScore){bestScore=score;best=res;}
       });
-
-      return bestRes;
+      return best;
     }
 
     canvas.addEventListener('mousedown', (e) => {
@@ -1192,6 +1162,10 @@ function assignBestResource(scv) {
               if (targetConstruction) {
                 resumeConstructionWithSCV(unit, targetConstruction);
               } else if (targetRes) {
+                if(resourceWorkerCount(targetRes,unit)>=resourceWorkerCap(targetRes)){
+                  showToast(`⛏️ 이 자원은 최대 ${resourceWorkerCap(targetRes)}기의 SCV만 채굴할 수 있습니다.`);
+                  return;
+                }
                 unit.isManualMove = false;
                 unit.moveTarget = null;
                 unit.assignedRes = targetRes;
@@ -1650,6 +1624,143 @@ function assignBestResource(scv) {
       initGame();
     }
 
+    // ==========================================================
+    // 자원 배치 시스템
+    // ==========================================================
+    // 일반적인 "반달형 본진 자원 패치"를 만든다.
+    // 광물끼리 겹치지 않으면서 SCV가 앞쪽 광물부터 채취하도록
+    // 기지 방향에 맞춰 자동 회전한다.
+    function spawnBaseResourceLine(hqX, hqY, facingAngle, options = {}) {
+      const mineralCount = options.mineralCount || 8;
+      const radius = options.radius || 105;
+      const spread = options.spread || 0.82;
+      const gasSide = options.gasSide ?? 1;
+
+      // 스타크래프트식 본진 자원 패치:
+      // 기지 바로 앞을 둥글게 감싸는 압축형 8광물 + 1가스.
+      // 너무 긴 직선/넓은 자원선을 만들지 않는다.
+      const offsets = [
+        [-0.95,  0.00],
+        [-0.68,  0.18],
+        [-0.34,  0.28],
+        [ 0.00,  0.32],
+        [ 0.34,  0.28],
+        [ 0.68,  0.18],
+        [ 0.95,  0.00],
+        [ 0.78, -0.24]
+      ];
+
+      const cos = Math.cos(facingAngle);
+      const sin = Math.sin(facingAngle);
+
+      for (let i = 0; i < mineralCount; i++) {
+        const [side, depth] = offsets[i];
+
+        // side = 좌우, depth = 약간의 안쪽 굽힘
+        const localX = side * radius * spread;
+        const localY = radius + depth * 50;
+
+        const px = hqX + localX * cos - localY * sin;
+        const py = hqY + localX * sin + localY * cos;
+
+        // 이미 평탄화된 본진에서는 불필요하게 먼 곳으로 자원을
+        // 이동시키지 않도록 탐색 반경을 아주 작게 제한한다.
+        const land = findNearestLandPoint(px, py, 35);
+        spawnEntity('resource_min', 'neutral', land.x, land.y);
+      }
+
+      // 가스는 자원 벽의 한쪽 끝에 붙인다.
+      const gasLocalX = gasSide * 155;
+      const gasLocalY = radius + 8;
+
+      const gx = hqX + gasLocalX * cos - gasLocalY * sin;
+      const gy = hqY + gasLocalX * sin + gasLocalY * cos;
+
+      const gasPoint = findNearestLandPoint(gx, gy, 35);
+      spawnEntity('resource_gas', 'neutral', gasPoint.x, gasPoint.y);
+    }
+
+    function spawnExpansionResources(x, y, angle = 0, rich = false) {
+      const count = rich ? 8 : 7;
+      const radius = rich ? 98 : 102;
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+
+      const arc = [
+        [-0.95, 0.02], [-0.68, 0.20], [-0.34, 0.29], [0.00, 0.32],
+        [ 0.34, 0.29], [ 0.68, 0.20], [0.95, 0.02], [0.72, -0.22]
+      ];
+
+      for (let i = 0; i < count; i++) {
+        const [side, depth] = arc[i];
+        const localX = side * 92;
+        const localY = radius + depth * 42;
+
+        const px = x + localX * cos - localY * sin;
+        const py = y + localX * sin + localY * cos;
+
+        const p = findNearestLandPoint(px, py, 35);
+        spawnEntity('resource_min', 'neutral', p.x, p.y);
+      }
+
+      const gasAngle = angle + 1.42;
+      const gx = x + Math.cos(gasAngle) * (radius + 35);
+      const gy = y + Math.sin(gasAngle) * (radius + 35);
+      const gp = findNearestLandPoint(gx, gy, 35);
+      spawnEntity('resource_gas', 'neutral', gp.x, gp.y);
+    }
+
+    function spawnCenterRichResources(x,y,angle=0){
+      // 중앙 자원은 한 덩어리로 뭉치지 않고 좌우로 벌어진
+      // 소형 패치 두 개를 배치해 "전진 확장" 느낌을 준다.
+      const cos=Math.cos(angle),sin=Math.sin(angle);
+
+      [-1,1].forEach(side=>{
+        const cx=x+side*150*cos;
+        const cy=y+side*150*sin;
+
+        const pattern=[
+          [-2,-0.2],[-1,-0.65],[0,-0.8],[1,-0.65],[2,-0.2]
+        ];
+
+        pattern.forEach(([lx,ly])=>{
+          const px=cx+lx*42*cos-ly*42*sin;
+          const py=cy+lx*42*sin+ly*42*cos;
+          const p=findNearestLandPoint(px,py,100);
+          spawnEntity('resource_min','neutral',p.x,p.y);
+        });
+      });
+
+      const gp=findNearestLandPoint(
+        x-190*sin,
+        y+190*cos,
+        100
+      );
+      spawnEntity('resource_gas','neutral',gp.x,gp.y);
+    }
+
+    function spawnMapResources(mapType){
+      if(mapType==='CONTINENT'){
+        // 중앙 강을 사이에 둔 자연스러운 본진/앞마당/중앙 자원 구조.
+        spawnExpansionResources(800,1810,-0.25,true);
+        spawnCenterRichResources(1600,1380,0);
+        spawnExpansionResources(2310,790,Math.PI-0.25,true);
+      }else if(mapType==='ISLANDS'){
+        // 섬별로 광물선 방향을 바꿔 같은 모양이 반복되지 않게 한다.
+        spawnExpansionResources(760,720,0.55,true);
+        spawnExpansionResources(1580,1170,-0.15,true);
+        spawnExpansionResources(2490,650,2.25,false);
+        spawnExpansionResources(2600,1810,-2.25,false);
+      }else{
+        // 협곡의 좌우 확장 + 중앙 위험 자원.
+        spawnExpansionResources(900,650,0.15,true);
+        spawnExpansionResources(2310,650,Math.PI-0.15,true);
+        spawnExpansionResources(900,1780,-0.3,true);
+        spawnExpansionResources(2310,1780,Math.PI+0.3,true);
+        spawnCenterRichResources(1600,1180,Math.PI/2);
+      }
+    }
+
     function initGame() {
       currentDifficulty =
         DIFFICULTY_SETTINGS[selectedDifficultyKey] || DIFFICULTY_SETTINGS.NORMAL;
@@ -1671,29 +1782,37 @@ function assignBestResource(scv) {
 
       const pX = 350, pY = WORLD_H - 350;
       spawnEntity('hq', 'player', pX, pY);
-      spawnCurvedResources(pX, pY, -Math.PI * 0.45, Math.PI * 0.05, 140);
-      for (let i = 0; i < 5; i++) {
-        const scv = spawnEntity('scv', 'player', pX - 50 + (i * 22), pY - 60);
-        scv.assignedRes = assignResourceForNearestBase(scv);
-      }
-
+      const pPatch = {x:pX, y:pY};
       const eX = WORLD_W - 350, eY = 350;
-      spawnEntity('hq', 'enemy', eX, eY);
-      spawnCurvedResources(eX, eY, Math.PI * 0.55, Math.PI * 1.05, 140);
-      const eGas = entities.find(e => e.type === 'resource_gas' && Math.hypot(e.x - eX, e.y - eY) < 220);
-      if (eGas) { eGas.hasRefinery = true; spawnEntity('refinery', 'enemy', eGas.x, eGas.y); }
-      for (let i = 0; i < 5; i++) {
-        const scv = spawnEntity('scv', 'enemy', eX - 50 + (i * 22), eY + 60);
-        scv.assignedRes = assignEnemyBaseResource(scv);
+
+      // 플레이어 시작 자원
+      // 플레이어 본진: 자원선이 본진 앞/측면을 감싸듯 배치.
+      spawnBaseResourceLine(
+        pX, pY,
+        Math.atan2(WORLD_H / 2 - pY, WORLD_W / 2 - pX),
+        { mineralCount: 8, radius: 105, spread: 0.82, gasSide: 1 }
+      );
+      for (let i=0;i<5;i++) {
+        const scv=spawnEntity('scv','player',pX-50+(i*22),pY-60);
+        scv.assignedRes=assignResourceForNearestBase(scv);
       }
 
-      spawnCurvedResources(400, 500, 0, Math.PI * 0.5, 120);
-      spawnCurvedResources(WORLD_W - 400, WORLD_H - 500, Math.PI, Math.PI * 1.5, 120);
-      spawnCurvedResources(WORLD_W / 2 - 300, WORLD_H / 2 - 200, -Math.PI * 0.25, Math.PI * 0.25, 130);
-      spawnCurvedResources(WORLD_W / 2 + 300, WORLD_H / 2 + 200, Math.PI * 0.75, Math.PI * 1.25, 130);
-      spawnCurvedResources(1100, 1500, Math.PI * 0.2, Math.PI * 0.7, 120);
-      spawnCurvedResources(2100, 900, -Math.PI * 0.8, -Math.PI * 0.3, 120);
+      // 적 시작 자원 및 정제소
+      spawnEntity('hq','enemy',eX,eY);
+      // 적 본진도 반대 방향을 향한 독립적인 자원선.
+      spawnBaseResourceLine(
+        eX, eY,
+        Math.atan2(WORLD_H / 2 - eY, WORLD_W / 2 - eX),
+        { mineralCount: 8, radius: 105, spread: 0.82, gasSide: -1 }
+      );
+      const eGas=entities.find(e=>e.type==='resource_gas' && Math.hypot(e.x-eX,e.y-eY)<240);
+      if(eGas){eGas.hasRefinery=true;spawnEntity('refinery','enemy',eGas.x,eGas.y);}
+      for(let i=0;i<5;i++){
+        const scv=spawnEntity('scv','enemy',eX-50+(i*22),eY+60);
+        scv.assignedRes=assignEnemyBaseResource(scv);
+      }
 
+      spawnMapResources(selectedMap);
       spawnObstacles();
       updateFogOfWar();
       updateUI();
