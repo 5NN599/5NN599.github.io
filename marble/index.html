@@ -42,6 +42,7 @@
     <!-- 로비 대기실 -->
     <div id="lobby-panel" class="card">
       <h3>🎮 멀티플레이 대기실</h3>
+      <div style="font-size:0.78rem; color:#868e96; margin:-4px 0 10px 0;">※ 현재 네트워크 방식은 같은 브라우저/기기 내 탭·창 간 동기화용입니다.</div>
       <div style="margin-bottom: 12px;">
         방 번호: <input type="text" id="room-code-input" maxlength="4" placeholder="1234">
         <button onclick="createRoom()">방 만들기</button>
@@ -82,6 +83,7 @@
     </div>
   </div>
 
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script>
     const EMOJI_OPTIONS = ["🎈", "🚗", "🚀", "💎", "🦁", "🐱", "🐶", "🦊", "👑", "⚡", "🔥", "🍀", "🤖", "👻", "🦄", "⚽"];
 
@@ -179,7 +181,11 @@
     let roomCode = "";
     let localPlayerIndex = -1;
     let isHost = false;
-    let broadcastChannel = null;
+    let peer = null;
+    let hostConnection = null;
+    const guestConnections = new Map();
+    let rollLock = false;
+    let aiTimer = null;
 
     let gameState = {
       status: "lobby",
@@ -202,58 +208,172 @@
       board: TILES.map(() => ({ owner: -1, villa: false, bldg: false, hotel: false }))
     };
 
-    const myClientId = 'usr_' + Math.random().toString(36).substr(2, 6);
+    const myClientId = 'usr_' + Math.random().toString(36).slice(2, 10);
 
-    function setupNetwork(code) {
-      if (broadcastChannel) broadcastChannel.close();
+    function getHostPeerId(code) { return 'minig-host-' + code; }
+
+    function closeNetwork() {
+      if (aiTimer) { clearTimeout(aiTimer); aiTimer = null; }
+      try { if (hostConnection) hostConnection.close(); } catch (_) {}
+      hostConnection = null;
+      guestConnections.forEach(conn => { try { conn.close(); } catch (_) {} });
+      guestConnections.clear();
+      try { if (peer) peer.destroy(); } catch (_) {}
+      peer = null;
+    }
+
+    function setupHostNetwork(code) {
+      closeNetwork();
       roomCode = code;
-      broadcastChannel = new BroadcastChannel('minig_marbles_' + roomCode);
-      broadcastChannel.onmessage = (e) => handleNetworkData(e.data);
+      if (typeof Peer === 'undefined') {
+        alert('온라인 연결 모듈을 불러오지 못했습니다. 인터넷 연결을 확인해주세요.');
+        isHost = false;
+        return;
+      }
+      peer = new Peer(getHostPeerId(roomCode));
+      peer.on('open', () => {
+        gameState.roomCode = roomCode;
+        syncStateToNetwork();
+      });
+      peer.on('connection', conn => {
+        conn.on('open', () => {
+          guestConnections.set(conn.peer, conn);
+          conn.on('data', data => handleNetworkData(data, conn));
+          conn.on('close', () => guestConnections.delete(conn.peer));
+          conn.on('error', () => guestConnections.delete(conn.peer));
+        });
+      });
+      peer.on('error', err => {
+        console.error('Peer host error:', err);
+        if (err && err.type === 'unavailable-id') {
+          alert('이 방 번호는 이미 사용 중입니다. 다른 방 번호를 사용해주세요.');
+          isHost = false;
+          closeNetwork();
+        } else {
+          gameState.message = '⚠️ 온라인 연결 오류가 발생했습니다.';
+          updateUI();
+        }
+      });
+    }
+
+    function setupGuestNetwork(code) {
+      closeNetwork();
+      roomCode = code;
+      if (typeof Peer === 'undefined') {
+        alert('온라인 연결 모듈을 불러오지 못했습니다. 인터넷 연결을 확인해주세요.');
+        return;
+      }
+      peer = new Peer();
+      peer.on('open', () => {
+        const conn = peer.connect(getHostPeerId(roomCode), { reliable: true });
+        hostConnection = conn;
+        conn.on('open', () => {
+          conn.on('data', data => handleNetworkData(data, conn));
+          conn.on('close', () => {
+            hostConnection = null;
+            gameState.message = '⚠️ 방장과의 연결이 끊어졌습니다.';
+            updateUI();
+          });
+          conn.on('error', () => {
+            hostConnection = null;
+            gameState.message = '⚠️ 방장과의 연결 오류가 발생했습니다.';
+            updateUI();
+          });
+          conn.send({ type: 'JOIN_REQUEST', clientId: myClientId });
+        });
+        conn.on('error', () => alert('방에 연결하지 못했습니다. 방 번호를 확인해주세요.'));
+      });
+      peer.on('error', err => {
+        console.error('Peer guest error:', err);
+        if (err && err.type === 'peer-unavailable') alert('해당 방을 찾을 수 없습니다. 방장이 먼저 방을 만들어야 합니다.');
+      });
     }
 
     function sendNetworkData(data) {
-      if (broadcastChannel) broadcastChannel.postMessage(data);
-      localStorage.setItem('minig_state_' + roomCode, JSON.stringify(data));
+      if (isHost) {
+        guestConnections.forEach(conn => {
+          try { if (conn.open) conn.send(data); } catch (_) {}
+        });
+      } else if (hostConnection && hostConnection.open) {
+        try { hostConnection.send(data); } catch (_) {}
+      }
     }
 
-    function handleNetworkData(data) {
+    function handleNetworkData(data, conn) {
       if (!data) return;
+
       if (data.type === 'JOIN_REQUEST' && isHost) {
-        let slot = -1;
-        for (let i = 0; i < 4; i++) {
-          if (gameState.players[i].id === data.clientId) { slot = i; break; }
+        if (gameState.status !== 'lobby') {
+          if (conn) conn.send({ type: 'JOIN_REJECTED', targetId: data.clientId, reason: '게임이 이미 시작되었습니다.' });
+          return;
         }
+        let slot = gameState.players.findIndex(p => p.id === data.clientId);
         if (slot === -1) {
           for (let i = 1; i < 4; i++) {
             if (gameState.players[i].isAI) {
-              slot = i; gameState.players[i].isAI = false; gameState.players[i].id = data.clientId; break;
+              slot = i;
+              gameState.players[i].isAI = false;
+              gameState.players[i].id = data.clientId;
+              break;
             }
           }
         }
-        if (slot !== -1) {
-          sendNetworkData({ type: 'JOIN_RESPONSE', targetId: data.clientId, slotIndex: slot });
+        if (slot !== -1 && conn) {
+          conn.send({ type: 'JOIN_RESPONSE', targetId: data.clientId, slotIndex: slot, state: gameState });
           syncStateToNetwork();
+        } else if (conn) {
+          conn.send({ type: 'ROOM_FULL', targetId: data.clientId });
         }
+        return;
       }
+
       if (data.type === 'JOIN_RESPONSE' && data.targetId === myClientId) {
         localPlayerIndex = data.slotIndex;
+        if (data.state) gameState = data.state;
+        updateUI();
+        return;
       }
+
+      if (data.type === 'JOIN_REJECTED' && data.targetId === myClientId) {
+        alert(data.reason || '방 참가에 실패했습니다.');
+        return;
+      }
+
+      if (data.type === 'ROOM_FULL' && data.targetId === myClientId) {
+        alert('방이 가득 찼습니다.');
+        return;
+      }
+
       if (data.type === 'CHANGE_EMOJI' && isHost) {
-        const slot = gameState.players.findIndex(p => p.id === data.clientId);
-        if (slot !== -1) {
-          gameState.players[slot].emoji = data.emoji;
+        const slot = gameState.players.findIndex(p => p.id === data.clientId && !p.isAI);
+        if (slot !== -1 && gameState.status === 'lobby') {
+          gameState.players[slot].emoji = String(data.emoji || '🎈');
           syncStateToNetwork();
         }
+        return;
       }
+
+      if (data.type === 'ROLL_REQUEST' && isHost) {
+        const actorIndex = gameState.players.findIndex(p => p.id === data.clientId && !p.isAI);
+        if (actorIndex === gameState.turn && !gameState.isRolling && !gameState.awaitingAction && gameState.status === 'playing') {
+          triggerDiceRoll();
+        }
+        return;
+      }
+
       if (data.type === 'ACTION_TRIGGER' && isHost) {
+        const actorIndex = gameState.players.findIndex(p => p.id === data.clientId && !p.isAI);
+        if (actorIndex !== gameState.turn || gameState.players[actorIndex].bankrupt) return;
         if (data.action === 'CONFIRM_BUY') confirmBuy(data.buildType);
         else if (data.action === 'TAKE_LOAN') takeLoan();
-        else if (data.action === 'SELL_PROP') sellProperty(data.tileIdx, data.refund);
+        else if (data.action === 'SELL_PROP') sellProperty(Number(data.tileIdx));
         else if (data.action === 'BANKRUPT') declareBankrupt();
+        return;
       }
-      if (data.type === 'STATE_UPDATE') {
-        gameState = data.state; updateUI();
-        if (gameState.status === 'playing') checkTurnAndAI();
+
+      if (data.type === 'STATE_UPDATE' && !isHost) {
+        gameState = data.state;
+        updateUI();
       }
     }
 
@@ -275,41 +395,53 @@
     function createRoom() {
       initAudio();
       const input = document.getElementById('room-code-input').value.trim();
+      if (input && !/^\d{4}$/.test(input)) { alert('방 번호는 4자리 숫자여야 합니다.'); return; }
       roomCode = input || Math.floor(1000 + Math.random() * 9000).toString();
       document.getElementById('room-code-input').value = roomCode;
-      isHost = true; localPlayerIndex = 0;
-      gameState.roomCode = roomCode;
-      gameState.players[0].id = myClientId; gameState.players[0].isAI = false;
-      setupNetwork(roomCode);
+      isHost = true;
+      localPlayerIndex = 0;
+      gameState = {
+        status: 'lobby', roomCode, turn: 0, dice1: 1, dice2: 1, isDouble: false, doubleCount: 0,
+        isRolling: false, awaitingAction: null, socialFundPool: 0, message: '방장이 게임을 시작하기를 기다립니다.',
+        players: [
+          { id: myClientId, name: 'P1', emoji: '🎈', isAI: false, money: 300, loan: 0, pos: 0, islandTurns: 0, bankrupt: false },
+          { id: null, name: 'P2', emoji: '🚗', isAI: true, money: 300, loan: 0, pos: 0, islandTurns: 0, bankrupt: false },
+          { id: null, name: 'P3', emoji: '🚀', isAI: true, money: 300, loan: 0, pos: 0, islandTurns: 0, bankrupt: false },
+          { id: null, name: 'P4', emoji: '💎', isAI: true, money: 300, loan: 0, pos: 0, islandTurns: 0, bankrupt: false }
+        ],
+        board: TILES.map(() => ({ owner: -1, villa: false, bldg: false, hotel: false }))
+      };
+      setupHostNetwork(roomCode);
       document.getElementById('room-info').style.display = 'block';
       document.getElementById('current-room-id').innerText = roomCode;
       document.getElementById('host-controls').style.display = 'block';
       document.getElementById('guest-waiting').style.display = 'none';
-      syncStateToNetwork();
+      updateUI();
     }
 
     function joinRoom() {
       initAudio();
       const input = document.getElementById('room-code-input').value.trim();
-      if (!input) { alert("방 번호를 입력해주세요!"); return; }
-      roomCode = input; isHost = false;
-      setupNetwork(roomCode);
+      if (!/^\d{4}$/.test(input)) { alert('4자리 방 번호를 입력해주세요!'); return; }
+      isHost = false;
+      localPlayerIndex = -1;
+      roomCode = input;
+      setupGuestNetwork(roomCode);
       document.getElementById('room-info').style.display = 'block';
       document.getElementById('current-room-id').innerText = roomCode;
       document.getElementById('host-controls').style.display = 'none';
       document.getElementById('guest-waiting').style.display = 'block';
-      sendNetworkData({ type: 'JOIN_REQUEST', clientId: myClientId });
     }
 
     function startGame() {
       if (!isHost) return;
-      gameState.status = "playing"; gameState.turn = 0;
+      gameState.status = 'playing';
+      gameState.turn = 0;
+      gameState.awaitingAction = null;
       gameState.message = `게임 시작! P1(${gameState.players[0].emoji})의 순서입니다.`;
-      syncStateToNetwork(); checkTurnAndAI();
+      syncStateToNetwork();
+      checkTurnAndAI();
     }
-
-    const canvas = document.getElementById('boardCanvas');
-    const ctx = canvas.getContext('2d');
 
     function updateUI() {
       for (let i = 0; i < 4; i++) {
@@ -360,7 +492,8 @@
     function renderActionPanel() {
       const panel = document.getElementById('action-panel');
       panel.innerHTML = "";
-      const isMyTurn = (gameState.turn === localPlayerIndex) && !gameState.players[localPlayerIndex].isAI;
+      const myPlayer = gameState.players[localPlayerIndex];
+      const isMyTurn = localPlayerIndex !== -1 && gameState.turn === localPlayerIndex && myPlayer && !myPlayer.isAI;
 
       if (!isMyTurn || gameState.status === 'gameover') {
         panel.innerHTML = `<span style="color:#868e96; font-size:0.85rem;">상대방 턴 진행 중...</span>`;
@@ -374,9 +507,10 @@
 
         let html = `<div style="width:100%; margin-bottom:4px; font-weight:bold; font-size:0.9rem;">${tile.name} 매입:</div>`;
         html += `<button class="btn-action" onclick="handleUserAction('CONFIRM_BUY', 'NONE')">구매 안 함</button>`;
-        if (!bState.villa && p.money >= tile.villa) html += `<button class="btn-action btn-buy" onclick="handleUserAction('CONFIRM_BUY', 'VILLA')">🏘️ 별장 (+${tile.villa}만)</button>`;
-        if (!bState.bldg && p.money >= tile.bldg) html += `<button class="btn-action btn-buy" onclick="handleUserAction('CONFIRM_BUY', 'BLDG')">🏢 빌딩 (+${tile.bldg}만)</button>`;
-        if (!bState.hotel && p.money >= tile.hotel) html += `<button class="btn-action btn-buy" onclick="handleUserAction('CONFIRM_BUY', 'HOTEL')">🏨 호텔 (+${tile.hotel}만)</button>`;
+        if (p.money >= tile.land) html += `<button class="btn-action btn-buy" onclick="handleUserAction('CONFIRM_BUY', 'LAND')">🌳 토지 (+${tile.land}만)</button>`;
+        if (!bState.villa && p.money >= tile.land + tile.villa) html += `<button class="btn-action btn-buy" onclick="handleUserAction('CONFIRM_BUY', 'VILLA')">🏘️ 별장 (+${tile.land + tile.villa}만)</button>`;
+        if (!bState.bldg && p.money >= tile.land + tile.bldg) html += `<button class="btn-action btn-buy" onclick="handleUserAction('CONFIRM_BUY', 'BLDG')">🏢 빌딩 (+${tile.land + tile.bldg}만)</button>`;
+        if (!bState.hotel && p.money >= tile.land + tile.hotel) html += `<button class="btn-action btn-buy" onclick="handleUserAction('CONFIRM_BUY', 'HOTEL')">🏨 호텔 (+${tile.land + tile.hotel}만)</button>`;
         panel.innerHTML = html;
       } else if (gameState.awaitingAction === 'CRISIS') {
         const p = gameState.players[localPlayerIndex];
@@ -393,7 +527,7 @@
             const tile = TILES[idx];
             let val = tile.land + (t.villa?tile.villa:0) + (t.bldg?tile.bldg:0) + (t.hotel?tile.hotel:0);
             const refund = Math.floor(val * 0.8);
-            html += `<button class="btn-action btn-warn" onclick="handleUserAction('SELL_PROP', ${idx}, ${refund})">${tile.name} (+${refund}만)</button>`;
+            html += `<button class="btn-action btn-warn" onclick="handleUserAction('SELL_PROP', ${idx})">${tile.name} (+${refund}만)</button>`;
           }
         });
         html += `<button class="btn-action" onclick="cancelSellMenu()">취소</button>`;
@@ -410,13 +544,14 @@
     }
 
     function handleUserAction(actionType, p1, p2) {
+      if (localPlayerIndex === -1 || gameState.turn !== localPlayerIndex) return;
       if (isHost) {
         if (actionType === 'CONFIRM_BUY') confirmBuy(p1);
         else if (actionType === 'TAKE_LOAN') takeLoan();
-        else if (actionType === 'SELL_PROP') sellProperty(p1, p2);
+        else if (actionType === 'SELL_PROP') sellProperty(Number(p1));
         else if (actionType === 'BANKRUPT') declareBankrupt();
       } else {
-        sendNetworkData({ type: 'ACTION_TRIGGER', action: actionType, buildType: p1, tileIdx: p1, refund: p2 });
+        sendNetworkData({ type: 'ACTION_TRIGGER', action: actionType, clientId: myClientId, buildType: p1, tileIdx: p1 });
       }
     }
 
@@ -495,79 +630,102 @@
     }
 
     function handleRollClick() {
-      if (gameState.isRolling || gameState.awaitingAction) return;
-      if (gameState.turn !== localPlayerIndex) return;
-      triggerDiceRoll();
+      if (rollLock || gameState.isRolling || gameState.awaitingAction) return;
+      if (localPlayerIndex === -1 || gameState.turn !== localPlayerIndex) return;
+      rollLock = true;
+      if (isHost) triggerDiceRoll();
+      else {
+        sendNetworkData({ type: 'ROLL_REQUEST', clientId: myClientId });
+        setTimeout(() => { rollLock = false; }, 500);
+      }
+    }
+
+    function scheduleAI() {
+      if (!isHost || gameState.status !== 'playing' || aiTimer) return;
+      const currP = gameState.players[gameState.turn];
+      if (!currP || !currP.isAI || currP.bankrupt) return;
+      aiTimer = setTimeout(() => {
+        aiTimer = null;
+        const p = gameState.players[gameState.turn];
+        if (!p || !p.isAI || p.bankrupt || gameState.status !== 'playing') return;
+        if (gameState.awaitingAction === 'BUY') aiDecisionBuy();
+        else if (gameState.awaitingAction === 'CRISIS') aiDecisionCrisis();
+        else if (!gameState.isRolling && !gameState.awaitingAction) triggerDiceRoll();
+      }, 800);
     }
 
     function checkTurnAndAI() {
       if (gameState.status !== 'playing') return;
       const currP = gameState.players[gameState.turn];
+      if (!currP) return;
       if (currP.bankrupt) { nextTurn(); return; }
-
-      if (currP.isAI && isHost) {
-        if (gameState.awaitingAction === 'BUY') setTimeout(aiDecisionBuy, 800);
-        else if (gameState.awaitingAction === 'CRISIS') setTimeout(aiDecisionCrisis, 800);
-        else if (!gameState.isRolling && !gameState.awaitingAction) setTimeout(triggerDiceRoll, 800);
-      }
+      if (currP.isAI && isHost) scheduleAI();
     }
 
     function triggerDiceRoll() {
-      gameState.isRolling = true; gameState.isDouble = false;
+      if (!isHost) return;
+      if (gameState.status !== 'playing' || gameState.isRolling || gameState.awaitingAction) {
+        rollLock = false;
+        return;
+      }
+      gameState.isRolling = true;
+      gameState.isDouble = false;
+      syncStateToNetwork();
       let count = 0;
       const interval = setInterval(() => {
         gameState.dice1 = Math.floor(Math.random() * 6) + 1;
         gameState.dice2 = Math.floor(Math.random() * 6) + 1;
-        playSound('roll'); drawBoard();
+        playSound('roll');
+        drawBoard();
         count++;
-
         if (count > 10) {
           clearInterval(interval);
           gameState.isRolling = false;
-
+          rollLock = false;
           if (gameState.dice1 === gameState.dice2) {
-            gameState.isDouble = true; gameState.doubleCount++; playSound('buy');
+            gameState.isDouble = true;
+            gameState.doubleCount++;
+            playSound('buy');
           } else {
-            gameState.isDouble = false; gameState.doubleCount = 0;
+            gameState.isDouble = false;
+            gameState.doubleCount = 0;
           }
-
-          if (gameState.doubleCount === 3) {
-            gameState.doubleCount = 0; gameState.isDouble = false;
+          if (gameState.doubleCount >= 3) {
+            gameState.doubleCount = 0;
+            gameState.isDouble = false;
             const p = gameState.players[gameState.turn];
-            p.pos = 10; p.islandTurns = 3;
+            p.pos = 10;
+            p.islandTurns = 3;
             gameState.message = `🚨 3연속 더블! ${p.name}님이 무인도로 구금됩니다!`;
-            if (isHost) syncStateToNetwork();
+            syncStateToNetwork();
             setTimeout(nextTurn, 1400);
             return;
           }
-
           executeMove(gameState.dice1 + gameState.dice2);
         }
       }, 50);
     }
 
     function executeMove(steps) {
+      if (!isHost) return;
       const p = gameState.players[gameState.turn];
 
       if (p.islandTurns > 0) {
         p.islandTurns--;
         gameState.message = `${p.name}님이 무인도에서 휴식 중입니다. (남은 턴: ${p.islandTurns})`;
         gameState.isDouble = false;
-        if (isHost) syncStateToNetwork();
-        setTimeout(nextTurn, 1400);
+        syncStateToNetwork();
+        setTimeout(nextTurn, 1000);
         return;
       }
 
       let count = 0;
       const moveInterval = setInterval(() => {
         p.pos = (p.pos + 1) % 40;
-        count++; playSound('roll'); drawBoard();
-
-        if (p.pos === 0) {
-          p.money += 20;
-          gameState.message = `${p.name}님이 월급 20만 원을 받았습니다!`;
-        }
-
+        count++;
+        playSound('roll');
+        drawBoard();
+        if (p.pos === 0) p.money += 20;
         if (count >= steps) {
           clearInterval(moveInterval);
           handleTileEvent(p);
@@ -576,6 +734,7 @@
     }
 
     function handleTileEvent(p) {
+      if (!isHost) return;
       const tile = TILES[p.pos];
       const state = gameState.board[p.pos];
 
@@ -585,9 +744,10 @@
           gameState.message = `${p.name}님이 빈 땅 ${tile.name}에 도착했습니다. 건물을 매입하시겠습니까?`;
         } else if (state.owner !== gameState.turn) {
           const owner = gameState.players[state.owner];
-          let rent = tile.rLand + (state.villa?tile.rVilla:0) + (state.bldg?tile.rBldg:0) + (state.hotel?tile.rHotel:0);
-
-          p.money -= rent; owner.money += rent; playSound('rent');
+          const rent = tile.rLand + (state.villa ? tile.rVilla : 0) + (state.bldg ? tile.rBldg : 0) + (state.hotel ? tile.rHotel : 0);
+          p.money -= rent;
+          owner.money += rent;
+          playSound('rent');
           gameState.message = `${p.name}님이 ${owner.name}의 ${tile.name} 통행료 ${rent}만 원을 지불했습니다!`;
           if (p.money < 0) gameState.awaitingAction = 'CRISIS';
         }
@@ -595,12 +755,17 @@
         p.islandTurns = 3;
         gameState.message = `🏝️ 무인도 도착! 3턴 동안 갇히게 됩니다.`;
       } else if (tile.type === 'tax') {
-        const tax = 15; p.money -= tax; gameState.socialFundPool += tax; playSound('rent');
+        const tax = 15;
+        p.money -= tax;
+        gameState.socialFundPool += tax;
+        playSound('rent');
         gameState.message = `🏛️ 사회복지기금 15만 원을 기부하셨습니다.`;
         if (p.money < 0) gameState.awaitingAction = 'CRISIS';
       } else if (tile.type === 'fund_get') {
         const getFund = gameState.socialFundPool || 30;
-        p.money += getFund; gameState.socialFundPool = 0; playSound('buy');
+        p.money += getFund;
+        gameState.socialFundPool = 0;
+        playSound('buy');
         gameState.message = `💰 축하합니다! 사회복지기금 ${getFund}만 원을 수령했습니다!`;
       } else if (tile.type === 'space') {
         p.pos = 39;
@@ -608,36 +773,50 @@
         playSound('buy');
       } else if (tile.type === 'key') {
         const bonus = (Math.floor(Math.random() * 5) + 1) * 10;
-        p.money += bonus; playSound('buy');
+        p.money += bonus;
+        playSound('buy');
         gameState.message = `🔑 황금열쇠 행운! (+${bonus}만 원 획득)`;
       }
 
-      if (isHost) syncStateToNetwork();
-      if (!gameState.awaitingAction) setTimeout(nextTurn, 1400);
+      syncStateToNetwork();
+      if (gameState.awaitingAction) checkTurnAndAI();
+      else setTimeout(nextTurn, 900);
     }
 
     function confirmBuy(buildType) {
+      if (!isHost) return;
       const p = gameState.players[gameState.turn];
       const tile = TILES[p.pos];
       const state = gameState.board[p.pos];
-      state.owner = gameState.turn;
+      if (!p || tile.type !== 'city' || state.owner !== -1 || gameState.awaitingAction !== 'BUY') return;
 
-      if (buildType === 'VILLA') { p.money -= tile.villa; state.villa = true; }
-      else if (buildType === 'BLDG') { p.money -= tile.bldg; state.bldg = true; }
-      else if (buildType === 'HOTEL') { p.money -= tile.hotel; state.hotel = true; }
-
-      playSound('buy'); gameState.awaitingAction = null;
-      gameState.message = `${p.name}님이 ${tile.name} 매입을 완료했습니다.`;
-      if (isHost) syncStateToNetwork();
-      setTimeout(nextTurn, 1000);
+      if (buildType === 'NONE') {
+        gameState.awaitingAction = null;
+        gameState.message = `${p.name}님이 ${tile.name} 매입을 포기했습니다.`;
+      } else {
+        const costs = { VILLA: tile.villa, BLDG: tile.bldg, HOTEL: tile.hotel };
+        const cost = costs[buildType];
+        if (!Number.isFinite(cost) || p.money < cost) return;
+        p.money -= cost;
+        state.owner = gameState.turn;
+        state.villa = buildType === 'VILLA';
+        state.bldg = buildType === 'BLDG';
+        state.hotel = buildType === 'HOTEL';
+        playSound('buy');
+        gameState.awaitingAction = null;
+        gameState.message = `${p.name}님이 ${tile.name}을(를) 매입했습니다.`;
+      }
+      syncStateToNetwork();
+      setTimeout(nextTurn, 900);
     }
 
     function aiDecisionBuy() {
       const p = gameState.players[gameState.turn];
       const tile = TILES[p.pos];
-      if (p.money >= tile.hotel + 30) confirmBuy('HOTEL');
-      else if (p.money >= tile.bldg + 20) confirmBuy('BLDG');
-      else if (p.money >= tile.villa) confirmBuy('VILLA');
+      if (p.money >= tile.land + tile.hotel + 30) confirmBuy('HOTEL');
+      else if (p.money >= tile.land + tile.bldg + 20) confirmBuy('BLDG');
+      else if (p.money >= tile.land + tile.villa + 10) confirmBuy('VILLA');
+      else if (p.money >= tile.land) confirmBuy('LAND');
       else confirmBuy('NONE');
     }
 
@@ -655,23 +834,25 @@
 
     /* --- 복원 및 추가된 유실 함수 --- */
 
-    function sellProperty(tileIdx, refund) {
+    function sellProperty(tileIdx) {
+      if (!isHost) return;
       const p = gameState.players[gameState.turn];
       const tile = TILES[tileIdx];
       const bState = gameState.board[tileIdx];
-
+      if (!p || !tile || !bState || bState.owner !== gameState.turn) return;
+      const val = tile.land + (bState.villa ? tile.villa : 0) + (bState.bldg ? tile.bldg : 0) + (bState.hotel ? tile.hotel : 0);
+      const refund = Math.floor(val * 0.8);
       p.money += refund;
       bState.owner = -1;
       bState.villa = false;
       bState.bldg = false;
       bState.hotel = false;
-
       playSound('buy');
       gameState.message = `${p.name}님이 ${tile.name}을(를) ${refund}만 원에 매각했습니다.`;
       if (p.money >= 0) gameState.awaitingAction = null;
-      
-      if (isHost) syncStateToNetwork();
-      if (!gameState.awaitingAction) setTimeout(nextTurn, 1000);
+      syncStateToNetwork();
+      if (!gameState.awaitingAction) setTimeout(nextTurn, 900);
+      else checkTurnAndAI();
     }
 
     function declareBankrupt() {
@@ -709,7 +890,7 @@
         const tile = TILES[propIdx];
         const t = gameState.board[propIdx];
         let val = tile.land + (t.villa ? tile.villa : 0) + (t.bldg ? tile.bldg : 0) + (t.hotel ? tile.hotel : 0);
-        sellProperty(propIdx, Math.floor(val * 0.8));
+        sellProperty(propIdx);
         return;
       }
 
@@ -718,6 +899,8 @@
 
     function nextTurn() {
       if (gameState.status === 'gameover') return;
+      rollLock = false;
+      if (aiTimer) { clearTimeout(aiTimer); aiTimer = null; }
 
       const activePlayers = gameState.players.filter(p => !p.bankrupt);
       if (activePlayers.length <= 1) {
