@@ -1,0 +1,1826 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>미니지 - 커피숍타이쿤</title>
+  <style>
+    :root { --bg: #f8f9fa; --text: #333; --canvas-bg: #151b22; --border: #e9ecef; --btn-bg: #fff; }
+    [data-theme="dark"] { --bg: #0d1117; --text: #c9d1d9; --canvas-bg: #151b22; --border: #30363d; --btn-bg: #21262d; }
+    [data-theme="beige"] { --bg: #f5ebe0; --text: #4e3d30; --canvas-bg: #1e1b18; --border: #ddcbbb; --btn-bg: #eddfd0; }
+
+    body {
+      background-color: var(--bg) !important;
+      color: var(--text) !important;
+      text-align: center;
+      font-family: sans-serif;
+      padding-top: 15px;
+      margin: 0;
+    }
+
+    button {
+      background-color: var(--btn-bg) !important;
+      color: var(--text) !important;
+      border: 1px solid var(--border) !important;
+      padding: 10px 18px;
+      font-size: 0.95rem;
+      border-radius: 8px;
+      cursor: pointer;
+      margin: 4px;
+      font-weight: bold;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-1px);
+      filter: brightness(1.05);
+    }
+
+    button:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
+    #tycoon-panel {
+      font-size: 1.25rem;
+      font-weight: bold;
+      color: #fcc419;
+      margin-bottom: 5px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    h1 {
+      margin: 4px 0 8px;
+    }
+
+    #game-wrap {
+      width: min(1180px, 96vw);
+      margin: auto;
+    }
+
+    #hud {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      margin: 10px 0;
+    }
+
+    .stat {
+      border: 1px solid var(--border);
+      background: var(--btn-bg);
+      border-radius: 10px;
+      padding: 9px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.08);
+    }
+
+    .stat b {
+      display: block;
+      font-size: 1.1rem;
+      margin-top: 3px;
+    }
+
+    #game {
+      width: 100%;
+      height: auto;
+      display: block;
+      background: var(--canvas-bg);
+      border: 4px solid #343a40;
+      border-radius: 12px;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+
+    #controls {
+      display: grid;
+      grid-template-columns: 1.25fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+      text-align: left;
+    }
+
+    .panel {
+      border: 1px solid var(--border);
+      background: var(--btn-bg);
+      border-radius: 12px;
+      padding: 10px;
+    }
+
+    .panel h2 {
+      margin: 3px 0 8px;
+      font-size: 1rem;
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      align-items: center;
+    }
+
+    .upgrade {
+      width: 100%;
+      text-align: left;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .upgrade small {
+      display: block;
+      font-weight: normal;
+      opacity: .78;
+      margin-top: 2px;
+    }
+
+    #log {
+      height: 115px;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px;
+      font-size: .84rem;
+      background: rgba(0,0,0,.04);
+    }
+
+    .log-line {
+      margin: 3px 0;
+    }
+
+    #toast {
+      position: fixed;
+      left: 50%;
+      top: 18px;
+      transform: translate(-50%,-20px);
+      opacity: 0;
+      pointer-events: none;
+      background: #212529;
+      color: #fff;
+      padding: 10px 15px;
+      border-radius: 10px;
+      transition: .2s;
+      z-index: 5;
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translate(-50%,0);
+    }
+
+    #save-status {
+      font-size: .78rem;
+      opacity: .7;
+      margin-top: 6px;
+    }
+
+    @media (max-width: 760px) {
+      #hud {
+        grid-template-columns: repeat(2,1fr);
+      }
+
+      #controls {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="game-wrap">
+
+    <div id="tycoon-panel">
+      GOLD COFFEE DISTRICT • DAY 1
+    </div>
+
+    <h1>☕ 픽셀 커피숍 타이쿤</h1>
+
+    <div id="hud">
+      <div class="stat">
+        보유 자금
+        <b id="money">1,000G</b>
+      </div>
+
+      <div class="stat">
+        원두 재고
+        <b id="beans">12</b>
+      </div>
+
+      <div class="stat">
+        손님 대기
+        <b id="queue">0 / 4</b>
+      </div>
+
+      <div class="stat">
+        오늘 매출
+        <b id="sales">0G</b>
+      </div>
+
+      <div class="stat">
+        평판
+        <b id="rep">100</b>
+      </div>
+    </div>
+
+    <canvas id="game" width="960" height="540"></canvas>
+
+    <div id="controls">
+
+      <section class="panel">
+        <h2>☕ 바리스타 작업대</h2>
+
+        <div class="row">
+          <button id="brew-americano">
+            ☕ 아메리카노 제조
+          </button>
+
+          <button id="brew-latte" disabled>
+            🥛 카페라떼 제조
+          </button>
+
+          <button id="buy-beans">
+            🫘 원두 10개 구매 — 100G
+          </button>
+        </div>
+
+        <div id="work-info">
+          주문 대기 손님에게 맞는 메뉴를 제조하세요.
+        </div>
+
+        <div id="save-status">
+          자동 저장 활성화
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>🏪 상점 & 자동화 테크트리</h2>
+        <div id="shop"></div>
+      </section>
+
+    </div>
+
+    <section
+      class="panel"
+      style="margin-top:10px; text-align:left;"
+    >
+      <h2>📜 영업 기록</h2>
+      <div id="log"></div>
+    </section>
+
+  </div>
+
+  <div id="toast"></div>
+
+  <script>
+const savedTheme = localStorage.getItem('minig-theme');
+if (savedTheme && savedTheme !== 'white') { document.documentElement.setAttribute('data-theme', savedTheme); }
+
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+ctx.imageSmoothingEnabled = false;
+
+const moneyEl = document.getElementById('money');
+const beansEl = document.getElementById('beans');
+const queueEl = document.getElementById('queue');
+const salesEl = document.getElementById('sales');
+const repEl = document.getElementById('rep');
+const shopEl = document.getElementById('shop');
+const logEl = document.getElementById('log');
+const toastEl = document.getElementById('toast');
+const workInfoEl = document.getElementById('work-info');
+const saveStatusEl = document.getElementById('save-status');
+
+const brewAmericanoBtn =
+  document.getElementById('brew-americano');
+
+const brewLatteBtn =
+  document.getElementById('brew-latte');
+
+const buyBeansBtn =
+  document.getElementById('buy-beans');
+
+const W = canvas.width;
+const H = canvas.height;
+
+const MAX_BASE_QUEUE = 4;
+
+const CUSTOMER_EMOJIS = [
+  '🧍',
+  '🏃',
+  '🧝',
+  '🧛',
+  '🧑‍🍳',
+  '🧑‍🎨',
+  '🧑‍🚀',
+  '🧟'
+];
+
+const DRINKS = {
+  americano: {
+    name: '아메리카노',
+    icon: '☕',
+    price: 80,
+    patience: 100
+  },
+
+  latte: {
+    name: '카페라떼',
+    icon: '🥛',
+    price: 160,
+    patience: 115
+  }
+};
+
+const state = {
+  money: 1000,
+  beans: 12,
+  sales: 0,
+  reputation: 100,
+  day: 1,
+  customersServed: 0,
+  busted: 0,
+
+  queue: [],
+
+  brewing: null,
+
+  lastCustomerAt: 0,
+  lastTick: performance.now(),
+  lastAutoSave: 0,
+
+  upgrades: {
+    roaster: 0,
+    espresso: 0,
+    latte: 0,
+    interior: 0
+  }
+};
+
+const upgrades = [
+  {
+    id: 'roaster',
+    title: '🔥 로스팅 가속기',
+    desc: '커피 제조 시간이 대폭 단축됩니다.',
+    costs: [300, 700, 1400],
+    max: 3
+  },
+
+  {
+    id: 'espresso',
+    title: '⚙️ 자동 에스프레소 머신',
+    desc: '초당 일정 확률로 첫 손님을 자동 처리합니다.',
+    costs: [650, 1400, 2800],
+    max: 3
+  },
+
+  {
+    id: 'latte',
+    title: '🥛 메뉴 확장 (카페라떼)',
+    desc: '라떼 주문이 해금되며 판매 단가가 2배가 됩니다.',
+    costs: [900],
+    max: 1
+  },
+
+  {
+    id: 'interior',
+    title: '🛋️ 인테리어 확장',
+    desc: '대기 공간과 기본 팁 보너스가 증가합니다.',
+    costs: [500, 1200, 2600],
+    max: 3
+  }
+];
+
+function formatGold(value) {
+  return Math.floor(value).toLocaleString('ko-KR') + 'G';
+}
+
+function maxQueue() {
+  return MAX_BASE_QUEUE +
+    state.upgrades.interior * 2;
+}
+
+function tipRate() {
+  return 0.05 +
+    state.upgrades.interior * 0.04;
+}
+
+function brewDuration() {
+  return Math.max(
+    420,
+    1800 - state.upgrades.roaster * 400
+  );
+}
+
+function autoChancePerSecond() {
+  return state.upgrades.espresso * 0.11;
+}
+
+function log(message) {
+  const line = document.createElement('div');
+
+  line.className = 'log-line';
+  line.textContent = '• ' + message;
+
+  logEl.prepend(line);
+
+  while (logEl.children.length > 30) {
+    logEl.removeChild(logEl.lastChild);
+  }
+}
+
+let toastTimer = null;
+
+function toast(message) {
+  toastEl.textContent = message;
+  toastEl.classList.add('show');
+
+  clearTimeout(toastTimer);
+
+  toastTimer = setTimeout(() => {
+    toastEl.classList.remove('show');
+  }, 1500);
+}
+
+let audioContext = null;
+
+function getAudioContext() {
+  if (!audioContext) {
+    const AudioCtx =
+      window.AudioContext ||
+      window.webkitAudioContext;
+
+    if (!AudioCtx) {
+      return null;
+    }
+
+    audioContext = new AudioCtx();
+  }
+
+  if (audioContext.state === 'suspended') {
+    audioContext.resume();
+  }
+
+  return audioContext;
+}
+
+function playSound(type) {
+  const ac = getAudioContext();
+
+  if (!ac) {
+    return;
+  }
+
+  const now = ac.currentTime;
+
+  const master = ac.createGain();
+
+  master.gain.setValueAtTime(
+    0.0001,
+    now
+  );
+
+  master.gain.exponentialRampToValueAtTime(
+    0.13,
+    now + 0.015
+  );
+
+  master.gain.exponentialRampToValueAtTime(
+    0.0001,
+    now + 0.45
+  );
+
+  master.connect(ac.destination);
+
+  const tones = {
+    brew: [190, 330, 520],
+    coin: [660, 880, 1320],
+    buy: [440, 660, 990]
+  };
+
+  const freqs =
+    tones[type] || tones.buy;
+
+  freqs.forEach((freq, index) => {
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+
+    const start =
+      now + index * 0.075;
+
+    osc.type =
+      type === 'brew'
+        ? 'sawtooth'
+        : 'square';
+
+    osc.frequency.setValueAtTime(
+      freq,
+      start
+    );
+
+    if (type === 'brew') {
+      osc.frequency.exponentialRampToValueAtTime(
+        freq * 0.72,
+        start + 0.16
+      );
+    }
+
+    gain.gain.setValueAtTime(
+      0.0001,
+      start
+    );
+
+    gain.gain.exponentialRampToValueAtTime(
+      0.065,
+      start + 0.012
+    );
+
+    gain.gain.exponentialRampToValueAtTime(
+      0.0001,
+      start + 0.16
+    );
+
+    osc.connect(gain);
+    gain.connect(master);
+
+    osc.start(start);
+    osc.stop(start + 0.18);
+  });
+}
+
+function addCustomer() {
+  if (state.queue.length >= maxQueue()) {
+    return;
+  }
+
+  const latteUnlocked =
+    state.upgrades.latte >= 1;
+
+  const wantsLatte =
+    latteUnlocked &&
+    Math.random() < 0.34;
+
+  const type =
+    wantsLatte
+      ? 'latte'
+      : 'americano';
+
+  const drink = DRINKS[type];
+
+  state.queue.push({
+    id: Date.now() + Math.random(),
+
+    emoji:
+      CUSTOMER_EMOJIS[
+        Math.floor(
+          Math.random() *
+          CUSTOMER_EMOJIS.length
+        )
+      ],
+
+    type: type,
+
+    patience: drink.patience,
+
+    maxPatience: drink.patience,
+
+    wobble:
+      Math.random() *
+      Math.PI *
+      2,
+
+    joinedAt:
+      performance.now()
+  });
+
+  log(
+    `새 손님 입장: ${drink.icon} ${drink.name}`
+  );
+}
+
+function removeCustomer(index, served) {
+  const customer =
+    state.queue[index];
+
+  if (!customer) {
+    return;
+  }
+
+  state.queue.splice(index, 1);
+
+  if (served) {
+    const drink =
+      DRINKS[customer.type];
+
+    const tip =
+      Math.round(
+        drink.price * tipRate()
+      );
+
+    const earned =
+      drink.price + tip;
+
+    state.money += earned;
+    state.sales += earned;
+    state.customersServed += 1;
+
+    state.reputation =
+      Math.min(
+        100,
+        state.reputation + 0.35
+      );
+
+    playSound('coin');
+
+    toast(
+      `+${formatGold(earned)} • ` +
+      `${drink.icon} ${drink.name}`
+    );
+
+    log(
+      `${drink.name} 판매 완료: ` +
+      `${formatGold(earned)}`
+    );
+
+  } else {
+    state.busted += 1;
+
+    state.reputation =
+      Math.max(
+        0,
+        state.reputation - 3
+      );
+
+    toast(
+      '손님이 기다리다 화가 나서 퇴장했습니다!'
+    );
+
+    log(
+      '손님 이탈! 평판 -3'
+    );
+  }
+}
+
+function startBrew(type, automatic = false) {
+  if (state.brewing) {
+    if (!automatic) {
+      toast(
+        '지금 커피를 추출하고 있습니다.'
+      );
+    }
+
+    return false;
+  }
+
+  if (state.queue.length === 0) {
+    if (!automatic) {
+      toast(
+        '주문을 기다리는 손님이 없습니다.'
+      );
+    }
+
+    return false;
+  }
+
+  const targetIndex =
+    state.queue.findIndex(
+      customer =>
+        customer.type === type
+    );
+
+  if (targetIndex === -1) {
+    if (!automatic) {
+      toast(
+        `현재 ${DRINKS[type].icon} 주문이 없습니다.`
+      );
+    }
+
+    return false;
+  }
+
+  if (state.beans <= 0) {
+    if (!automatic) {
+      toast(
+        '원두가 부족합니다!'
+      );
+    }
+
+    return false;
+  }
+
+  const target =
+    state.queue[targetIndex];
+
+  state.beans -= 1;
+
+  state.brewing = {
+    type: type,
+
+    targetId:
+      target.id,
+
+    startedAt:
+      performance.now(),
+
+    duration:
+      brewDuration(),
+
+    automatic:
+      automatic
+  };
+
+  playSound('brew');
+
+  workInfoEl.textContent =
+    `${DRINKS[type].icon} ` +
+    `${DRINKS[type].name} 추출 중...`;
+
+  return true;
+}
+
+function finishBrew() {
+  if (!state.brewing) {
+    return;
+  }
+
+  const brew =
+    state.brewing;
+
+  const index =
+    state.queue.findIndex(
+      customer =>
+        customer.id ===
+        brew.targetId
+    );
+
+  state.brewing = null;
+
+  workInfoEl.textContent =
+    '추출 완료! 다음 주문을 처리하세요.';
+
+  if (index >= 0) {
+    removeCustomer(index, true);
+  } else {
+    log(
+      '추출 중 손님이 이탈하여 커피가 폐기되었습니다.'
+    );
+  }
+}
+
+function buyBeans() {
+  const cost = 100;
+
+  if (state.money < cost) {
+    toast(
+      '원두를 살 돈이 부족합니다.'
+    );
+
+    return;
+  }
+
+  state.money -= cost;
+  state.beans += 10;
+
+  playSound('buy');
+
+  toast(
+    '🫘 원두 10개 보충!'
+  );
+
+  log(
+    '원두 10개 구매: -100G'
+  );
+
+  saveGame();
+}
+
+function buyUpgrade(id) {
+  const upgrade =
+    upgrades.find(
+      item => item.id === id
+    );
+
+  if (!upgrade) {
+    return;
+  }
+
+  const level =
+    state.upgrades[id];
+
+  if (level >= upgrade.max) {
+    return;
+  }
+
+  const cost =
+    upgrade.costs[level];
+
+  if (state.money < cost) {
+    toast(
+      '자금이 부족합니다.'
+    );
+
+    return;
+  }
+
+  state.money -= cost;
+
+  state.upgrades[id] += 1;
+
+  playSound('buy');
+
+  toast(
+    `${upgrade.title} 업그레이드 완료!`
+  );
+
+  log(
+    `${upgrade.title} ` +
+    `Lv.${state.upgrades[id]} 구매: ` +
+    `-${formatGold(cost)}`
+  );
+
+  if (id === 'latte') {
+    log(
+      '🥛 카페라떼 주문이 활성화되었습니다.'
+    );
+  }
+
+  renderShop();
+  saveGame();
+}
+
+function renderShop() {
+  shopEl.innerHTML = '';
+
+  upgrades.forEach(upgrade => {
+    const level =
+      state.upgrades[upgrade.id];
+
+    const box =
+      document.createElement('div');
+
+    box.style.marginBottom = '6px';
+
+    const button =
+      document.createElement('button');
+
+    button.className = 'upgrade';
+
+    button.dataset.upgrade =
+      upgrade.id;
+
+    const text =
+      document.createElement('span');
+
+    const title =
+      document.createElement('strong');
+
+    title.textContent =
+      upgrade.title +
+      ` • Lv.${level}/${upgrade.max}`;
+
+    const desc =
+      document.createElement('small');
+
+    desc.textContent =
+      upgrade.desc;
+
+    text.appendChild(title);
+    text.appendChild(desc);
+
+    const cost =
+      document.createElement('span');
+
+    if (level >= upgrade.max) {
+      cost.textContent = '완공';
+    } else {
+      cost.textContent =
+        formatGold(
+          upgrade.costs[level]
+        );
+    }
+
+    button.appendChild(text);
+    button.appendChild(cost);
+
+    button.disabled =
+      level >= upgrade.max ||
+      state.money <
+      (upgrade.costs[level] || Infinity);
+
+    box.appendChild(button);
+    shopEl.appendChild(box);
+  });
+}
+
+function updateHud() {
+  moneyEl.textContent =
+    formatGold(state.money);
+
+  beansEl.textContent =
+    state.beans.toString();
+
+  queueEl.textContent =
+    `${state.queue.length} / ${maxQueue()}`;
+
+  salesEl.textContent =
+    formatGold(state.sales);
+
+  repEl.textContent =
+    Math.round(
+      state.reputation
+    ).toString();
+
+  brewLatteBtn.disabled =
+    state.upgrades.latte < 1 ||
+    !!state.brewing;
+
+  brewAmericanoBtn.disabled =
+    !!state.brewing;
+
+  buyBeansBtn.disabled =
+    state.money < 100;
+}
+
+function saveGame() {
+  const data = {
+    money: state.money,
+    beans: state.beans,
+    sales: state.sales,
+    reputation: state.reputation,
+    day: state.day,
+    customersServed:
+      state.customersServed,
+    busted: state.busted,
+    upgrades: state.upgrades
+  };
+
+  try {
+    localStorage.setItem(
+      'pixel-coffee-tycoon-save',
+      JSON.stringify(data)
+    );
+
+    saveStatusEl.textContent =
+      '자동 저장 완료 • ' +
+      new Date().toLocaleTimeString('ko-KR');
+
+  } catch (error) {
+    saveStatusEl.textContent =
+      '브라우저 저장소를 사용할 수 없습니다.';
+  }
+}
+
+function loadGame() {
+  try {
+    const raw =
+      localStorage.getItem(
+        'pixel-coffee-tycoon-save'
+      );
+
+    if (!raw) {
+      return;
+    }
+
+    const data =
+      JSON.parse(raw);
+
+    if (!data ||
+        typeof data !== 'object') {
+      return;
+    }
+
+    state.money =
+      Number.isFinite(data.money)
+        ? data.money
+        : 1000;
+
+    state.beans =
+      Number.isFinite(data.beans)
+        ? data.beans
+        : 12;
+
+    state.sales =
+      Number.isFinite(data.sales)
+        ? data.sales
+        : 0;
+
+    state.reputation =
+      Number.isFinite(data.reputation)
+        ? data.reputation
+        : 100;
+
+    state.day =
+      Number.isFinite(data.day)
+        ? data.day
+        : 1;
+
+    state.customersServed =
+      Number.isFinite(
+        data.customersServed
+      )
+        ? data.customersServed
+        : 0;
+
+    state.busted =
+      Number.isFinite(data.busted)
+        ? data.busted
+        : 0;
+
+    if (
+      data.upgrades &&
+      typeof data.upgrades === 'object'
+    ) {
+      upgrades.forEach(upgrade => {
+        const value =
+          Number(
+            data.upgrades[upgrade.id]
+          );
+
+        state.upgrades[upgrade.id] =
+          Number.isFinite(value)
+            ? Math.max(
+                0,
+                Math.min(
+                  upgrade.max,
+                  Math.floor(value)
+                )
+              )
+            : 0;
+      });
+    }
+
+    log(
+      '저장된 영업 기록을 불러왔습니다.'
+    );
+
+  } catch (error) {
+    log(
+      '저장 데이터가 손상되어 새 영업을 시작합니다.'
+    );
+  }
+}
+
+function drawPixelRect(
+  x,
+  y,
+  w,
+  h,
+  color
+) {
+  ctx.fillStyle = color;
+
+  ctx.fillRect(
+    Math.round(x),
+    Math.round(y),
+    Math.round(w),
+    Math.round(h)
+  );
+}
+
+function drawBackground(time) {
+  const dark =
+    getComputedStyle(
+      document.documentElement
+    )
+      .getPropertyValue(
+        '--canvas-bg'
+      )
+      .trim() ||
+    '#151b22';
+
+  ctx.fillStyle = dark;
+
+  ctx.fillRect(
+    0,
+    0,
+    W,
+    H
+  );
+
+  drawPixelRect(
+    0,
+    360,
+    W,
+    180,
+    '#2b211b'
+  );
+
+  drawPixelRect(
+    0,
+    355,
+    W,
+    7,
+    '#8c6239'
+  );
+
+  drawPixelRect(
+    0,
+    365,
+    W,
+    4,
+    '#5b3a24'
+  );
+
+  for (
+    let x = 0;
+    x < W;
+    x += 32
+  ) {
+    drawPixelRect(
+      x,
+      390,
+      16,
+      16,
+      '#33271f'
+    );
+
+    drawPixelRect(
+      x + 16,
+      406,
+      16,
+      16,
+      '#241c18'
+    );
+  }
+
+  drawPixelRect(
+    42,
+    74,
+    210,
+    250,
+    '#a36b3f'
+  );
+
+  drawPixelRect(
+    54,
+    86,
+    186,
+    222,
+    '#d9a066'
+  );
+
+  drawPixelRect(
+    69,
+    104,
+    156,
+    82,
+    '#4b3325'
+  );
+
+  drawPixelRect(
+    77,
+    112,
+    140,
+    66,
+    '#0e141a'
+  );
+
+  drawPixelRect(
+    83,
+    118,
+    128,
+    54,
+    '#20303a'
+  );
+
+  ctx.fillStyle = '#f8d27a';
+
+  ctx.font =
+    'bold 23px monospace';
+
+  ctx.fillText(
+    'COFFEE',
+    91,
+    145
+  );
+
+  ctx.fillText(
+    'HOUSE',
+    98,
+    168
+  );
+
+  drawPixelRect(
+    292,
+    93,
+    410,
+    245,
+    '#5c4030'
+  );
+
+  drawPixelRect(
+    307,
+    108,
+    380,
+    215,
+    '#76523a'
+  );
+
+  drawPixelRect(
+    324,
+    125,
+    346,
+    44,
+    '#3a2921'
+  );
+
+  ctx.fillStyle =
+    '#ffd166';
+
+  ctx.font =
+    'bold 21px monospace';
+
+  ctx.fillText(
+    'PIXEL CAFE',
+    424,
+    153
+  );
+
+  drawPixelRect(
+    740,
+    70,
+    178,
+    270,
+    '#7b4e2d'
+  );
+
+  drawPixelRect(
+    754,
+    84,
+    150,
+    242,
+    '#b97c48'
+  );
+
+  drawPixelRect(
+    767,
+    101,
+    124,
+    88,
+    '#573b2b'
+  );
+
+  drawPixelRect(
+    778,
+    112,
+    102,
+    66,
+    '#1b2328'
+  );
+
+  ctx.fillStyle =
+    '#a8e6cf';
+
+  ctx.font =
+    'bold 15px monospace';
+
+  ctx.fillText(
+    'OPEN',
+    805,
+    151
+  );
+
+  drawPixelRect(
+    788,
+    211,
+    82,
+    66,
+    '#553724'
+  );
+
+  drawPixelRect(
+    797,
+    221,
+    64,
+    48,
+    '#d8a46f'
+  );
+
+  drawPixelRect(
+    370,
+    265,
+    250,
+    86,
+    '#22252a'
+  );
+
+  drawPixelRect(
+    384,
+    279,
+    222,
+    58,
+    '#343941'
+  );
+
+  drawPixelRect(
+    401,
+    293,
+    188,
+    10,
+    '#181a1e'
+  );
+
+  drawPixelRect(
+    401,
+    310,
+    90,
+    11,
+    '#c9a66b'
+  );
+
+  drawPixelRect(
+    507,
+    310,
+    82,
+    11,
+    '#8b5e34'
+  );
+
+  drawPixelRect(
+    392,
+    336,
+    20,
+    27,
+    '#14171b'
+  );
+
+  drawPixelRect(
+    578,
+    336,
+    20,
+    27,
+    '#14171b'
+  );
+
+  const steam =
+    Math.sin(time / 350) * 3;
+
+  ctx.fillStyle =
+    'rgba(255,255,255,.28)';
+
+  ctx.fillRect(
+    472 + steam,
+    259,
+    5,
+    18
+  );
+
+  ctx.fillRect(
+    486 - steam,
+    250,
+    5,
+    27
+  );
+
+  ctx.fillRect(
+    500 + steam,
+    257,
+    5,
+    20
+  );
+
+  ctx.fillStyle =
+    '#d9a066';
+
+  ctx.font =
+    'bold 16px monospace';
+
+  ctx.fillText(
+    'BARISTA STATION',
+    405,
+    232
+  );
+}
+
+function drawCustomer(
+  customer,
+  index,
+  time
+) {
+  const startX = 95;
+
+  const spacing =
+    Math.min(
+      126,
+      760 /
+      Math.max(
+        1,
+        maxQueue() - 1
+      )
+    );
+
+  const x =
+    startX +
+    index * spacing;
+
+  const y =
+    418 +
+    Math.sin(
+      time / 280 +
+      customer.wobble
+    ) * 2;
+
+  const drink =
+    DRINKS[customer.type];
+
+  ctx.textAlign =
+    'center';
+
+  ctx.font =
+    '29px sans-serif';
+
+  ctx.fillText(
+    customer.emoji,
+    x,
+    y + 30
+  );
+
+  ctx.font =
+    '16px sans-serif';
+
+  ctx.fillText(
+    drink.icon,
+    x - 20,
+    y - 8
+  );
+
+  ctx.font =
+    'bold 13px monospace';
+
+  ctx.fillStyle =
+    '#fff';
+
+  ctx.fillText(
+    drink.name,
+    x + 19,
+    y - 8
+  );
+
+  const barW = 82;
+  const barH = 8;
+
+  const ratio =
+    Math.max(
+      0,
+      customer.patience /
+      customer.maxPatience
+    );
+
+  drawPixelRect(
+    x - barW / 2,
+    y - 28,
+    barW,
+    barH,
+    '#101317'
+  );
+
+  drawPixelRect(
+    x - barW / 2 + 2,
+    y - 26,
+    (barW - 4) * ratio,
+    barH - 4,
+    ratio > .5
+      ? '#51cf66'
+      : ratio > .25
+        ? '#fcc419'
+        : '#ff6b6b'
+  );
+
+  ctx.fillStyle =
+    '#f8f9fa';
+
+  ctx.font =
+    '10px monospace';
+
+  ctx.fillText(
+    'PATIENCE',
+    x,
+    y - 35
+  );
+
+  ctx.textAlign =
+    'left';
+}
+
+function drawBrewMachine(time) {
+  const x = 710;
+  const y = 372;
+
+  drawPixelRect(
+    x,
+    y,
+    188,
+    112,
+    '#191c20'
+  );
+
+  drawPixelRect(
+    x + 10,
+    y + 10,
+    168,
+    92,
+    '#41464d'
+  );
+
+  drawPixelRect(
+    x + 30,
+    y + 26,
+    128,
+    25,
+    '#111418'
+  );
+
+  drawPixelRect(
+    x + 43,
+    y + 60,
+    102,
+    25,
+    '#282d32'
+  );
+
+  drawPixelRect(
+    x + 60,
+    y + 84,
+    68,
+    9,
+    '#16191d'
+  );
+
+  ctx.fillStyle =
+    '#ffe066';
+
+  ctx.font =
+    'bold 12px monospace';
+
+  ctx.fillText(
+    state.brewing
+      ? 'BREWING...'
+      : 'READY',
+    x + 57,
+    y + 43
+  );
+
+  if (state.brewing) {
+    const progress =
+      Math.min(
+        1,
+        (
+          time -
+          state.brewing.startedAt
+        ) /
+        state.brewing.duration
+      );
+
+    drawPixelRect(
+      x + 43,
+      y + 63,
+      102 * progress,
+      19,
+      '#d08b45'
+    );
+
+    ctx.fillStyle =
+      '#fff3bf';
+
+    ctx.font =
+      '10px monospace';
+
+    ctx.fillText(
+      Math.floor(
+        progress * 100
+      ) + '%',
+      x + 86,
+      y + 76
+    );
+  }
+}
+
+function draw() {
+  const time =
+    performance.now();
+
+  drawBackground(time);
+
+  state.queue.forEach(
+    (customer, index) => {
+      drawCustomer(
+        customer,
+        index,
+        time
+      );
+    }
+  );
+
+  drawBrewMachine(time);
+
+  ctx.fillStyle =
+    '#f8f9fa';
+
+  ctx.font =
+    'bold 14px monospace';
+
+  ctx.fillText(
+    `DAY ${state.day}  •  ` +
+    `SERVED ${state.customersServed}`,
+    20,
+    30
+  );
+
+  ctx.fillText(
+    `BEANS ${state.beans}  •  ` +
+    `REP ${Math.round(
+      state.reputation
+    )}`,
+    20,
+    52
+  );
+}
+
+function gameTick(now) {
+  const dt =
+    Math.min(
+      0.1,
+      (now - state.lastTick) / 1000
+    );
+
+  state.lastTick = now;
+
+  if (
+    state.brewing &&
+    now -
+    state.brewing.startedAt >=
+    state.brewing.duration
+  ) {
+    finishBrew();
+  }
+
+  state.queue.forEach(
+    customer => {
+      customer.patience -=
+        dt * 5.4;
+    }
+  );
+
+  for (
+    let i = state.queue.length - 1;
+    i >= 0;
+    i--
+  ) {
+    if (
+      state.queue[i].patience <= 0
+    ) {
+      removeCustomer(
+        i,
+        false
+      );
+    }
+  }
+
+  const spawnInterval =
+    Math.max(
+      2400,
+      6500 -
+      state.upgrades.interior *
+      650
+    );
+
+  if (
+    now -
+    state.lastCustomerAt >=
+    spawnInterval
+  ) {
+    state.lastCustomerAt =
+      now;
+
+    addCustomer();
+
+    if (
+      Math.random() < 0.16 &&
+      state.queue.length <
+      maxQueue()
+    ) {
+      addCustomer();
+    }
+  }
+
+  if (
+    state.upgrades.espresso > 0 &&
+    !state.brewing &&
+    state.queue.length > 0 &&
+    state.beans > 0
+  ) {
+    const chance =
+      1 -
+      Math.pow(
+        1 -
+        autoChancePerSecond(),
+        dt
+      );
+
+    if (Math.random() < chance) {
+      const first =
+        state.queue[0];
+
+      startBrew(
+        first.type,
+        true
+      );
+    }
+  }
+
+  if (
+    now -
+    state.lastAutoSave >=
+    10000
+  ) {
+    state.lastAutoSave =
+      now;
+
+    saveGame();
+  }
+
+  updateHud();
+  draw();
+
+  requestAnimationFrame(
+    gameTick
+  );
+}
+
+brewAmericanoBtn.addEventListener(
+  'click',
+  () => {
+    startBrew(
+      'americano'
+    );
+  }
+);
+
+brewLatteBtn.addEventListener(
+  'click',
+  () => {
+    startBrew(
+      'latte'
+    );
+  }
+);
+
+buyBeansBtn.addEventListener(
+  'click',
+  buyBeans
+);
+
+shopEl.addEventListener(
+  'click',
+  event => {
+    const button =
+      event.target.closest(
+        'button[data-upgrade]'
+      );
+
+    if (!button) {
+      return;
+    }
+
+    buyUpgrade(
+      button.dataset.upgrade
+    );
+  }
+);
+
+window.addEventListener(
+  'pointerdown',
+  () => {
+    getAudioContext();
+  },
+  { once: true }
+);
+
+window.addEventListener(
+  'beforeunload',
+  saveGame
+);
+
+loadGame();
+renderShop();
+updateHud();
+
+log(
+  '☕ 영업 시작! 초기 자금 1,000G, ' +
+  '원두 12개를 준비했습니다.'
+);
+
+log(
+  '손님의 인내심이 바닥나기 전에 주문을 처리하세요.'
+);
+
+state.lastCustomerAt =
+  performance.now() - 1800;
+
+requestAnimationFrame(
+  gameTick
+);
+  </script>
+</body>
+</html>
