@@ -15,53 +15,40 @@
     select { padding: 4px 8px; cursor: pointer; font-size: 1.1rem; }
     #marble-panel { font-size: 1.1rem; font-weight: bold; color: #fcc419; margin-bottom: 8px; min-height: 1.5em; }
 
-    .container { max-width: 1100px; margin: 0 auto; padding: 18px; }
-    .lobby-wrap { display:grid; grid-template-columns:minmax(0,1fr) 310px; gap:14px; align-items:stretch; }
-    .lobby-main { min-width:0; }
-    .online-modal { max-width: 460px; margin: 18px auto 0; background: var(--btn-bg); border: 1px solid var(--border); border-radius: 18px; padding: 22px; box-shadow: 0 10px 30px rgba(0,0,0,.16); }
-    .online-title { font-size:1.2rem; font-weight:800; margin-bottom:18px; }
-    .online-card { border:1px solid var(--border); border-radius:14px; padding:16px; background:rgba(0,0,0,.025); }
-    .online-card + .online-card { margin-top:12px; }
-    .online-card h4 { margin:0 0 10px; font-size:.98rem; }
-    .room-actions { display:flex; gap:8px; align-items:center; justify-content:center; flex-wrap:wrap; }
-    .room-actions input { width:170px; text-transform:uppercase; }
-    .primary-btn { background:#4dabf7 !important; color:#fff !important; border:none !important; }
-    .or-divider { color:#868e96; display:flex; align-items:center; gap:10px; margin:10px 0; font-size:.82rem; }
+    .container { max-width: 960px; margin: 0 auto; padding: 16px; }
+    .lobby-layout { display:grid; grid-template-columns: minmax(430px, 1fr) 330px; gap:14px; align-items:stretch; }
+    .online-modal { max-width:460px; margin:0 auto; box-sizing:border-box; background:var(--btn-bg); border:1px solid var(--border); border-radius:16px; padding:20px; box-shadow:0 6px 18px rgba(0,0,0,.12); }
+    .online-title { font-size:1.18rem; font-weight:800; margin-bottom:8px; }
+    .network-status { min-height:1.2em; color:#868e96; font-size:.78rem; margin-bottom:12px; }
+    .network-status.ok { color:#2b8a3e; }
+    .online-section { border:1px solid var(--border); border-radius:12px; padding:15px; background:rgba(0,0,0,.025); }
+    .online-section h4 { margin:0 0 10px; font-size:.98rem; }
+    .online-primary { background:#4dabf7 !important; color:#fff !important; border:none !important; padding:9px 16px; }
+    .join-row { display:flex; justify-content:center; align-items:center; gap:7px; }
+    .room-input { width:145px !important; font-size:1rem !important; letter-spacing:.2em; }
+    .online-secondary { padding:8px 16px; }
+    .or-divider { display:flex; align-items:center; gap:10px; margin:9px 0; color:#adb5bd; font-size:.82rem; }
     .or-divider::before,.or-divider::after { content:""; flex:1; height:1px; background:var(--border); }
-    .participants-card { height:100%; box-sizing:border-box; }
-    .participants-card h3 { margin:0 0 12px; }
+    .close-btn { margin-top:12px; }
+    .participants-card { background:var(--btn-bg); border:1px solid var(--border); border-radius:16px; padding:20px; box-shadow:0 6px 18px rgba(0,0,0,.12); }
+    .participants-title { font-size:1.08rem; font-weight:800; margin-bottom:4px; }
+    .participants-count { font-size:.78rem; color:#868e96; margin-bottom:12px; }
     .participant-list { display:flex; flex-direction:column; gap:8px; }
-    .participant { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:rgba(0,0,0,.025); }
-    .participant .who { display:flex; align-items:center; gap:8px; min-width:0; }
-    .participant .name { font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .participant .state { font-size:.75rem; color:#868e96; }
+    .participant { display:flex; justify-content:space-between; align-items:center; gap:8px; min-height:28px; padding:10px 11px; border:1px solid var(--border); border-radius:9px; background:rgba(0,0,0,.025); }
+    .participant .who { display:flex; align-items:center; gap:7px; min-width:0; }
+    .participant .name { font-weight:700; white-space:nowrap; }
+    .participant .state { font-size:.75rem; color:#868e96; white-space:nowrap; }
     .participant.me { border-color:#4dabf7; background:rgba(77,171,247,.10); }
-    .participant.host::after { content:"방장"; font-size:.68rem; padding:3px 6px; border-radius:999px; background:#fcc419; color:#111; font-weight:800; }
-    .close-btn { margin-top:14px; }
-    @media (max-width:820px) { .container{max-width:680px;} .lobby-wrap{grid-template-columns:1fr;} .participants-card{height:auto;} }
-    .card { background-color: var(--btn-bg); border: 1px solid var(--border); border-radius: 12px; padding: 15px; margin-bottom: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    .online-lobby { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(240px, 0.85fr); gap: 14px; align-items: stretch; }
-    .connect-box, .participants-box { border: 1px solid var(--border); border-radius: 14px; background: rgba(0,0,0,0.025); padding: 18px; }
-    .connect-title { font-size: 1.22rem; font-weight: 800; margin-bottom: 14px; }
-    .mode-card { border: 1px solid var(--border); border-radius: 12px; padding: 14px; background: var(--btn-bg); margin-bottom: 10px; }
-    .mode-card:last-child { margin-bottom: 0; }
-    .mode-card h4 { margin: 0 0 10px 0; font-size: 0.98rem; }
-    .room-actions { display: flex; gap: 6px; align-items: center; justify-content: center; flex-wrap: wrap; }
-    .room-code-input { width: 150px !important; font-size: 1rem !important; letter-spacing: 0.16em; }
-    .primary-online { background: #4dabf7 !important; color: #fff !important; border: none !important; min-width: 112px; }
-    .close-online { margin-top: 12px; background: var(--btn-bg) !important; }
-    .participants-title { font-size: 1.03rem; font-weight: 800; margin-bottom: 10px; }
-    .participants-list { display: grid; gap: 8px; }
-    .player-slot { border: 1px solid var(--border); border-radius: 9px; padding: 9px 10px; background: var(--btn-bg); font-size: 0.84rem; text-align: left; display: flex; align-items: center; justify-content: space-between; min-height: 26px; }
-    .player-slot.active { border-color: #4dabf7; background: rgba(77,171,247,0.08); box-shadow: 0 0 0 1px rgba(77,171,247,0.15) inset; }
-    .participant-left { display:flex; align-items:center; gap:7px; min-width:0; }
-    .participant-state { color:#868e96; white-space:nowrap; font-size:0.78rem; }
-    input[type="text"] { width: 120px; padding: 7px; font-size: 0.95rem; text-align: center; border-radius: 7px; border: 1px solid var(--border); font-weight: bold; }
-    .network-badge { min-height: 1.2em; margin-bottom: 10px; font-size: 0.78rem; color:#868e96; }
-    .network-badge.ok { color:#2b8a3e; }
-    @media (max-width: 760px) {
-      .online-lobby { grid-template-columns: 1fr; }
+    @media (max-width:820px) {
+      .container { max-width:680px; }
+      .lobby-layout { grid-template-columns:1fr; }
+      .online-modal { max-width:100%; }
     }
+    .card { background-color: var(--btn-bg); border: 1px solid var(--border); border-radius: 12px; padding: 15px; margin-bottom: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .player-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
+    .player-slot { border: 1px solid var(--border); border-radius: 8px; padding: 8px; background: rgba(0,0,0,0.03); font-size: 0.85rem; text-align: left; display: flex; align-items: center; justify-content: space-between; }
+    .player-slot.active { border-color: #fcc419; background: rgba(252, 196, 25, 0.1); }
+    input[type="text"] { width: 120px; padding: 6px; font-size: 0.95rem; text-align: center; border-radius: 6px; border: 1px solid var(--border); font-weight: bold; }
     
     /* 40칸 대형 보드 캔버스 */
     canvas { background-color: var(--canvas-bg); border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.4); max-width: 100%; height: auto; vertical-align: middle; }
@@ -81,55 +68,68 @@
     <h2 style="margin:5px 0 10px 0;">🎲 정통 40칸 부루마블</h2>
 
     <!-- 온라인 멀티 로비 -->
-    <div id="lobby-panel" class="card">
-      <div class="online-lobby">
-        <section class="connect-box">
-          <div class="connect-title">🌐 1:1 온라인 접속</div>
-          <div id="network-status" class="network-badge">P2P 연결 대기 중...</div>
+    <div id="lobby-panel" class="lobby-layout">
+      <section class="online-modal">
+        <div class="online-title">🌐 1:1 온라인 접속</div>
+        <div id="network-status" class="network-status">P2P 연결 대기 중...</div>
 
-          <div class="mode-card">
-            <h4>🏠 방 만들기 (방장)</h4>
-            <div class="room-actions">
-              <button class="primary-online" onclick="createRoom()">방 번호 생성</button>
-            </div>
-            <div id="host-controls" style="display:none; margin-top:10px;">
-              <button onclick="startGame()" style="background:#40c057 !important; color:#fff !important; border:none !important; width:100%; font-size:0.98rem; padding:10px;">🚀 게임 시작 (방장)</button>
-            </div>
+        <div class="online-section">
+          <h4>🏠 방 만들기 (방장)</h4>
+          <button class="online-primary" onclick="createRoom()">방 번호 생성</button>
+          <div id="host-room-info" style="display:none; margin-top:10px; color:#4dabf7; font-size:.86rem;">
+            방 번호: <b id="host-room-code"></b>
           </div>
-
-          <div style="text-align:center; color:#adb5bd; margin:7px 0;">또는</div>
-
-          <div class="mode-card">
-            <h4>🎮 방 참가하기 (참가자)</h4>
-            <div class="room-actions">
-              <input class="room-code-input" type="text" id="room-code-input" maxlength="4" placeholder="0000" inputmode="numeric" autocomplete="off">
-              <button class="primary-online" onclick="joinRoom()">입장</button>
-            </div>
-            <div id="room-info" style="display:none; margin-top:10px; font-size:0.85rem; color:#4dabf7;">
-              현재 방 번호: <b id="current-room-id"></b>
-            </div>
+          <div id="host-controls" style="display:none; margin-top:10px;">
+            <button onclick="startGame()" style="background:#40c057 !important; color:#fff !important; border:none !important; width:100%; padding:9px 12px;">🚀 게임 시작 (방장)</button>
           </div>
+        </div>
 
-          <button class="close-online" onclick="closeNetworking(); document.getElementById('room-info').style.display='none'; document.getElementById('host-controls').style.display='none'; document.getElementById('guest-waiting').style.display='none'; setNetworkStatus('P2P 연결 대기 중...');">
-            ❌ 닫기
-          </button>
+        <div class="or-divider"><span>또는</span></div>
 
-          <div id="guest-waiting" style="display:none; color:#868e96; margin-top:8px; font-size:0.8rem;">
-            방장이 게임을 시작하기를 기다리고 있습니다...
+        <div class="online-section">
+          <h4>🎮 방 참가하기 (참가자)</h4>
+          <div class="join-row">
+            <input id="room-code-input" class="room-input" type="text" maxlength="4" placeholder="0000" inputmode="numeric" autocomplete="off">
+            <button class="online-secondary" onclick="joinRoom()">입장</button>
           </div>
-        </section>
+        </div>
 
-        <aside class="participants-box">
-          <div class="participants-title">👥 참가자</div>
-          <div id="participants-count" style="font-size:0.78rem; color:#868e96; margin:-5px 0 10px 0;">1 / 4명 접속</div>
-          <div class="participants-list">
-            <div id="slot-p1" class="player-slot"><span class="participant-left"><b>P1</b><span>🎈</span></span><span class="participant-state st">🤖 AI 컴퓨터</span></div>
-            <div id="slot-p2" class="player-slot"><span class="participant-left"><b>P2</b><span>🚗</span></span><span class="participant-state st">🤖 AI 컴퓨터</span></div>
-            <div id="slot-p3" class="player-slot"><span class="participant-left"><b>P3</b><span>🚀</span></span><span class="participant-state st">🤖 AI 컴퓨터</span></div>
-            <div id="slot-p4" class="player-slot"><span class="participant-left"><b>P4</b><span>💎</span></span><span class="participant-state st">🤖 AI 컴퓨터</span></div>
+        <button class="close-btn" onclick="
+          closeNetworking();
+          document.getElementById('host-controls').style.display='none';
+          document.getElementById('host-room-info').style.display='none';
+          document.getElementById('guest-waiting').style.display='none';
+          setNetworkStatus('P2P 연결 대기 중...');
+          updateUI();
+        ">❌ 닫기</button>
+
+        <div id="guest-waiting" style="display:none; color:#868e96; margin-top:10px; font-size:.8rem;">
+          방장이 게임을 시작하기를 기다리고 있습니다...
+        </div>
+      </section>
+
+      <aside class="participants-card">
+        <div class="participants-title">👥 참가자</div>
+        <div id="participants-count" class="participants-count">1 / 4명 접속</div>
+        <div class="participant-list">
+          <div id="slot-p1" class="participant">
+            <div class="who"><span class="name">P1</span><span class="player-emoji">🎈</span></div>
+            <span class="state st">🤖 AI 컴퓨터</span>
           </div>
-        </aside>
-      </div>
+          <div id="slot-p2" class="participant">
+            <div class="who"><span class="name">P2</span><span class="player-emoji">🚗</span></div>
+            <span class="state st">🤖 AI 컴퓨터</span>
+          </div>
+          <div id="slot-p3" class="participant">
+            <div class="who"><span class="name">P3</span><span class="player-emoji">🚀</span></div>
+            <span class="state st">🤖 AI 컴퓨터</span>
+          </div>
+          <div id="slot-p4" class="participant">
+            <div class="who"><span class="name">P4</span><span class="player-emoji">💎</span></div>
+            <span class="state st">🤖 AI 컴퓨터</span>
+          </div>
+        </div>
+      </aside>
     </div>
 
     <!-- 게임 진행 화면 -->
@@ -357,8 +357,8 @@
       gameState.players[0].id = null;
       gameState.players[0].isAI = false;
 
-      document.getElementById('room-info').style.display = 'block';
-      document.getElementById('current-room-id').innerText = roomCode;
+      document.getElementById('host-room-info').style.display = 'block';
+      document.getElementById('host-room-code').innerText = roomCode;
       document.getElementById('host-controls').style.display = 'block';
       document.getElementById('guest-waiting').style.display = 'none';
       setNetworkStatus('P2P 방을 만드는 중...', false);
@@ -404,8 +404,8 @@
       localPlayerIndex = -1;
       gameState = makeInitialState();
       gameState.roomCode = roomCode;
-      document.getElementById('room-info').style.display = 'block';
-      document.getElementById('current-room-id').innerText = roomCode;
+      document.getElementById('host-room-info').style.display = 'block';
+      document.getElementById('host-room-code').innerText = roomCode;
       document.getElementById('host-controls').style.display = 'none';
       document.getElementById('guest-waiting').style.display = 'block';
       setNetworkStatus('방장에게 P2P 연결 중...', false);
@@ -506,12 +506,27 @@
         return;
       }
       if (data.type === 'JOIN_RESPONSE') {
-        localPlayerIndex = data.slotIndex;
+        localPlayerIndex = Number(data.slotIndex);
+        if (!Number.isInteger(localPlayerIndex) || localPlayerIndex < 0 || localPlayerIndex > 3) {
+          localPlayerIndex = -1;
+          return;
+        }
         setNetworkStatus(`P2P 연결 완료 · P${localPlayerIndex + 1}`, true);
+        // 다음 STATE_UPDATE를 기다리는 동안에도 내 슬롯을 즉시 표시한다.
+        if (gameState.players[localPlayerIndex]) {
+          gameState.players[localPlayerIndex].isAI = false;
+          gameState.players[localPlayerIndex].id = myClientId;
+        }
+        updateUI();
         return;
       }
       if (data.type === 'STATE_UPDATE' && data.state) {
         gameState = data.state;
+        // 호스트가 상태를 보내는 순간에도 내 로컬 슬롯은 유지한다.
+        if (localPlayerIndex >= 0 && gameState.players[localPlayerIndex]) {
+          gameState.players[localPlayerIndex].isAI = false;
+          gameState.players[localPlayerIndex].id = myClientId;
+        }
         updateUI();
       }
     }
@@ -531,7 +546,13 @@
         }
         const conn = [...connections.entries()].find(([id]) => id === clientId)?.[1];
         if (slot !== -1 && conn) {
-          try { conn.send({ type: 'JOIN_RESPONSE', slotIndex: slot }); } catch (_) {}
+          // 참가 승인과 현재 게임 상태를 같은 연결로 즉시 전송한다.
+          // 기존 방식은 전체 broadcast 타이밍에 의존해 신규 참가자가
+          // 'P2P 연결됨' 상태인데도 참가자 목록이 1/4로 남는 문제가 있었다.
+          try {
+            conn.send({ type: 'JOIN_RESPONSE', slotIndex: slot, clientId });
+            conn.send({ type: 'STATE_UPDATE', seq: stateSeq, state: cloneState() });
+          } catch (_) {}
           gameState.message = `P${slot + 1} 플레이어가 참가했습니다.`;
           syncStateToNetwork();
         } else if (conn) {
@@ -631,11 +652,11 @@
         if (i === localPlayerIndex && gameState.status === 'lobby') {
           emojiPickerHtml = `<select onchange="requestEmojiChange(this.value)">${EMOJI_OPTIONS.map(e => `<option value="${e}" ${e === p.emoji ? 'selected' : ''}>${e}</option>`).join('')}</select>`;
         } else {
-          emojiPickerHtml = `<span style="font-size:1.15rem;">${p.emoji}</span>`;
+          emojiPickerHtml = `<span class="player-emoji">${p.emoji}</span>`;
         }
 
-        slotEl.innerHTML = `<span class="participant-left"><b>P${i+1}</b>${emojiPickerHtml}</span><span class="participant-state st">${statusText}</span>`;
-        if (i === localPlayerIndex) slotEl.classList.add('active'); else slotEl.classList.remove('active');
+        slotEl.innerHTML = `<div class="who"><span class="name">P${i+1}</span>${emojiPickerHtml}</div><span class="state st">${statusText}</span>`;
+        slotEl.classList.toggle('me', i === localPlayerIndex);
       }
 
       const connectedCount = gameState.players.filter(p => !p.isAI).length;
