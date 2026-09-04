@@ -1,0 +1,1242 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>미니지 - 행성채굴시뮬레이터</title>
+  <style>
+    :root { --bg: #f8f9fa; --text: #333; --canvas-bg: #05070a; --border: #e9ecef; --btn-bg: #fff; }
+    [data-theme="dark"] { --bg: #0d1117; --text: #c9d1d9; --canvas-bg: #020305; --border: #30363d; --btn-bg: #21262d; }
+    [data-theme="beige"] { --bg: #f5ebe0; --text: #4e3d30; --canvas-bg: #14100c; --border: #ddcbbb; --btn-bg: #eddfd0; }
+
+    * { box-sizing: border-box; }
+
+    body {
+      background-color: var(--bg) !important;
+      color: var(--text) !important;
+      text-align: center;
+      font-family: sans-serif;
+      padding-top: 15px;
+      margin: 0;
+    }
+
+    button {
+      background-color: var(--btn-bg) !important;
+      color: var(--text) !important;
+      border: 1px solid var(--border) !important;
+      padding: 10px 18px;
+      font-size: 0.95rem;
+      border-radius: 8px;
+      cursor: pointer;
+      margin: 4px;
+      font-weight: bold;
+      transition: transform 0.12s ease, opacity 0.12s ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:active { transform: translateY(1px); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+    #simulator-panel {
+      font-size: 1.25rem;
+      font-weight: bold;
+      color: #fcc419;
+      margin-bottom: 5px;
+    }
+
+    h1 {
+      margin: 4px 0 10px;
+      font-size: clamp(1.45rem, 4vw, 2.3rem);
+      letter-spacing: 0.02em;
+    }
+
+    #app {
+      width: min(1180px, calc(100% - 18px));
+      margin: 0 auto;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin: 8px 0 12px;
+    }
+
+    .stat-card {
+      border: 1px solid var(--border);
+      background: color-mix(in srgb, var(--btn-bg) 88%, transparent);
+      border-radius: 12px;
+      padding: 10px;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.05);
+    }
+
+    .stat-label {
+      display: block;
+      font-size: 0.75rem;
+      opacity: 0.7;
+      margin-bottom: 4px;
+      font-weight: 700;
+    }
+
+    .stat-value {
+      display: block;
+      font-size: clamp(1rem, 2.5vw, 1.35rem);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .game-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 340px;
+      gap: 12px;
+      align-items: start;
+      text-align: left;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      overflow: hidden;
+      border: 2px solid var(--border);
+      border-radius: 16px;
+      background: var(--canvas-bg);
+      box-shadow: 0 16px 45px rgba(0, 0, 0, 0.15);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 16 / 9;
+      background: var(--canvas-bg);
+      cursor: pointer;
+    }
+
+    .canvas-hint {
+      position: absolute;
+      left: 12px;
+      bottom: 10px;
+      padding: 6px 9px;
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.48);
+      color: #fff;
+      font-size: 0.78rem;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+      background: color-mix(in srgb, var(--btn-bg) 93%, transparent);
+      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.06);
+    }
+
+    .panel + .panel { margin-top: 12px; }
+
+    .panel-title {
+      font-size: 1rem;
+      font-weight: 900;
+      margin: 0 0 8px;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .controls button {
+      width: 100%;
+      margin: 0;
+      padding: 11px 8px;
+    }
+
+    .upgrade {
+      border-top: 1px dashed var(--border);
+      padding: 10px 0 0;
+      margin-top: 10px;
+    }
+
+    .upgrade:first-of-type {
+      border-top: 0;
+      padding-top: 0;
+      margin-top: 0;
+    }
+
+    .upgrade-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .upgrade-name { font-weight: 900; }
+    .upgrade-level { font-size: 0.8rem; opacity: 0.7; }
+    .upgrade-desc { font-size: 0.77rem; opacity: 0.78; line-height: 1.35; margin: 4px 0 7px; }
+
+    .upgrade button {
+      width: 100%;
+      margin: 0;
+      padding: 8px 10px;
+      font-size: 0.86rem;
+    }
+
+    #event-log {
+      max-height: 165px;
+      overflow: auto;
+      font-size: 0.76rem;
+      line-height: 1.4;
+    }
+
+    .log-row {
+      padding: 4px 0;
+      border-bottom: 1px dashed var(--border);
+    }
+
+    .footer-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .footer-row button { margin: 0; }
+
+    .tiny {
+      font-size: 0.72rem;
+      opacity: 0.68;
+      line-height: 1.35;
+    }
+
+    .float-text {
+      position: fixed;
+      pointer-events: none;
+      z-index: 20;
+      font-weight: 900;
+      font-size: 1rem;
+      text-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+      animation: float-up 0.8s ease-out forwards;
+    }
+
+    @keyframes float-up {
+      from { transform: translate(-50%, 0); opacity: 1; }
+      to { transform: translate(-50%, -60px); opacity: 0; }
+    }
+
+    @media (max-width: 900px) {
+      .game-layout { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 620px) {
+      .stats { grid-template-columns: 1fr 1fr; }
+      .controls { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="simulator-panel">은하 채굴 네트워크 · ONLINE</div>
+    <h1>🌌 은하계 행성 채굴 시뮬레이터</h1>
+
+    <section class="stats" aria-label="실시간 자원 현황">
+      <div class="stat-card">
+        <span class="stat-label">총 우주 광물</span>
+        <span class="stat-value" id="ore-count">0</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">초당 생산량</span>
+        <span class="stat-value" id="dps-count">0 / s</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">클릭 채굴량</span>
+        <span class="stat-value" id="click-count">1</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">채굴 레벨</span>
+        <span class="stat-value" id="level-count">1</span>
+      </div>
+    </section>
+
+    <div class="game-layout">
+      <section class="canvas-wrap">
+        <canvas id="game-canvas" width="960" height="540">
+          브라우저가 Canvas를 지원하지 않습니다.
+        </canvas>
+        <div class="canvas-hint">행성을 클릭하여 채굴 · 업그레이드로 자동화</div>
+      </section>
+
+      <aside>
+        <section class="panel">
+          <h2 class="panel-title">⛏️ 채굴 컨트롤</h2>
+          <div class="controls">
+            <button id="mine-button">🪐 수동 채굴</button>
+            <button id="boost-button">⚡ 과충전</button>
+          </div>
+          <p class="tiny" id="boost-info">
+            과충전은 짧은 시간 동안 클릭 채굴량을 2배로 올립니다.
+          </p>
+        </section>
+
+        <section class="panel">
+          <h2 class="panel-title">🏗️ 채굴 인프라</h2>
+          <div id="upgrade-list"></div>
+        </section>
+
+        <section class="panel">
+          <h2 class="panel-title">📡 채굴 로그</h2>
+          <div id="event-log"></div>
+          <div class="footer-row">
+            <button id="save-button">💾 저장</button>
+            <button id="reset-button">♻️ 초기화</button>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+const savedTheme = localStorage.getItem('minig-theme');
+if (savedTheme && savedTheme !== 'white') { document.documentElement.setAttribute('data-theme', savedTheme); }
+
+    'use strict';
+
+    const SAVE_KEY = 'minig-planet-mining-save-v1';
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+    const oreCountEl = document.getElementById('ore-count');
+    const dpsCountEl = document.getElementById('dps-count');
+    const clickCountEl = document.getElementById('click-count');
+    const levelCountEl = document.getElementById('level-count');
+    const upgradeListEl = document.getElementById('upgrade-list');
+    const eventLogEl = document.getElementById('event-log');
+    const mineButton = document.getElementById('mine-button');
+    const boostButton = document.getElementById('boost-button');
+    const boostInfoEl = document.getElementById('boost-info');
+    const saveButton = document.getElementById('save-button');
+    const resetButton = document.getElementById('reset-button');
+
+    const upgrades = {
+      pickaxe: {
+        name: '⚡ 플라즈마 곡갱이',
+        desc: '클릭당 채굴량을 크게 증가시킵니다.',
+        baseCost: 25,
+        growth: 1.72,
+        maxLevel: 30,
+        level: 0
+      },
+      drone: {
+        name: '🤖 자동 채굴 드론',
+        desc: '드론 1대마다 초당 +1 광물을 생산합니다.',
+        baseCost: 60,
+        growth: 1.68,
+        maxLevel: 40,
+        level: 0
+      },
+      quantum: {
+        name: '🌀 양자 중력 가속기',
+        desc: '가속기 1단계마다 초당 +10 광물을 생산합니다.',
+        baseCost: 500,
+        growth: 1.82,
+        maxLevel: 30,
+        level: 0
+      },
+      terra: {
+        name: '🌍 테라포밍 기지',
+        desc: '기지 1단계마다 초당 +100 광물을 생산합니다.',
+        baseCost: 5000,
+        growth: 2.05,
+        maxLevel: 25,
+        level: 0
+      }
+    };
+
+    const planetStages = [
+      { level: 1, emoji: '🪐', title: '미지의 위성' },
+      { level: 5, emoji: '🌍', title: '생명 가능 행성' },
+      { level: 10, emoji: '🌕', title: '광물 위성' },
+      { level: 18, emoji: '🔴', title: '철혈 행성' },
+      { level: 28, emoji: '💠', title: '결정 행성' },
+      { level: 40, emoji: '🌌', title: '초신성 광맥' }
+    ];
+
+    const state = {
+      ore: 0,
+      totalMined: 0,
+      level: 1,
+      boostEndsAt: 0,
+      lastAutoAt: performance.now(),
+      clickCombo: 0,
+      comboEndsAt: 0,
+      lastSavedAt: 0,
+      stars: [],
+      particles: [],
+      shake: 0,
+      audioReady: false
+    };
+
+    let audioContext = null;
+
+    function clamp(value, min, max) {
+      return Math.min(max, Math.max(min, value));
+    }
+
+    function formatNumber(value) {
+      if (value >= 1e15) {
+        return value.toExponential(2);
+      }
+      if (value >= 1e12) {
+        return (value / 1e12).toFixed(2) + 'T';
+      }
+      if (value >= 1e9) {
+        return (value / 1e9).toFixed(2) + 'B';
+      }
+      if (value >= 1e6) {
+        return (value / 1e6).toFixed(2) + 'M';
+      }
+      if (value >= 1e3) {
+        return (value / 1e3).toFixed(2) + 'K';
+      }
+      return Math.floor(value).toLocaleString('ko-KR');
+    }
+
+    function getUpgradeCost(key) {
+      const upgrade = upgrades[key];
+      const nextLevel = upgrade.level;
+      return Math.floor(
+        upgrade.baseCost * Math.pow(upgrade.growth, nextLevel)
+      );
+    }
+
+    function getClickPower() {
+      const base = 1 + upgrades.pickaxe.level * 3;
+      const levelMultiplier = 1 + Math.pow(state.level - 1, 1.15) * 0.12;
+      const comboMultiplier = state.clickCombo >= 5 ? 1.25 : 1;
+      const boostMultiplier = Date.now() < state.boostEndsAt ? 2 : 1;
+      return Math.max(
+        1,
+        Math.floor(
+          base * levelMultiplier * comboMultiplier * boostMultiplier
+        )
+      );
+    }
+
+    function getDps() {
+      const droneDps = upgrades.drone.level * 1;
+      const quantumDps = upgrades.quantum.level * 10;
+      const terraDps = upgrades.terra.level * 100;
+      const infrastructureMultiplier = 1 + state.level * 0.01;
+      return (
+        droneDps + quantumDps + terraDps
+      ) * infrastructureMultiplier;
+    }
+
+    function calculateLevel() {
+      const rawLevel = Math.floor(
+        Math.log10(state.totalMined + 10) * 8
+      );
+      return Math.max(1, rawLevel);
+    }
+
+    function getPlanetStage() {
+      let current = planetStages[0];
+      for (const stage of planetStages) {
+        if (state.level >= stage.level) {
+          current = stage;
+        }
+      }
+      return current;
+    }
+
+    function ensureAudio() {
+      if (!audioContext) {
+        const AudioCtor = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtor) {
+          return;
+        }
+        audioContext = new AudioCtor();
+      }
+      if (audioContext.state === 'suspended') {
+        audioContext.resume().catch(() => {});
+      }
+      state.audioReady = true;
+    }
+
+    function playSound(type) {
+      ensureAudio();
+      if (!audioContext || !state.audioReady) {
+        return;
+      }
+
+      const now = audioContext.currentTime;
+      const master = audioContext.createGain();
+      master.gain.setValueAtTime(0.0001, now);
+      master.gain.exponentialRampToValueAtTime(0.14, now + 0.01);
+      master.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+      master.connect(audioContext.destination);
+
+      if (type === 'click') {
+        const osc = audioContext.createOscillator();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(420, now);
+        osc.frequency.exponentialRampToValueAtTime(620, now + 0.09);
+        osc.connect(master);
+        osc.start(now);
+        osc.stop(now + 0.11);
+        return;
+      }
+
+      if (type === 'buy') {
+        const osc = audioContext.createOscillator();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(740, now);
+        osc.frequency.setValueAtTime(988, now + 0.08);
+        osc.frequency.setValueAtTime(1318, now + 0.16);
+        osc.connect(master);
+        osc.start(now);
+        osc.stop(now + 0.24);
+        return;
+      }
+    }
+
+    function addLog(message) {
+      const row = document.createElement('div');
+      row.className = 'log-row';
+      const time = new Date().toLocaleTimeString('ko-KR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+      row.textContent = '[' + time + '] ' + message;
+      eventLogEl.prepend(row);
+      while (eventLogEl.children.length > 12) {
+        eventLogEl.removeChild(eventLogEl.lastChild);
+      }
+    }
+
+    function spawnParticle(x, y, amount, kind = 'ore') {
+      state.particles.push({
+        x,
+        y,
+        vx: (Math.random() - 0.5) * 1.8,
+        vy: -1.2 - Math.random() * 1.2,
+        life: 1,
+        amount,
+        kind,
+        size: 2 + Math.random() * 3
+      });
+    }
+
+    function addFloatingText(x, y, text) {
+      const rect = canvas.getBoundingClientRect();
+      const el = document.createElement('div');
+      el.className = 'float-text';
+      el.textContent = text;
+      el.style.left = (rect.left + x / canvas.width * rect.width) + 'px';
+      el.style.top = (rect.top + y / canvas.height * rect.height) + 'px';
+      el.style.color = text.includes('⚡') ? '#ffe066' : '#8ce99a';
+      document.body.appendChild(el);
+      window.setTimeout(() => el.remove(), 820);
+    }
+
+    function mineOre(amount, x, y, source = 'manual') {
+      state.ore += amount;
+      state.totalMined += amount;
+
+      const previousLevel = state.level;
+      state.level = calculateLevel();
+
+      if (state.level > previousLevel) {
+        playSound('buy');
+        addLog(
+          '채굴 레벨 ' + previousLevel + ' → ' + state.level +
+          ' : 새로운 행성 단계가 해금되었습니다.'
+        );
+      }
+
+      if (source === 'manual') {
+        state.clickCombo += 1;
+        state.comboEndsAt = performance.now() + 1200;
+        state.shake = Math.min(10, state.shake + 3);
+        spawnParticle(x, y, amount, 'ore');
+        spawnParticle(x + 8, y - 4, amount, 'spark');
+        addFloatingText(x, y, '+' + formatNumber(amount));
+        playSound('click');
+      }
+
+      updateUi();
+    }
+
+    function handleMineClick(event) {
+      ensureAudio();
+      const rect = canvas.getBoundingClientRect();
+      const x = (event.clientX - rect.left) / rect.width * canvas.width;
+      const y = (event.clientY - rect.top) / rect.height * canvas.height;
+
+      const dx = x - 600;
+      const dy = y - 270;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      if (distance > 165) {
+        return;
+      }
+
+      mineOre(getClickPower(), x, y, 'manual');
+    }
+
+    function buyUpgrade(key) {
+      ensureAudio();
+      const upgrade = upgrades[key];
+
+      if (upgrade.level >= upgrade.maxLevel) {
+        addLog(upgrade.name + '은(는) 이미 최대 단계입니다.');
+        return;
+      }
+
+      const cost = getUpgradeCost(key);
+      if (state.ore < cost) {
+        addLog(
+          upgrade.name + ' 구매 실패 · ' +
+          formatNumber(cost - state.ore) + ' 광물이 더 필요합니다.'
+        );
+        return;
+      }
+
+      state.ore -= cost;
+      upgrade.level += 1;
+      playSound('buy');
+
+      addLog(
+        upgrade.name + ' Lv.' + upgrade.level +
+        ' 구매 완료 · 비용 ' + formatNumber(cost)
+      );
+
+      refreshUpgradeButtons();
+      updateUi();
+    }
+
+    function activateBoost() {
+      ensureAudio();
+      const cost = Math.max(100, Math.floor(getDps() * 12 + 100));
+
+      if (state.ore < cost) {
+        addLog(
+          '과충전 발동 실패 · ' +
+          formatNumber(cost - state.ore) + ' 광물이 더 필요합니다.'
+        );
+        return;
+      }
+
+      state.ore -= cost;
+      state.boostEndsAt = Date.now() + 10000;
+      state.shake = 8;
+      playSound('buy');
+      addLog(
+        '⚡ 행성 과충전 시작 · 10초 동안 클릭 채굴량 x2'
+      );
+      updateUi();
+    }
+
+    function renderUpgrades() {
+      upgradeListEl.innerHTML = '';
+
+      Object.keys(upgrades).forEach((key) => {
+        const upgrade = upgrades[key];
+        const wrapper = document.createElement('div');
+        wrapper.className = 'upgrade';
+
+        const head = document.createElement('div');
+        head.className = 'upgrade-head';
+
+        const name = document.createElement('div');
+        name.className = 'upgrade-name';
+        name.textContent = upgrade.name;
+
+        const level = document.createElement('div');
+        level.className = 'upgrade-level';
+        level.textContent = 'Lv.' + upgrade.level + ' / ' + upgrade.maxLevel;
+        head.append(name, level);
+
+        const desc = document.createElement('div');
+        desc.className = 'upgrade-desc';
+        desc.textContent = upgrade.desc;
+
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.dataset.key = key;
+        button.addEventListener('click', () => buyUpgrade(key));
+
+        wrapper.append(head, desc, button);
+        upgradeListEl.appendChild(wrapper);
+      });
+
+      refreshUpgradeButtons();
+    }
+
+    function refreshUpgradeButtons() {
+      const buttons = upgradeListEl.querySelectorAll(
+        'button[data-key]'
+      );
+
+      buttons.forEach((button) => {
+        const key = button.dataset.key;
+        const upgrade = upgrades[key];
+
+        if (!upgrade) {
+          return;
+        }
+
+        const wrapper =
+          button.closest('.upgrade');
+
+        const levelEl =
+          wrapper ?
+          wrapper.querySelector('.upgrade-level') :
+          null;
+
+        if (levelEl) {
+          levelEl.textContent =
+            'Lv.' +
+            upgrade.level +
+            ' / ' +
+            upgrade.maxLevel;
+        }
+
+        if (upgrade.level >= upgrade.maxLevel) {
+          button.textContent = '✅ MAX';
+          button.disabled = true;
+          return;
+        }
+
+        const cost = getUpgradeCost(key);
+
+        button.textContent =
+          '구매 · ' +
+          formatNumber(cost) +
+          ' 광물';
+
+        button.disabled =
+          state.ore < cost;
+      });
+    }
+
+    function updateUi() {
+      oreCountEl.textContent = formatNumber(state.ore);
+      dpsCountEl.textContent = formatNumber(getDps()) + ' / s';
+      clickCountEl.textContent = formatNumber(getClickPower());
+      levelCountEl.textContent = String(state.level);
+
+      const boostRemaining = Math.max(
+        0,
+        state.boostEndsAt - Date.now()
+      );
+
+      if (boostRemaining > 0) {
+        boostButton.textContent =
+          '⚡ 과충전 ' + (boostRemaining / 1000).toFixed(1) + 's';
+        boostInfoEl.textContent =
+          '과충전 중 · 클릭 채굴량 2배 · 종료까지 ' +
+          (boostRemaining / 1000).toFixed(1) + '초';
+      } else {
+        const cost = Math.max(100, Math.floor(getDps() * 12 + 100));
+        boostButton.textContent =
+          '⚡ 과충전 (' + formatNumber(cost) + 'G가 아니라 광물)';
+        boostInfoEl.textContent =
+          '광물 ' + formatNumber(cost) +
+          '개를 사용해 10초 동안 클릭 채굴량을 2배로 올립니다.';
+      }
+
+      refreshUpgradeButtons();
+    }
+
+    function saveGame(showMessage = true) {
+      const payload = {
+        ore: state.ore,
+        totalMined: state.totalMined,
+        level: state.level,
+        boostEndsAt: state.boostEndsAt,
+        upgrades: {
+          pickaxe: upgrades.pickaxe.level,
+          drone: upgrades.drone.level,
+          quantum: upgrades.quantum.level,
+          terra: upgrades.terra.level
+        }
+      };
+
+      try {
+        localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
+        state.lastSavedAt = Date.now();
+        if (showMessage) {
+          addLog('게임 상태를 저장했습니다.');
+        }
+      } catch (error) {
+        addLog('저장 실패 · 브라우저 저장공간을 확인하세요.');
+      }
+    }
+
+    function loadGame() {
+      try {
+        const raw = localStorage.getItem(SAVE_KEY);
+        if (!raw) {
+          addLog('새로운 채굴 원정이 시작되었습니다.');
+          return;
+        }
+
+        const payload = JSON.parse(raw);
+        state.ore = Number(payload.ore) || 0;
+        state.totalMined = Number(payload.totalMined) || 0;
+        state.level = Math.max(1, Number(payload.level) || 1);
+        state.boostEndsAt = Number(payload.boostEndsAt) || 0;
+
+        const savedUpgrades = payload.upgrades || {};
+        Object.keys(upgrades).forEach((key) => {
+          const value = Number(savedUpgrades[key]) || 0;
+          upgrades[key].level = clamp(
+            Math.floor(value),
+            0,
+            upgrades[key].maxLevel
+          );
+        });
+
+        addLog('저장된 은하 채굴 기록을 불러왔습니다.');
+      } catch (error) {
+        addLog('저장 데이터가 손상되어 새 게임으로 시작합니다.');
+        state.ore = 0;
+        state.totalMined = 0;
+        state.level = 1;
+      }
+    }
+
+    function resetGame() {
+      const confirmed = window.confirm(
+        '모든 채굴 기록과 업그레이드를 초기화할까요?'
+      );
+      if (!confirmed) {
+        return;
+      }
+
+      localStorage.removeItem(SAVE_KEY);
+      state.ore = 0;
+      state.totalMined = 0;
+      state.level = 1;
+      state.boostEndsAt = 0;
+
+      Object.keys(upgrades).forEach((key) => {
+        upgrades[key].level = 0;
+      });
+
+      addLog('채굴 네트워크가 초기 상태로 리셋되었습니다.');
+      updateUi();
+    }
+
+    function createStars() {
+      state.stars = [];
+      for (let i = 0; i < 150; i += 1) {
+        state.stars.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          radius: Math.random() * 1.8 + 0.2,
+          alpha: Math.random() * 0.8 + 0.2,
+          twinkle: Math.random() * Math.PI * 2,
+          speed: Math.random() * 0.6 + 0.2
+        });
+      }
+    }
+
+    function drawBackground(time) {
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      gradient.addColorStop(0, '#03050a');
+      gradient.addColorStop(0.6, '#07111b');
+      gradient.addColorStop(1, '#020407');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      for (const star of state.stars) {
+        const pulse =
+          (Math.sin(time * 0.001 * star.speed + star.twinkle) + 1) / 2;
+        ctx.globalAlpha = star.alpha * (0.55 + pulse * 0.45);
+        ctx.fillStyle = '#d7ecff';
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.globalAlpha = 1;
+
+      const nebula = ctx.createRadialGradient(
+        520,
+        260,
+        20,
+        520,
+        260,
+        460
+      );
+      nebula.addColorStop(0, 'rgba(55, 101, 145, 0.22)');
+      nebula.addColorStop(0.5, 'rgba(25, 48, 76, 0.12)');
+      nebula.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = nebula;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function drawPlanet(time) {
+      const stage = getPlanetStage();
+      const cx = 600;
+      const cy = 275;
+      const baseRadius = 130 + Math.sin(time * 0.0015) * 3;
+      const rotation = time * 0.00025;
+
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(rotation);
+
+      ctx.beginPath();
+      ctx.arc(0, 0, baseRadius + 16, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(92, 201, 255, 0.16)';
+      ctx.lineWidth = 8;
+      ctx.stroke();
+
+      const glow = ctx.createRadialGradient(
+        -30,
+        -40,
+        20,
+        0,
+        0,
+        baseRadius + 30
+      );
+      glow.addColorStop(0, 'rgba(255, 255, 255, 0.16)');
+      glow.addColorStop(0.4, 'rgba(79, 195, 247, 0.08)');
+      glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(0, 0, baseRadius + 30, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.font = '145px serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.shadowColor = 'rgba(73, 184, 255, 0.36)';
+      ctx.shadowBlur = 22;
+      ctx.fillText(stage.emoji, 0, 0);
+      ctx.shadowBlur = 0;
+
+      ctx.restore();
+
+      ctx.fillStyle = '#d7f9ff';
+      ctx.textAlign = 'center';
+      ctx.font = '900 22px sans-serif';
+      ctx.fillText(stage.title, cx, 430);
+
+      ctx.font = '700 14px sans-serif';
+      ctx.fillStyle = '#96a9bb';
+      ctx.fillText(
+        '채굴 레벨 ' + state.level +
+        ' · 클릭 +'+ formatNumber(getClickPower()),
+        cx,
+        453
+      );
+
+      const pulse =
+        (Math.sin(time * 0.006) + 1) / 2;
+      ctx.strokeStyle = 'rgba(116, 215, 255, ' +
+        (0.22 + pulse * 0.25) + ')';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 165 + pulse * 8, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    function drawOrbitalInfrastructure(time) {
+      const cx = 600;
+      const cy = 275;
+      const rings = [190, 235, 282];
+
+      rings.forEach((radius, index) => {
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(time * 0.00006 * (index + 1));
+        ctx.strokeStyle =
+          'rgba(104, 220, 255, ' + (0.1 + index * 0.03) + ')';
+        ctx.lineWidth = 1.2;
+        ctx.setLineDash([8, 12]);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, radius, radius * 0.38, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      });
+
+      const droneCount = Math.min(8, upgrades.drone.level);
+      for (let i = 0; i < droneCount; i += 1) {
+        const angle = time * 0.0012 + i * (Math.PI * 2 / droneCount);
+        const rx = 280;
+        const ry = 108;
+        const x = cx + Math.cos(angle) * rx;
+        const y = cy + Math.sin(angle) * ry;
+
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle + Math.PI / 2);
+        ctx.fillStyle = '#b8f2ff';
+        ctx.fillRect(-8, -5, 16, 10);
+        ctx.fillStyle = '#74c0fc';
+        ctx.fillRect(-13, -2, 5, 5);
+        ctx.fillRect(8, -2, 5, 5);
+        ctx.restore();
+      }
+
+      const quantumCount = Math.min(4, upgrades.quantum.level);
+      for (let i = 0; i < quantumCount; i += 1) {
+        const angle = time * 0.0007 + i * Math.PI / 2;
+        const x = cx + Math.cos(angle) * 245;
+        const y = cy + Math.sin(angle) * 245 * 0.38;
+        ctx.fillStyle = 'rgba(177, 151, 252, 0.9)';
+        ctx.beginPath();
+        ctx.arc(x, y, 5 + upgrades.quantum.level, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function drawSidePanel(time) {
+      const x = 34;
+      const y = 34;
+      const w = 250;
+      const h = 134;
+
+      ctx.fillStyle = 'rgba(7, 12, 18, 0.72)';
+      ctx.strokeStyle = 'rgba(127, 199, 255, 0.25)';
+      ctx.lineWidth = 1;
+      roundRect(x, y, w, h, 14);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#9fe8ff';
+      ctx.font = '800 16px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('GALACTIC MINING GRID', x + 14, y + 25);
+
+      ctx.fillStyle = '#e6fcff';
+      ctx.font = '700 13px sans-serif';
+      ctx.fillText('자원', x + 14, y + 49);
+      ctx.fillText(formatNumber(state.ore), x + 112, y + 49);
+
+      ctx.fillText('DPS', x + 14, y + 71);
+      ctx.fillText(formatNumber(getDps()), x + 112, y + 71);
+
+      ctx.fillText('플라즈마', x + 14, y + 93);
+      ctx.fillText('Lv.' + upgrades.pickaxe.level, x + 112, y + 93);
+
+      ctx.fillText('자동화', x + 14, y + 115);
+      ctx.fillText(
+        'D ' + upgrades.drone.level +
+        ' · Q ' + upgrades.quantum.level +
+        ' · T ' + upgrades.terra.level,
+        x + 112,
+        y + 115
+      );
+
+      const scanAlpha =
+        0.2 + (Math.sin(time * 0.003) + 1) * 0.12;
+      ctx.strokeStyle = 'rgba(88, 226, 255, ' + scanAlpha + ')';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x + 14, y + 126);
+      ctx.lineTo(x + w - 14, y + 126);
+      ctx.stroke();
+    }
+
+    function drawFooter(time) {
+      const dps = getDps();
+      const width = 280;
+      const x = canvas.width - width - 34;
+      const y = 34;
+      const h = 134;
+
+      ctx.fillStyle = 'rgba(7, 12, 18, 0.72)';
+      ctx.strokeStyle = 'rgba(127, 199, 255, 0.25)';
+      roundRect(x, y, width, h, 14);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#9fe8ff';
+      ctx.font = '800 16px sans-serif';
+      ctx.fillText('AUTOMATION REACTOR', x + 14, y + 25);
+
+      const barMax = 200;
+      const autoValue = clamp(dps, 0, barMax);
+      const barW = width - 28;
+      const barH = 16;
+      const barX = x + 14;
+      const barY = y + 44;
+
+      ctx.fillStyle = '#07131b';
+      roundRect(barX, barY, barW, barH, 6);
+      ctx.fill();
+
+      ctx.fillStyle = '#63e6be';
+      roundRect(
+        barX,
+        barY,
+        barW * (autoValue / barMax),
+        barH,
+        6
+      );
+      ctx.fill();
+
+      ctx.fillStyle = '#e6fcff';
+      ctx.font = '700 13px sans-serif';
+      ctx.fillText('초당 생산량', barX, y + 82);
+      ctx.fillText(formatNumber(dps) + ' ore/s', barX + 115, y + 82);
+
+      ctx.fillText('다음 행성 단계', barX, y + 105);
+      const nextStage = planetStages.find(
+        (stage) => stage.level > state.level
+      );
+      if (nextStage) {
+        ctx.fillText(
+          nextStage.emoji + ' Lv.' + nextStage.level,
+          barX + 115,
+          y + 105
+        );
+      } else {
+        ctx.fillText('최종 단계 도달', barX + 115, y + 105);
+      }
+
+      ctx.fillStyle = '#96a9bb';
+      ctx.font = '600 11px sans-serif';
+      ctx.fillText(
+        '시스템 시간 ' +
+        new Date().toLocaleTimeString('ko-KR'),
+        barX,
+        y + 126
+      );
+    }
+
+    function roundRect(x, y, width, height, radius) {
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.arcTo(x + width, y, x + width, y + height, radius);
+      ctx.arcTo(x + width, y + height, x, y + height, radius);
+      ctx.arcTo(x, y + height, x, y, radius);
+      ctx.arcTo(x, y, x + width, y, radius);
+      ctx.closePath();
+    }
+
+    function updateParticles() {
+      for (let i = state.particles.length - 1; i >= 0; i -= 1) {
+        const particle = state.particles[i];
+        particle.x += particle.vx;
+        particle.y += particle.vy;
+        particle.vy += 0.025;
+        particle.life -= 0.022;
+
+        if (particle.life <= 0) {
+          state.particles.splice(i, 1);
+        }
+      }
+    }
+
+    function drawParticles() {
+      for (const particle of state.particles) {
+        ctx.globalAlpha = particle.life;
+        if (particle.kind === 'spark') {
+          ctx.fillStyle = '#ffd43b';
+          ctx.fillRect(
+            particle.x,
+            particle.y,
+            particle.size * 1.5,
+            particle.size * 1.5
+          );
+        } else {
+          ctx.fillStyle = '#7dd3fc';
+          ctx.beginPath();
+          ctx.arc(
+            particle.x,
+            particle.y,
+            particle.size,
+            0,
+            Math.PI * 2
+          );
+          ctx.fill();
+        }
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function processAutoMining(now) {
+      const delta = Math.max(0, now - state.lastAutoAt);
+      state.lastAutoAt = now;
+
+      const dps = getDps();
+      if (dps <= 0 || delta <= 0) {
+        return;
+      }
+
+      const amount = dps * (delta / 1000);
+      state.ore += amount;
+      state.totalMined += amount;
+      state.level = calculateLevel();
+    }
+
+    function animationLoop(time) {
+      processAutoMining(time);
+      updateParticles();
+
+      if (performance.now() > state.comboEndsAt) {
+        state.clickCombo = 0;
+      }
+
+      const shakeX = (Math.random() - 0.5) * state.shake;
+      const shakeY = (Math.random() - 0.5) * state.shake;
+      state.shake *= 0.88;
+
+      ctx.save();
+      ctx.translate(shakeX, shakeY);
+      drawBackground(time);
+      drawOrbitalInfrastructure(time);
+      drawPlanet(time);
+      drawSidePanel(time);
+      drawFooter(time);
+      drawParticles();
+      ctx.restore();
+
+      updateUi();
+      requestAnimationFrame(animationLoop);
+    }
+
+    mineButton.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const x = canvas.width / 2;
+      const y = canvas.height / 2;
+      mineOre(getClickPower(), x + 55, y, 'manual');
+    });
+
+    boostButton.addEventListener('click', (event) => {
+      event.stopPropagation();
+      activateBoost();
+    });
+
+    saveButton.addEventListener('click', () => saveGame(true));
+    resetButton.addEventListener('click', resetGame);
+    canvas.addEventListener('click', handleMineClick);
+
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        state.lastAutoAt = performance.now();
+      }
+    });
+
+    window.addEventListener('beforeunload', () => {
+      saveGame(false);
+    });
+
+    window.setInterval(() => {
+      saveGame(false);
+    }, 10000);
+
+    loadGame();
+    createStars();
+    renderUpgrades();
+    updateUi();
+    requestAnimationFrame(animationLoop);
+  </script>
+</body>
+</html>
