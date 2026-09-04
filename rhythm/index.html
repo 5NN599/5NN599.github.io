@@ -1,0 +1,2435 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>미니지 - 레트로비트</title>
+  <style>
+    :root { --bg: #f8f9fa; --text: #333; --canvas-bg: #05070a; --border: #e9ecef; --btn-bg: #fff; }
+    [data-theme="dark"] { --bg: #0d1117; --text: #c9d1d9; --canvas-bg: #020305; --border: #30363d; --btn-bg: #21262d; }
+    [data-theme="beige"] { --bg: #f5ebe0; --text: #4e3d30; --canvas-bg: #14100c; --border: #ddcbbb; --btn-bg: #eddfd0; }
+
+    body {
+      background-color: var(--bg) !important;
+      color: var(--text) !important;
+      text-align: center;
+      font-family: sans-serif;
+      padding-top: 15px;
+      margin: 0;
+      overflow-x: hidden;
+    }
+
+    button {
+      background-color: var(--btn-bg) !important;
+      color: var(--text) !important;
+      border: 1px solid var(--border) !important;
+      padding: 10px 18px;
+      font-size: 0.95rem;
+      border-radius: 8px;
+      cursor: pointer;
+      margin: 4px;
+      font-weight: bold;
+    }
+
+    #rhythm-panel {
+      font-size: 1.25rem;
+      font-weight: bold;
+      color: #fcc419;
+      margin-bottom: 5px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    h1 {
+      margin: 4px 0 8px;
+      font-size: clamp(1.5rem, 4vw, 2.2rem);
+    }
+
+    #app {
+      width: min(900px, calc(100% - 16px));
+      margin: 0 auto;
+    }
+
+    .hud {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .hud-card {
+      border: 1px solid var(--border);
+      background: var(--btn-bg);
+      border-radius: 10px;
+      padding: 8px;
+      font-weight: 800;
+    }
+
+    .hud-label {
+      display: block;
+      font-size: 0.72rem;
+      opacity: 0.65;
+      margin-bottom: 3px;
+    }
+
+    .hud-value {
+      display: block;
+      font-size: 1.15rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .game-wrap {
+      display: flex;
+      justify-content: center;
+    }
+
+    .canvas-shell {
+      width: 360px;
+      max-width: 100%;
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--canvas-bg);
+      box-shadow: 0 14px 35px rgba(0, 0, 0, 0.18);
+    }
+
+    canvas {
+      width: 360px;
+      height: 500px;
+      max-width: 100%;
+      display: block;
+      background: var(--canvas-bg);
+      touch-action: none;
+    }
+
+    .controls {
+      margin: 10px 0 0;
+    }
+
+    #songSelect {
+      background: var(--btn-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 0.95rem;
+      font-weight: 800;
+      margin: 4px;
+      cursor: pointer;
+    }
+
+    .key-guide {
+      display: inline-flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+
+    .key-pill {
+      min-width: 48px;
+      border: 1px solid var(--border);
+      background: var(--btn-bg);
+      border-radius: 7px;
+      padding: 5px 8px;
+      font-weight: 900;
+    }
+
+    .status {
+      margin-top: 8px;
+      font-size: 0.8rem;
+      opacity: 0.7;
+    }
+
+    @media (max-width: 480px) {
+      .hud {
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+
+      .hud-value {
+        font-size: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="rhythm-panel">RETRO BEAT ARCADE · READY</div>
+    <h1>🎧 레트로 비트 리듬게임</h1>
+
+    <section class="hud">
+      <div class="hud-card">
+        <span class="hud-label">SCORE</span>
+        <span class="hud-value" id="score">0</span>
+      </div>
+      <div class="hud-card">
+        <span class="hud-label">COMBO</span>
+        <span class="hud-value" id="combo">0</span>
+      </div>
+      <div class="hud-card">
+        <span class="hud-label">ACCURACY</span>
+        <span class="hud-value" id="accuracy">100.00%</span>
+      </div>
+    </section>
+
+    <div class="game-wrap">
+      <div class="canvas-shell">
+        <canvas id="gameCanvas"
+          width="360"
+          height="500">
+        </canvas>
+      </div>
+    </div>
+
+    <div class="controls">
+      <select id="songSelect" aria-label="곡 선택">
+        <option value="0">01 · NEON RUN</option>
+        <option value="1">02 · PIXEL DRIVE</option>
+        <option value="2">03 · CYBER NIGHT</option>
+        <option value="3">04 · STAR JUMP</option>
+        <option value="4">05 · ARCADE SUN</option>
+        <option value="5">06 · TURBO CITY</option>
+        <option value="6">07 · DREAM CIRCUIT</option>
+        <option value="7">08 · DIGITAL RAIN</option>
+        <option value="8">09 · BOSS RUSH</option>
+        <option value="9">10 · FUTURE POP</option>
+      </select>
+      <button id="startButton">▶ 게임 시작</button>
+      <button id="pauseButton">Ⅱ 일시정지</button>
+      <button id="soundButton">🔊 사운드 ON</button>
+    </div>
+
+    <div class="status" id="songInfo">01 · NEON RUN · 104 BPM</div>
+
+    <div class="key-guide">
+      <div class="key-pill">S</div>
+      <div class="key-pill">D</div>
+      <div class="key-pill">K</div>
+      <div class="key-pill">L</div>
+    </div>
+
+    <div class="status" id="status">
+      시작 버튼을 누르고 S D K L로 비트를 연주하세요.
+    </div>
+  </div>
+
+  <script>
+const savedTheme = localStorage.getItem('minig-theme');
+if (savedTheme && savedTheme !== 'white') { document.documentElement.setAttribute('data-theme', savedTheme); }
+
+    'use strict';
+
+    const canvas =
+      document.getElementById('gameCanvas');
+
+    const ctx =
+      canvas.getContext('2d');
+
+    const scoreEl =
+      document.getElementById('score');
+
+    const comboEl =
+      document.getElementById('combo');
+
+    const accuracyEl =
+      document.getElementById('accuracy');
+
+    const startButton =
+      document.getElementById('startButton');
+
+    const pauseButton =
+      document.getElementById('pauseButton');
+
+    const soundButton =
+      document.getElementById('soundButton');
+
+    const songSelect =
+      document.getElementById('songSelect');
+
+    const statusEl =
+      document.getElementById('status');
+
+    const songInfoEl =
+      document.getElementById('songInfo');
+
+    const LANES = 4;
+
+    const LANE_KEYS = [
+      's',
+      'd',
+      'k',
+      'l'
+    ];
+
+    const LANE_NAMES = [
+      'S',
+      'D',
+      'K',
+      'L'
+    ];
+
+    const WIDTH = 360;
+    const HEIGHT = 500;
+    const LANE_WIDTH = WIDTH / LANES;
+    const JUDGMENT_Y = 445;
+    const NOTE_HEIGHT = 24;
+    const NOTE_TRAVEL = 2400;
+
+    const PERFECT_WINDOW = 55;
+    const GREAT_WINDOW = 105;
+    const MISS_WINDOW = 160;
+
+    const state = {
+      running: false,
+      paused: false,
+      songTime: 0,
+      lastFrame: 0,
+      songIndex: 0,
+      bpm: 104,
+      musicStarted: false,
+      musicTimer: null,
+      musicStep: 0,
+      musicNextAudioTime: 0,
+      musicGain: null,
+      beatLength: 60000 / 104,
+      nextNoteTime: 900,
+      chartStep: 0,
+      noteId: 1,
+      notes: [],
+      score: 0,
+      combo: 0,
+      maxCombo: 0,
+      perfects: 0,
+      greats: 0,
+      misses: 0,
+      judged: 0,
+      currentJudgment: '',
+      judgmentLife: 0,
+      laneFlash: [0, 0, 0, 0],
+      particles: [],
+      soundEnabled: true,
+      beatPulse: 0,
+      lastBeatIndex: -1,
+      stars: [],
+      audioContext: null
+    };
+
+    let animationId = 0;
+
+    function randomLane() {
+      return Math.floor(
+        Math.random() * LANES
+      );
+    }
+
+    function clamp(
+      value,
+      min,
+      max
+    ) {
+      return Math.min(
+        max,
+        Math.max(
+          min,
+          value
+        )
+      );
+    }
+
+    function formatScore(value) {
+      return Math.floor(
+        value
+      ).toLocaleString('en-US');
+    }
+
+    function updateHud() {
+      scoreEl.textContent =
+        formatScore(
+          state.score
+        );
+
+      comboEl.textContent =
+        String(state.combo);
+
+      const total =
+        state.judged;
+
+      const weighted =
+        state.perfects +
+        state.greats * 0.72;
+
+      const accuracy =
+        total > 0
+          ? weighted / total * 100
+          : 100;
+
+      accuracyEl.textContent =
+        accuracy.toFixed(2) +
+        '%';
+    }
+
+    function resetGameState() {
+      state.songTime = 0;
+      state.lastFrame = 0;
+      state.nextNoteTime = 900;
+      state.chartStep = 0;
+      state.noteId = 1;
+      state.notes = [];
+      state.score = 0;
+      state.combo = 0;
+      state.maxCombo = 0;
+      state.perfects = 0;
+      state.greats = 0;
+      state.misses = 0;
+      state.judged = 0;
+      state.currentJudgment = '';
+      state.judgmentLife = 0;
+      state.particles = [];
+      state.laneFlash = [
+        0,
+        0,
+        0,
+        0
+      ];
+      state.beatPulse = 0;
+      state.lastBeatIndex = -1;
+      updateHud();
+    }
+
+    function ensureAudio() {
+      if (!state.audioContext) {
+        const AudioCtor =
+          window.AudioContext ||
+          window.webkitAudioContext;
+
+        if (!AudioCtor) {
+          return;
+        }
+
+        state.audioContext =
+          new AudioCtor();
+
+        state.musicGain =
+          state.audioContext.createGain();
+
+        state.musicGain.gain.value =
+          0.22;
+
+        state.musicGain.connect(
+          state.audioContext.destination
+        );
+      }
+
+      if (
+        state.audioContext.state ===
+        'suspended'
+      ) {
+        state.audioContext
+          .resume()
+          .catch(() => {});
+      }
+    }
+
+    function stopMusic() {
+      if (state.musicTimer) {
+        window.clearInterval(
+          state.musicTimer
+        );
+        state.musicTimer = null;
+      }
+
+      state.musicStarted = false;
+    }
+
+    function scheduleTone(
+      frequency,
+      startTime,
+      duration,
+      type,
+      volume
+    ) {
+      const audio =
+        state.audioContext;
+
+      if (!audio || !state.musicGain) {
+        return;
+      }
+
+      const osc =
+        audio.createOscillator();
+
+      const gain =
+        audio.createGain();
+
+      osc.type = type;
+      osc.frequency.setValueAtTime(
+        frequency,
+        startTime
+      );
+
+      gain.gain.setValueAtTime(
+        0.0001,
+        startTime
+      );
+
+      gain.gain
+        .exponentialRampToValueAtTime(
+          volume,
+          startTime + 0.012
+        );
+
+      gain.gain
+        .exponentialRampToValueAtTime(
+          0.0001,
+          startTime + duration
+        );
+
+      osc.connect(gain);
+      gain.connect(state.musicGain);
+
+      osc.start(startTime);
+      osc.stop(
+        startTime + duration + 0.02
+      );
+    }
+
+    function scheduleKick(startTime) {
+      const audio =
+        state.audioContext;
+
+      if (!audio || !state.musicGain) {
+        return;
+      }
+
+      const osc =
+        audio.createOscillator();
+
+      const gain =
+        audio.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(
+        115,
+        startTime
+      );
+      osc.frequency.exponentialRampToValueAtTime(
+        48,
+        startTime + 0.12
+      );
+
+      gain.gain.setValueAtTime(
+        0.0001,
+        startTime
+      );
+      gain.gain.exponentialRampToValueAtTime(
+        0.32,
+        startTime + 0.005
+      );
+      gain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        startTime + 0.18
+      );
+
+      osc.connect(gain);
+      gain.connect(state.musicGain);
+      osc.start(startTime);
+      osc.stop(startTime + 0.2);
+    }
+
+    function scheduleSnare(startTime) {
+      const audio =
+        state.audioContext;
+
+      if (!audio || !state.musicGain) {
+        return;
+      }
+
+      const buffer =
+        audio.createBuffer(
+          1,
+          audio.sampleRate * 0.12,
+          audio.sampleRate
+        );
+
+      const data =
+        buffer.getChannelData(0);
+
+      for (let i = 0; i < data.length; i += 1) {
+        data[i] =
+          (Math.random() * 2 - 1) *
+          (1 - i / data.length);
+      }
+
+      const source =
+        audio.createBufferSource();
+
+      const filter =
+        audio.createBiquadFilter();
+
+      const gain =
+        audio.createGain();
+
+      source.buffer = buffer;
+      filter.type = 'highpass';
+      filter.frequency.value = 1500;
+
+      gain.gain.setValueAtTime(
+        0.16,
+        startTime
+      );
+      gain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        startTime + 0.12
+      );
+
+      source.connect(filter);
+      filter.connect(gain);
+      gain.connect(state.musicGain);
+
+      source.start(startTime);
+      source.stop(startTime + 0.13);
+    }
+
+    const SONGS = [
+      {
+        name: 'NEON RUN',
+        bpm: 104,
+        melody: [
+          261.63, null, 329.63, 392.00,
+          329.63, null, 293.66, 349.23,
+          440.00, null, 349.23, 392.00,
+          523.25, 493.88, 392.00, null,
+          261.63, null, 329.63, 392.00,
+          440.00, 392.00, 329.63, null,
+          293.66, null, 349.23, 440.00,
+          392.00, 349.23, 293.66, null
+        ],
+        bass: [
+          130.81, 130.81, 130.81, 130.81,
+          146.83, 146.83, 146.83, 146.83,
+          174.61, 174.61, 174.61, 174.61,
+          196.00, 196.00, 196.00, 196.00
+        ],
+        chart: [
+          [0], [], [1], [], [2], [], [1], [],
+          [3], [], [2], [1], [0], [], [2], [],
+          [0], [1], [], [2], [3], [], [2], [],
+          [1], [], [3], [2], [0], [], [1], [3]
+        ]
+      },
+      {
+        name: 'PIXEL DRIVE',
+        bpm: 112,
+        melody: [
+          392.00, 440.00, null, 523.25,
+          493.88, 440.00, null, 392.00,
+          349.23, 392.00, 440.00, null,
+          523.25, null, 587.33, 523.25,
+          392.00, 440.00, null, 523.25,
+          587.33, 523.25, 493.88, null,
+          440.00, null, 392.00, 349.23,
+          392.00, 440.00, 523.25, null
+        ],
+        bass: [
+          196.00, 196.00, 196.00, 196.00,
+          174.61, 174.61, 174.61, 174.61,
+          130.81, 130.81, 130.81, 130.81,
+          146.83, 146.83, 146.83, 146.83
+        ],
+        chart: [
+          [2], [3], [], [1], [0], [2], [], [3],
+          [1], [2], [3], [], [0], [], [2], [1],
+          [3], [1], [], [2], [0], [2], [1], [],
+          [3], [], [2], [0], [1], [2], [3], []
+        ]
+      },
+      {
+        name: 'CYBER NIGHT',
+        bpm: 96,
+        melody: [
+          220.00, null, 261.63, 329.63,
+          null, 261.63, 293.66, null,
+          349.23, null, 329.63, 293.66,
+          261.63, null, 220.00, null,
+          220.00, null, 293.66, 349.23,
+          329.63, 293.66, null, 261.63,
+          293.66, null, 349.23, 392.00,
+          349.23, 293.66, 261.63, null
+        ],
+        bass: [
+          110.00, 110.00, 110.00, 110.00,
+          98.00, 98.00, 98.00, 98.00,
+          87.31, 87.31, 87.31, 87.31,
+          98.00, 98.00, 98.00, 98.00
+        ],
+        chart: [
+          [0], [], [1], [2], [], [1], [3], [],
+          [2], [], [1], [0], [1], [], [0], [],
+          [0], [], [3], [2], [1], [3], [], [2],
+          [3], [], [1], [2], [3], [1], [0], []
+        ]
+      },
+      {
+        name: 'STAR JUMP',
+        bpm: 120,
+        melody: [
+          523.25, null, 659.25, null,
+          783.99, 659.25, null, 523.25,
+          587.33, null, 698.46, 783.99,
+          null, 659.25, 587.33, null,
+          523.25, 659.25, 783.99, null,
+          880.00, 783.99, 659.25, null,
+          587.33, 698.46, null, 783.99,
+          659.25, 587.33, 523.25, null
+        ],
+        bass: [
+          261.63, 261.63, 261.63, 261.63,
+          293.66, 293.66, 293.66, 293.66,
+          329.63, 329.63, 329.63, 329.63,
+          349.23, 349.23, 349.23, 349.23
+        ],
+        chart: [
+          [0], [], [2], [], [3], [2], [], [0],
+          [1], [], [2], [3], [], [2], [1], [],
+          [0], [2], [3], [], [1], [3], [2], [],
+          [1], [2], [], [3], [2], [1], [0], []
+        ]
+      },
+      {
+        name: 'ARCADE SUN',
+        bpm: 108,
+        melody: [
+          293.66, 293.66, 349.23, null,
+          392.00, 440.00, null, 392.00,
+          349.23, 392.00, 440.00, 523.25,
+          null, 440.00, 392.00, null,
+          293.66, 349.23, 392.00, null,
+          440.00, null, 523.25, 440.00,
+          392.00, 349.23, null, 293.66,
+          349.23, 392.00, 293.66, null
+        ],
+        bass: [
+          146.83, 146.83, 146.83, 146.83,
+          130.81, 130.81, 130.81, 130.81,
+          174.61, 174.61, 174.61, 174.61,
+          196.00, 196.00, 196.00, 196.00
+        ],
+        chart: [
+          [1], [1], [2], [], [3], [0], [], [3],
+          [2], [3], [0], [1], [], [0], [3], [],
+          [1], [2], [3], [], [0], [], [1], [0],
+          [3], [2], [], [1], [2], [3], [1], []
+        ]
+      },
+      {
+        name: 'TURBO CITY',
+        bpm: 128,
+        melody: [
+          261.63, 329.63, 392.00, 329.63,
+          440.00, 392.00, 329.63, 261.63,
+          293.66, 349.23, 440.00, 349.23,
+          493.88, 440.00, 349.23, 293.66,
+          261.63, 329.63, 392.00, 440.00,
+          523.25, 440.00, 392.00, 329.63,
+          293.66, 349.23, 440.00, 523.25,
+          493.88, 440.00, 349.23, 293.66
+        ],
+        bass: [
+          130.81, 130.81, 130.81, 130.81,
+          146.83, 146.83, 146.83, 146.83,
+          155.56, 155.56, 155.56, 155.56,
+          174.61, 174.61, 174.61, 174.61
+        ],
+        chart: [
+          [0], [1], [2], [1], [3], [2], [1], [0],
+          [1], [2], [3], [2], [0], [3], [2], [1],
+          [0], [1], [2], [3], [1], [3], [2], [1],
+          [1], [2], [3], [0], [2], [3], [1], [0]
+        ]
+      },
+      {
+        name: 'DREAM CIRCUIT',
+        bpm: 88,
+        melody: [
+          329.63, null, null, 392.00,
+          440.00, null, 392.00, null,
+          349.23, null, null, 329.63,
+          293.66, null, 261.63, null,
+          329.63, null, 392.00, null,
+          440.00, 523.25, null, 440.00,
+          392.00, null, 349.23, 329.63,
+          293.66, null, 261.63, null
+        ],
+        bass: [
+          164.81, 164.81, 164.81, 164.81,
+          146.83, 146.83, 146.83, 146.83,
+          130.81, 130.81, 130.81, 130.81,
+          116.54, 116.54, 116.54, 116.54
+        ],
+        chart: [
+          [1], [], [], [2], [3], [], [2], [],
+          [2], [], [], [1], [0], [], [1], [],
+          [1], [], [2], [], [3], [0], [], [3],
+          [2], [], [1], [2], [0], [], [1], []
+        ]
+      },
+      {
+        name: 'DIGITAL RAIN',
+        bpm: 100,
+        melody: [
+          392.00, 493.88, null, 392.00,
+          349.23, null, 440.00, 523.25,
+          493.88, null, 440.00, 392.00,
+          349.23, 392.00, null, 293.66,
+          392.00, 493.88, null, 587.33,
+          523.25, 493.88, 440.00, null,
+          392.00, null, 349.23, 440.00,
+          493.88, 440.00, 392.00, null
+        ],
+        bass: [
+          196.00, 196.00, 196.00, 196.00,
+          174.61, 174.61, 174.61, 174.61,
+          146.83, 146.83, 146.83, 146.83,
+          130.81, 130.81, 130.81, 130.81
+        ],
+        chart: [
+          [2], [3], [], [2], [1], [], [3], [0],
+          [3], [], [0], [2], [1], [2], [], [0],
+          [2], [3], [], [0], [1], [3], [2], [],
+          [0], [], [1], [3], [2], [3], [0], []
+        ]
+      },
+      {
+        name: 'BOSS RUSH',
+        bpm: 132,
+        melody: [
+          164.81, 164.81, 246.94, 164.81,
+          293.66, 246.94, 329.63, 293.66,
+          164.81, 196.00, 246.94, 293.66,
+          329.63, 293.66, 246.94, 196.00,
+          164.81, 246.94, 293.66, 329.63,
+          392.00, 329.63, 293.66, 246.94,
+          196.00, 246.94, 293.66, 392.00,
+          329.63, 293.66, 246.94, 164.81
+        ],
+        bass: [
+          82.41, 82.41, 82.41, 82.41,
+          98.00, 98.00, 98.00, 98.00,
+          110.00, 110.00, 110.00, 110.00,
+          123.47, 123.47, 123.47, 123.47
+        ],
+        chart: [
+          [0], [0], [2], [0], [3], [2], [1], [3],
+          [0], [1], [2], [3], [1], [3], [2], [1],
+          [0], [2], [3], [1], [2], [3], [1], [2],
+          [3], [2], [1], [3], [2], [1], [2], [0]
+        ]
+      },
+      {
+        name: 'FUTURE POP',
+        bpm: 116,
+        melody: [
+          523.25, 659.25, null, 783.99,
+          659.25, 587.33, null, 523.25,
+          698.46, 783.99, 880.00, null,
+          783.99, 698.46, 659.25, null,
+          523.25, 659.25, 783.99, null,
+          880.00, 783.99, 659.25, 587.33,
+          698.46, null, 783.99, 880.00,
+          783.99, 698.46, 587.33, null
+        ],
+        bass: [
+          261.63, 261.63, 261.63, 261.63,
+          220.00, 220.00, 220.00, 220.00,
+          246.94, 246.94, 246.94, 246.94,
+          293.66, 293.66, 293.66, 293.66
+        ],
+        chart: [
+          [0], [1], [], [3], [1], [2], [], [0],
+          [2], [3], [0], [], [3], [2], [1], [],
+          [0], [1], [3], [], [0], [3], [1], [2],
+          [2], [], [3], [0], [3], [2], [1], []
+        ]
+      }
+    ];
+
+    function getCurrentSong() {
+      return SONGS[
+        clamp(
+          state.songIndex,
+          0,
+          SONGS.length - 1
+        )
+      ];
+    }
+
+    function applySong(index) {
+      state.songIndex = clamp(
+        Math.floor(index),
+        0,
+        SONGS.length - 1
+      );
+
+      const song = getCurrentSong();
+
+      state.bpm = song.bpm;
+      state.beatLength =
+        60000 / state.bpm;
+
+      songSelect.value =
+        String(state.songIndex);
+
+      songInfoEl.textContent =
+        String(state.songIndex + 1) +
+        ' · ' +
+        song.name +
+        ' · ' +
+        song.bpm +
+        ' BPM';
+    }
+
+    function scheduleMusicStep(
+      step,
+      startTime
+    ) {
+      const song = getCurrentSong();
+      const beat = 60 / song.bpm;
+      const stepTime = beat / 2;
+
+      const melodyFrequency =
+        song.melody[
+          step % song.melody.length
+        ];
+
+      const bassFrequency =
+        song.bass[
+          Math.floor(step / 2) %
+          song.bass.length
+        ];
+
+      scheduleTone(
+        bassFrequency,
+        startTime,
+        stepTime * 0.82,
+        'triangle',
+        0.075
+      );
+
+      if (melodyFrequency) {
+        const type =
+          state.songIndex % 3 === 0
+            ? 'square'
+            : state.songIndex % 3 === 1
+              ? 'triangle'
+              : 'sawtooth';
+
+        scheduleTone(
+          melodyFrequency,
+          startTime,
+          stepTime * 0.65,
+          type,
+          0.065
+        );
+      }
+
+      if (step % 4 === 0) {
+        scheduleKick(startTime);
+      }
+
+      if (step % 4 === 2) {
+        scheduleSnare(startTime);
+      }
+
+      if (step % 2 === 1) {
+        scheduleHat(startTime);
+      }
+    }
+
+    function scheduleHat(startTime) {
+      const audio =
+        state.audioContext;
+
+      if (!audio || !state.musicGain) {
+        return;
+      }
+
+      const buffer =
+        audio.createBuffer(
+          1,
+          Math.floor(audio.sampleRate * 0.045),
+          audio.sampleRate
+        );
+
+      const data =
+        buffer.getChannelData(0);
+
+      for (let i = 0; i < data.length; i += 1) {
+        data[i] =
+          (Math.random() * 2 - 1) *
+          (1 - i / data.length);
+      }
+
+      const source =
+        audio.createBufferSource();
+
+      const filter =
+        audio.createBiquadFilter();
+
+      const gain =
+        audio.createGain();
+
+      source.buffer = buffer;
+      filter.type = 'highpass';
+      filter.frequency.value = 4200;
+
+      gain.gain.setValueAtTime(
+        0.045,
+        startTime
+      );
+
+      gain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        startTime + 0.045
+      );
+
+      source.connect(filter);
+      filter.connect(gain);
+      gain.connect(state.musicGain);
+
+      source.start(startTime);
+      source.stop(startTime + 0.05);
+    }
+
+    function startMusic() {
+      if (!state.soundEnabled) {
+        return;
+      }
+
+      ensureAudio();
+
+      if (!state.audioContext || !state.musicGain) {
+        return;
+      }
+
+      stopMusic();
+
+      state.musicStarted = true;
+      state.musicStep = 0;
+      state.musicNextAudioTime =
+        state.audioContext.currentTime + 0.08;
+
+      state.musicTimer =
+        window.setInterval(
+          scheduleMusic,
+          40
+        );
+
+      scheduleMusic();
+    }
+
+    function scheduleMusic() {
+      if (!state.musicStarted || !state.soundEnabled) {
+        return;
+      }
+
+      const audio =
+        state.audioContext;
+
+      if (!audio) {
+        return;
+      }
+
+      const beat =
+        60 / state.bpm;
+
+      const stepTime =
+        beat / 2;
+
+      while (
+        state.musicNextAudioTime <
+        audio.currentTime + 0.8
+      ) {
+        scheduleMusicStep(
+          state.musicStep,
+          state.musicNextAudioTime
+        );
+
+        state.musicStep += 1;
+        state.musicNextAudioTime +=
+          stepTime;
+      }
+    }
+
+    function playSound(type) {
+      if (!state.soundEnabled) {
+        return;
+      }
+
+      ensureAudio();
+
+      const audio =
+        state.audioContext;
+
+      if (!audio) {
+        return;
+      }
+
+      const now =
+        audio.currentTime;
+
+      if (type === 'hit') {
+        const osc =
+          audio.createOscillator();
+
+        const gain =
+          audio.createGain();
+
+        osc.type = 'square';
+
+        osc.frequency
+          .setValueAtTime(
+            620,
+            now
+          );
+
+        osc.frequency
+          .exponentialRampToValueAtTime(
+            940,
+            now + 0.06
+          );
+
+        gain.gain
+          .setValueAtTime(
+            0.0001,
+            now
+          );
+
+        gain.gain
+          .exponentialRampToValueAtTime(
+            0.18,
+            now + 0.005
+          );
+
+        gain.gain
+          .exponentialRampToValueAtTime(
+            0.0001,
+            now + 0.1
+          );
+
+        osc.connect(gain);
+        gain.connect(
+          audio.destination
+        );
+
+        osc.start(now);
+        osc.stop(now + 0.11);
+
+        return;
+      }
+
+      if (type === 'miss') {
+        const osc =
+          audio.createOscillator();
+
+        const gain =
+          audio.createGain();
+
+        osc.type = 'sawtooth';
+
+        osc.frequency
+          .setValueAtTime(
+            180,
+            now
+          );
+
+        osc.frequency
+          .exponentialRampToValueAtTime(
+            82,
+            now + 0.28
+          );
+
+        gain.gain
+          .setValueAtTime(
+            0.0001,
+            now
+          );
+
+        gain.gain
+          .exponentialRampToValueAtTime(
+            0.16,
+            now + 0.02
+          );
+
+        gain.gain
+          .exponentialRampToValueAtTime(
+            0.0001,
+            now + 0.32
+          );
+
+        osc.connect(gain);
+        gain.connect(
+          audio.destination
+        );
+
+        osc.start(now);
+        osc.stop(now + 0.34);
+
+        return;
+      }
+
+      if (type === 'beat') {
+        const osc =
+          audio.createOscillator();
+
+        const gain =
+          audio.createGain();
+
+        osc.type = 'square';
+
+        osc.frequency
+          .setValueAtTime(
+            88,
+            now
+          );
+
+        gain.gain
+          .setValueAtTime(
+            0.0001,
+            now
+          );
+
+        gain.gain
+          .exponentialRampToValueAtTime(
+            0.06,
+            now + 0.002
+          );
+
+        gain.gain
+          .exponentialRampToValueAtTime(
+            0.0001,
+            now + 0.08
+          );
+
+        osc.connect(gain);
+        gain.connect(
+          audio.destination
+        );
+
+        osc.start(now);
+        osc.stop(now + 0.09);
+      }
+    }
+
+    function spawnNote(
+      lane,
+      targetTime
+    ) {
+      state.notes.push({
+        id: state.noteId,
+        lane,
+        targetTime,
+        judged: false,
+        hit: false
+      });
+
+      state.noteId += 1;
+    }
+
+    function spawnBeatNotes() {
+      const song = getCurrentSong();
+      const chartStepTime =
+        state.beatLength / 2;
+
+      while (
+        state.nextNoteTime <
+        state.songTime +
+        NOTE_TRAVEL +
+        300
+      ) {
+        const lanes =
+          song.chart[
+            state.chartStep %
+            song.chart.length
+          ];
+
+        for (const lane of lanes) {
+          spawnNote(
+            lane,
+            state.nextNoteTime
+          );
+        }
+
+        state.chartStep += 1;
+        state.nextNoteTime +=
+          chartStepTime;
+      }
+    }
+
+    function getNoteY(note) {
+      const delta =
+        note.targetTime -
+        state.songTime;
+
+      return (
+        JUDGMENT_Y -
+        delta /
+          NOTE_TRAVEL *
+          JUDGMENT_Y
+      );
+    }
+
+    function judgeDifference(
+      difference
+    ) {
+      const abs =
+        Math.abs(
+          difference
+        );
+
+      if (
+        abs <=
+        PERFECT_WINDOW
+      ) {
+        return 'PERFECT';
+      }
+
+      if (
+        abs <=
+        GREAT_WINDOW
+      ) {
+        return 'GREAT';
+      }
+
+      return 'MISS';
+    }
+
+    function findBestNote(
+      lane
+    ) {
+      let best =
+        null;
+
+      let bestDistance =
+        Infinity;
+
+      for (
+        const note of
+          state.notes
+      ) {
+        if (
+          note.judged ||
+          note.lane !== lane
+        ) {
+          continue;
+        }
+
+        const difference =
+          note.targetTime -
+          state.songTime;
+
+        const distance =
+          Math.abs(
+            difference
+          );
+
+        if (
+          distance <
+          bestDistance
+        ) {
+          bestDistance =
+            distance;
+
+          best =
+            note;
+        }
+      }
+
+      return best;
+    }
+
+    function showJudgment(
+      result
+    ) {
+      state.currentJudgment =
+        result;
+
+      state.judgmentLife =
+        1;
+    }
+
+    function createHitParticles(
+      lane,
+      result
+    ) {
+      const centerX =
+        lane * LANE_WIDTH +
+        LANE_WIDTH / 2;
+
+      for (
+        let i = 0;
+        i < 14;
+        i += 1
+      ) {
+        const angle =
+          Math.random() *
+          Math.PI *
+          2;
+
+        const speed =
+          1.8 +
+          Math.random() *
+          3.4;
+
+        state.particles.push({
+          x: centerX,
+          y: JUDGMENT_Y,
+          vx:
+            Math.cos(angle) *
+            speed,
+          vy:
+            Math.sin(angle) *
+            speed,
+          life: 1,
+          result
+        });
+      }
+    }
+
+    function registerHit(
+      lane
+    ) {
+      if (
+        !state.running ||
+        state.paused
+      ) {
+        return;
+      }
+
+      const note =
+        findBestNote(lane);
+
+      state.laneFlash[lane] =
+        1;
+
+      if (!note) {
+        state.combo = 0;
+        state.misses += 1;
+        state.judged += 1;
+        showJudgment(
+          'MISS'
+        );
+        playSound('miss');
+        updateHud();
+        return;
+      }
+
+      const difference =
+        note.targetTime -
+        state.songTime;
+
+      if (
+        Math.abs(difference) >
+        MISS_WINDOW
+      ) {
+        state.combo = 0;
+        state.misses += 1;
+        state.judged += 1;
+        showJudgment(
+          'MISS'
+        );
+        createHitParticles(
+          lane,
+          'MISS'
+        );
+        playSound('miss');
+        updateHud();
+        return;
+      }
+
+      const result =
+        judgeDifference(
+          difference
+        );
+
+      note.judged = true;
+      note.hit = true;
+
+      if (
+        result === 'PERFECT'
+      ) {
+        state.score +=
+          1000 +
+          state.combo * 15;
+
+        state.perfects += 1;
+        state.judged += 1;
+        state.combo += 1;
+      } else if (
+        result === 'GREAT'
+      ) {
+        state.score +=
+          650 +
+          state.combo * 10;
+
+        state.greats += 1;
+        state.judged += 1;
+        state.combo += 1;
+      } else {
+        state.score += 0;
+        state.misses += 1;
+        state.judged += 1;
+        state.combo = 0;
+      }
+
+      state.maxCombo =
+        Math.max(
+          state.maxCombo,
+          state.combo
+        );
+
+      showJudgment(
+        result
+      );
+
+      createHitParticles(
+        lane,
+        result
+      );
+
+      if (
+        result === 'MISS'
+      ) {
+        playSound('miss');
+      } else {
+        playSound('hit');
+      }
+
+      updateHud();
+    }
+
+    function processMisses() {
+      for (
+        const note of
+          state.notes
+      ) {
+        if (
+          note.judged
+        ) {
+          continue;
+        }
+
+        const lateBy =
+          state.songTime -
+          note.targetTime;
+
+        if (
+          lateBy >
+          MISS_WINDOW
+        ) {
+          note.judged = true;
+          state.combo = 0;
+          state.misses += 1;
+          state.judged += 1;
+
+          showJudgment(
+            'MISS'
+          );
+
+          playSound(
+            'miss'
+          );
+
+          updateHud();
+        }
+      }
+
+      state.notes =
+        state.notes.filter(
+          (note) =>
+            !note.judged ||
+            state.songTime -
+              note.targetTime <
+              350
+        );
+    }
+
+    function updateGame(
+      delta
+    ) {
+      if (
+        !state.running ||
+        state.paused
+      ) {
+        return;
+      }
+
+      state.songTime +=
+        delta;
+
+      spawnBeatNotes();
+      processMisses();
+
+      state.judgmentLife =
+        Math.max(
+          0,
+          state.judgmentLife -
+          delta / 850
+        );
+
+      for (
+        let i = 0;
+        i < LANES;
+        i += 1
+      ) {
+        state.laneFlash[i] =
+          Math.max(
+            0,
+            state.laneFlash[i] -
+            delta / 180
+          );
+      }
+
+      state.beatPulse =
+        Math.max(
+          0,
+          state.beatPulse -
+          delta / 160
+        );
+
+      updateParticles(
+        delta
+      );
+
+      const beatIndex =
+        Math.floor(
+          state.songTime /
+          state.beatLength
+        );
+
+      if (
+        beatIndex !==
+        state.lastBeatIndex
+      ) {
+        state.lastBeatIndex =
+          beatIndex;
+
+        state.beatPulse =
+          1;
+
+        // The scheduled music already supplies the beat audio.
+
+      }
+    }
+
+    function updateParticles(
+      delta
+    ) {
+      for (
+        let i =
+          state.particles.length -
+          1;
+        i >= 0;
+        i -= 1
+      ) {
+        const p =
+          state.particles[i];
+
+        p.x +=
+          p.vx *
+          delta /
+          16.67;
+
+        p.y +=
+          p.vy *
+          delta /
+          16.67;
+
+        p.vy +=
+          0.12 *
+          delta /
+          16.67;
+
+        p.life -=
+          delta /
+          650;
+
+        if (
+          p.life <= 0
+        ) {
+          state.particles.splice(
+            i,
+            1
+          );
+        }
+      }
+    }
+
+    function drawBackground(
+      time
+    ) {
+      ctx.fillStyle =
+        '#05070a';
+
+      ctx.fillRect(
+        0,
+        0,
+        WIDTH,
+        HEIGHT
+      );
+
+      if (
+        state.stars.length ===
+        0
+      ) {
+        createStars();
+      }
+
+      for (
+        const star of state.stars
+      ) {
+        const alpha =
+          0.25 +
+          (
+            Math.sin(
+              time *
+                star.speed +
+                star.phase
+            ) +
+            1
+          ) *
+          0.16;
+
+        ctx.globalAlpha =
+          alpha;
+
+        ctx.fillStyle =
+          '#d7f9ff';
+
+        ctx.fillRect(
+          star.x,
+          star.y,
+          star.size,
+          star.size
+        );
+      }
+
+      ctx.globalAlpha = 1;
+
+      const glow =
+        ctx.createRadialGradient(
+          WIDTH / 2,
+          250,
+          20,
+          WIDTH / 2,
+          250,
+          300
+        );
+
+      glow.addColorStop(
+        0,
+        'rgba(52, 211, 255, 0.12)'
+      );
+
+      glow.addColorStop(
+        1,
+        'rgba(0, 0, 0, 0)'
+      );
+
+      ctx.fillStyle =
+        glow;
+
+      ctx.fillRect(
+        0,
+        0,
+        WIDTH,
+        HEIGHT
+      );
+    }
+
+    function createStars() {
+      state.stars = [];
+
+      for (
+        let i = 0;
+        i < 70;
+        i += 1
+      ) {
+        state.stars.push({
+          x:
+            Math.random() *
+            WIDTH,
+
+          y:
+            Math.random() *
+            HEIGHT,
+
+          size:
+            Math.random() *
+              2 +
+            1,
+
+          speed:
+            Math.random() *
+              0.006 +
+            0.002,
+
+          phase:
+            Math.random() *
+            Math.PI *
+            2
+        });
+      }
+    }
+
+    function drawLanes() {
+      for (
+        let lane = 0;
+        lane < LANES;
+        lane += 1
+      ) {
+        const x =
+          lane *
+          LANE_WIDTH;
+
+        ctx.fillStyle =
+          lane % 2 === 0
+            ? 'rgba(255,255,255,0.018)'
+            : 'rgba(0,0,0,0.08)';
+
+        ctx.fillRect(
+          x,
+          0,
+          LANE_WIDTH,
+          HEIGHT
+        );
+
+        if (
+          state.laneFlash[lane] >
+          0
+        ) {
+          const alpha =
+            state.laneFlash[lane] *
+            0.38;
+
+          ctx.fillStyle =
+            'rgba(97, 218, 251, ' +
+            alpha +
+            ')';
+
+          ctx.fillRect(
+            x,
+            0,
+            LANE_WIDTH,
+            HEIGHT
+          );
+        }
+
+        ctx.strokeStyle =
+          'rgba(155, 220, 255, 0.16)';
+
+        ctx.lineWidth = 1;
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+          x,
+          0
+        );
+
+        ctx.lineTo(
+          x,
+          HEIGHT
+        );
+
+        ctx.stroke();
+
+        ctx.fillStyle =
+          '#9fb7c8';
+
+        ctx.font =
+          '700 13px monospace';
+
+        ctx.textAlign =
+          'center';
+
+        ctx.fillText(
+          LANE_NAMES[lane],
+          x +
+            LANE_WIDTH / 2,
+          20
+        );
+      }
+
+      ctx.strokeStyle =
+        'rgba(155, 220, 255, 0.16)';
+
+      ctx.beginPath();
+
+      ctx.moveTo(
+        WIDTH,
+        0
+      );
+
+      ctx.lineTo(
+        WIDTH,
+        HEIGHT
+      );
+
+      ctx.stroke();
+    }
+
+    function drawJudgmentLine() {
+      const pulse =
+        state.beatPulse;
+
+      ctx.fillStyle =
+        'rgba(104, 230, 255, ' +
+        (
+          0.13 +
+          pulse * 0.12
+        ) +
+        ')';
+
+      ctx.fillRect(
+        0,
+        JUDGMENT_Y - 5,
+        WIDTH,
+        10
+      );
+
+      ctx.strokeStyle =
+        '#74e8ff';
+
+      ctx.lineWidth =
+        2 +
+        pulse * 2;
+
+      ctx.beginPath();
+
+      ctx.moveTo(
+        0,
+        JUDGMENT_Y
+      );
+
+      ctx.lineTo(
+        WIDTH,
+        JUDGMENT_Y
+      );
+
+      ctx.stroke();
+    }
+
+    function drawNotes() {
+      for (
+        const note of
+          state.notes
+      ) {
+        if (
+          note.judged
+        ) {
+          continue;
+        }
+
+        const y =
+          getNoteY(note);
+
+        if (
+          y < -NOTE_HEIGHT ||
+          y > HEIGHT
+        ) {
+          continue;
+        }
+
+        const x =
+          note.lane *
+          LANE_WIDTH +
+          7;
+
+        const width =
+          LANE_WIDTH -
+          14;
+
+        const gradient =
+          ctx.createLinearGradient(
+            x,
+            y,
+            x,
+            y + NOTE_HEIGHT
+          );
+
+        gradient.addColorStop(
+          0,
+          '#f8fbff'
+        );
+
+        gradient.addColorStop(
+          0.25,
+          '#72d9ff'
+        );
+
+        gradient.addColorStop(
+          1,
+          '#147aa7'
+        );
+
+        ctx.fillStyle =
+          gradient;
+
+        ctx.shadowColor =
+          'rgba(59, 206, 255, 0.75)';
+
+        ctx.shadowBlur = 10;
+
+        ctx.fillRect(
+          x,
+          y,
+          width,
+          NOTE_HEIGHT
+        );
+
+        ctx.shadowBlur = 0;
+
+        ctx.strokeStyle =
+          '#d7fbff';
+
+        ctx.strokeRect(
+          x + 0.5,
+          y + 0.5,
+          width - 1,
+          NOTE_HEIGHT - 1
+        );
+
+        ctx.fillStyle =
+          'rgba(255,255,255,0.6)';
+
+        ctx.fillRect(
+          x + 5,
+          y + 4,
+          width - 10,
+          3
+        );
+      }
+    }
+
+    function drawKeyFlashes() {
+      for (
+        let lane = 0;
+        lane < LANES;
+        lane += 1
+      ) {
+        const flash =
+          state.laneFlash[lane];
+
+        if (
+          flash <= 0
+        ) {
+          continue;
+        }
+
+        const center =
+          lane *
+            LANE_WIDTH +
+          LANE_WIDTH / 2;
+
+        const radius =
+          14 +
+          flash * 28;
+
+        ctx.strokeStyle =
+          'rgba(255, 236, 137, ' +
+          flash +
+          ')';
+
+        ctx.lineWidth =
+          3;
+
+        ctx.beginPath();
+
+        ctx.arc(
+          center,
+          JUDGMENT_Y,
+          radius,
+          0,
+          Math.PI * 2
+        );
+
+        ctx.stroke();
+
+        ctx.fillStyle =
+          'rgba(255, 249, 196, ' +
+          (
+            flash *
+            0.38
+          ) +
+          ')';
+
+        ctx.beginPath();
+
+        ctx.arc(
+          center,
+          JUDGMENT_Y,
+          radius * 0.6,
+          0,
+          Math.PI * 2
+        );
+
+        ctx.fill();
+      }
+    }
+
+    function drawParticles() {
+      for (
+        const p of
+          state.particles
+      ) {
+        let color =
+          '#fff';
+
+        if (
+          p.result ===
+          'PERFECT'
+        ) {
+          color =
+            '#ffe066';
+        } else if (
+          p.result ===
+          'GREAT'
+        ) {
+          color =
+            '#74c0fc';
+        } else {
+          color =
+            '#ff8787';
+        }
+
+        ctx.globalAlpha =
+          clamp(
+            p.life,
+            0,
+            1
+          );
+
+        ctx.fillStyle =
+          color;
+
+        ctx.fillRect(
+          p.x,
+          p.y,
+          3,
+          3
+        );
+      }
+
+      ctx.globalAlpha = 1;
+    }
+
+    function drawJudgmentText() {
+      if (
+        state.judgmentLife <=
+        0
+      ) {
+        return;
+      }
+
+      let color =
+        '#fff';
+
+      if (
+        state.currentJudgment ===
+        'PERFECT'
+      ) {
+        color =
+          '#ffe066';
+      } else if (
+        state.currentJudgment ===
+        'GREAT'
+      ) {
+        color =
+          '#74c0fc';
+      } else {
+        color =
+          '#ff8787';
+      }
+
+      ctx.globalAlpha =
+        state.judgmentLife;
+
+      ctx.textAlign =
+        'center';
+
+      ctx.font =
+        '900 31px sans-serif';
+
+      ctx.shadowColor =
+        color;
+
+      ctx.shadowBlur = 14;
+
+      ctx.fillStyle =
+        color;
+
+      ctx.fillText(
+        state.currentJudgment,
+        WIDTH / 2,
+        330
+      );
+
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
+    }
+
+    function drawSongInfo() {
+      ctx.textAlign =
+        'left';
+
+      ctx.font =
+        '700 11px monospace';
+
+      ctx.fillStyle =
+        'rgba(211, 238, 255, 0.62)';
+
+      ctx.fillText(
+        'BPM ' +
+        state.bpm +
+        '   4KEY ARCADE',
+        12,
+        HEIGHT - 12
+      );
+    }
+
+    function render(
+      time
+    ) {
+      drawBackground(
+        time
+      );
+
+      drawLanes();
+      drawNotes();
+      drawJudgmentLine();
+      drawKeyFlashes();
+      drawParticles();
+      drawJudgmentText();
+      drawSongInfo();
+    }
+
+    function gameLoop(time) {
+      if (!state.lastFrame) {
+        state.lastFrame =
+          time;
+      }
+
+      const delta =
+        clamp(
+          time -
+            state.lastFrame,
+          0,
+          50
+        );
+
+      state.lastFrame =
+        time;
+
+      updateGame(
+        delta
+      );
+
+      render(
+        time
+      );
+
+      animationId =
+        requestAnimationFrame(
+          gameLoop
+        );
+    }
+
+    function startGame() {
+      ensureAudio();
+
+      applySong(
+        Number(songSelect.value)
+      );
+
+      resetGameState();
+      startMusic();
+
+      state.running =
+        true;
+
+      state.paused =
+        false;
+
+      startButton.textContent =
+        '↻ 다시 시작';
+
+      pauseButton.textContent =
+        'Ⅱ 일시정지';
+
+      statusEl.textContent =
+        '♪ ' +
+        getCurrentSong().name +
+        ' · S D K L로 멜로디를 따라 연주하세요.';
+
+      state.nextNoteTime =
+        NOTE_TRAVEL;
+      state.chartStep = 0;
+
+      if (
+        !animationId
+      ) {
+        animationId =
+          requestAnimationFrame(
+            gameLoop
+          );
+      }
+    }
+
+    function togglePause() {
+      if (
+        !state.running
+      ) {
+        return;
+      }
+
+      state.paused =
+        !state.paused;
+
+      if (state.paused) {
+        stopMusic();
+      } else {
+        startMusic();
+      }
+
+      pauseButton.textContent =
+        state.paused
+          ? '▶ 재생'
+          : 'Ⅱ 일시정지';
+
+      statusEl.textContent =
+        state.paused
+          ? '일시정지 상태입니다.'
+          : '연주 중 · S D K L 키로 노트를 판정하세요.';
+    }
+
+    function toggleSound() {
+      state.soundEnabled =
+        !state.soundEnabled;
+
+      soundButton.textContent =
+        state.soundEnabled
+          ? '🔊 사운드 ON'
+          : '🔇 사운드 OFF';
+
+      if (
+        state.soundEnabled
+      ) {
+        ensureAudio();
+        if (state.running && !state.paused) {
+          startMusic();
+        }
+      } else {
+        stopMusic();
+      }
+    }
+
+    document.addEventListener(
+      'keydown',
+      (event) => {
+        const key =
+          event.key.toLowerCase();
+
+        if (
+          LANE_KEYS.includes(key)
+        ) {
+          event.preventDefault();
+
+          if (
+            !state.running ||
+            state.paused
+          ) {
+            return;
+          }
+
+          const lane =
+            LANE_KEYS.indexOf(
+              key
+            );
+
+          registerHit(
+            lane
+          );
+
+          return;
+        }
+
+        if (
+          event.code ===
+          'Space'
+        ) {
+          event.preventDefault();
+
+          if (
+            !state.running
+          ) {
+            startGame();
+          } else {
+            togglePause();
+          }
+        }
+      }
+    );
+
+    startButton.addEventListener(
+      'click',
+      startGame
+    );
+
+    pauseButton.addEventListener(
+      'click',
+      togglePause
+    );
+
+    soundButton.addEventListener(
+      'click',
+      toggleSound
+    );
+
+    songSelect.addEventListener(
+      'change',
+      () => {
+        applySong(
+          Number(songSelect.value)
+        );
+
+        if (state.running) {
+          stopMusic();
+          resetGameState();
+          startMusic();
+        }
+
+        statusEl.textContent =
+          getCurrentSong().name +
+          ' 선택 · 게임 시작을 누르면 채보가 시작됩니다.';
+      }
+    );
+
+    window.addEventListener(
+      'beforeunload',
+      () => {
+        stopMusic();
+      }
+    );
+
+    createStars();
+    applySong(0);
+    updateHud();
+
+    render(
+      0
+    );
+  </script>
+</body>
+</html>
