@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>미니지 - 체스</title>
+  <style>
+    :root { 
+      --bg: #f8f9fa; 
+      --text: #333; 
+      --canvas-bg: #151b22; 
+      --border: #e9ecef; 
+      --btn-bg: #fff; 
+    }
+    [data-theme="dark"] { 
+      --bg: #0d1117; 
+      --text: #c9d1d9; 
+      --canvas-bg: #020305; 
+      --border: #30363d; 
+      --btn-bg: #21262d; 
+    }
+    [data-theme="beige"] { 
+      --bg: #f5ebe0; 
+      --text: #4e3d30; 
+      --canvas-bg: #14100c; 
+      --border: #ddcbbb; 
+      --btn-bg: #eddfd0; 
+    }
+    body { 
+      background-color: var(--bg) !important; 
+      color: var(--text) !important; 
+      text-align: center; 
+      font-family: sans-serif; 
+      padding-top: 15px; 
+      margin: 0; 
+    }
+    button { 
+      background-color: var(--btn-bg) !important; 
+      color: var(--text) !important; 
+      border: 1px solid var(--border) !important; 
+      padding: 10px 18px; 
+      font-size: 0.95rem; 
+      border-radius: 8px; 
+      cursor: pointer; 
+      margin: 4px; 
+      font-weight: bold; 
+    }
+    button:hover {
+      opacity: 0.85;
+    }
+    #chess-panel { 
+      font-size: 1.25rem; 
+      font-weight: bold; 
+      color: #fcc419; 
+      margin-bottom: 8px; 
+    }
+    #game-container {
+      display: inline-block;
+      background: var(--canvas-bg);
+      padding: 15px;
+      border-radius: 12px;
+      border: 2px solid var(--border);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    }
+    canvas {
+      display: block;
+      margin: 0 auto;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .info-box {
+      margin-top: 12px;
+      font-size: 0.95rem;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+<script>
+  const savedTheme = localStorage.getItem('minig-theme');
+  if (savedTheme && savedTheme !== 'white') { 
+    document.documentElement.setAttribute('data-theme', savedTheme); 
+  }
+</script>
+
+  <h1>♟️ 아케이드 정통 체스</h1>
+  <div id="chess-panel">백색 진영 (플레이어 턴)</div>
+  
+  <div id="game-container">
+    <canvas id="chessCanvas" width="480" height="480"></canvas>
+  </div>
+
+  <div class="info-box">
+    <button id="restart-btn" onclick="initGame()">게임 재시작</button>
+  </div>
+
+<script>
+  // Web Audio API 신디사이저 이펙터
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  
+  function playSound(type) {
+    if (!audioCtx) return;
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    const now = audioCtx.currentTime;
+
+    if (type === 'move') {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(320, now);
+      osc.frequency.exponentialRampToValueAtTime(160, now + 0.08);
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
+      osc.start(now);
+      osc.stop(now + 0.08);
+    } else if (type === 'capture') {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(120, now);
+      osc.frequency.exponentialRampToValueAtTime(40, now + 0.2);
+      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+      osc.start(now);
+      osc.stop(now + 0.2);
+    }
+  }
+
+  const canvas = document.getElementById('chessCanvas');
+  const ctx = canvas.getContext('2d');
+  const TILE_SIZE = 60;
+
+  // 기물 심볼 매핑 (백: 대문자 / 흑: 소문자)
+  // r: 룩, n: 나이트, b: 비숍, q: 퀸, k: 킹, p: 폰
+  let board = [
+    ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+    ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+    ['', '', '', '', '', '', '', ''],
+    ['', '', '', '', '', '', '', ''],
+    ['', '', '', '', '', '', '', ''],
+    ['', '', '', '', '', '', '', ''],
+    ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+    ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+  ];
+
+  let turn = 'w'; // 'w': 백색(플레이어), 'b': 흑색(AI)
+  let selectedCoord = null; // {r, c}
+  let validMoves = []; // [{r, c}]
+  let gameOver = false;
+
+  const pieceSymbols = {
+    'R': '♜', 'N': '♞', 'B': '♝', 'Q': '♛', 'K': '♚', 'P': '♟',
+    'r': '♜', 'n': '♞', 'b': '♝', 'q': '♛', 'k': '♚', 'p': '♟'
+  };
+
+  function initGame() {
+    board = [
+      ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+      ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+      ['', '', '', '', '', '', '', ''],
+      ['', '', '', '', '', '', '', ''],
+      ['', '', '', '', '', '', '', ''],
+      ['', '', '', '', '', '', '', ''],
+      ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+      ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+    ];
+    turn = 'w';
+    selectedCoord = null;
+    validMoves = [];
+    gameOver = false;
+    document.getElementById('chess-panel').innerText = "백색 진영 (플레이어 턴)";
+    drawBoard();
+  }
+
+  function isWhite(p) {
+    return p >= 'A' && p <= 'Z';
+  }
+
+  function isBlack(p) {
+    return p >= 'a' && p <= 'z';
+  }
+
+  // 기물별 이동 경로 계산 로직
+  function getValidMoves(r, c, currentBoard) {
+    const piece = currentBoard[r][c];
+    if (!piece) return [];
+    const white = isWhite(piece);
+    let moves = [];
+
+    const addLinearMoves = (directions) => {
+      for (let d of directions) {
+        let nr = r + d[0];
+        let nc = c + d[1];
+        while (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+          let target = currentBoard[nr][nc];
+          if (target === '') {
+            moves.push({ r: nr, c: nc });
+          } else {
+            if (white !== isWhite(target)) {
+              moves.push({ r: nr, c: nc });
+            }
+            break;
+          }
+          nr += d[0];
+          nc += d[1];
+        }
+      }
+    };
+
+    if (piece.toLowerCase() === 'p') {
+      let dir = white ? -1 : 1;
+      let startRow = white ? 6 : 1;
+      let nr = r + dir;
+      
+      // 전진
+      if (nr >= 0 && nr < 8 && currentBoard[nr][c] === '') {
+        moves.push({ r: nr, c: c });
+        // 첫 칸 두 칸 전진
+        let doubleNr = r + dir * 2;
+        if (r === startRow && currentBoard[doubleNr][c] === '') {
+          moves.push({ r: doubleNr, c: c });
+        }
+      }
+      // 대각선 공격
+      for (let dc of [-1, 1]) {
+        let nc = c + dc;
+        if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+          let target = currentBoard[nr][nc];
+          if (target !== '' && white !== isWhite(target)) {
+            moves.push({ r: nr, c: nc });
+          }
+        }
+      }
+    } else if (piece.toLowerCase() === 'n') {
+      const knightMoves = [
+        [-2, -1], [-2, 1], [-1, -2], [-1, 2],
+        [1, -2], [1, 2], [2, -1], [2, 1]
+      ];
+      for (let m of knightMoves) {
+        let nr = r + m[0];
+        let nc = c + m[1];
+        if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+          let target = currentBoard[nr][nc];
+          if (target === '' || white !== isWhite(target)) {
+            moves.push({ r: nr, c: nc });
+          }
+        }
+      }
+    } else if (piece.toLowerCase() === 'b') {
+      addLinearMoves([[-1, -1], [-1, 1], [1, -1], [1, 1]]);
+    } else if (piece.toLowerCase() === 'r') {
+      addLinearMoves([[-1, 0], [1, 0], [0, -1], [0, 1]]);
+    } else if (piece.toLowerCase() === 'q') {
+      addLinearMoves([[-1, -1], [-1, 1], [1, -1], [1, 1], [-1, 0], [1, 0], [0, -1], [0, 1]]);
+    } else if (piece.toLowerCase() === 'k') {
+      const kingMoves = [
+        [-1, -1], [-1, 0], [-1, 1],
+        [0, -1], [0, 1],
+        [1, -1], [1, 0], [1, 1]
+      ];
+      for (let m of kingMoves) {
+        let nr = r + m[0];
+        let nc = c + m[1];
+        if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+          let target = currentBoard[nr][nc];
+          if (target === '' || white !== isWhite(target)) {
+            moves.push({ r: nr, c: nc });
+          }
+        }
+      }
+    }
+    return moves;
+  }
+
+  // 화면 드로잉 엔진
+  function drawBoard() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        // 체스판 교대 색상
+        if ((r + c) % 2 === 0) {
+          ctx.fillStyle = '#eeeed2';
+        } else {
+          ctx.fillStyle = '#769656';
+        }
+        ctx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+
+        // 선택한 기물 하이라이트
+        if (selectedCoord && selectedCoord.r === r && selectedCoord.c === c) {
+          ctx.fillStyle = 'rgba(255, 255, 0, 0.4)';
+          ctx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        }
+      }
+    }
+
+    // 이동 가능 가이드 표시
+    for (let m of validMoves) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+      ctx.beginPath();
+      ctx.arc(m.c * TILE_SIZE + TILE_SIZE / 2, m.r * TILE_SIZE + TILE_SIZE / 2, 12, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 기물 렌더링
+    ctx.font = '38px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        let piece = board[r][c];
+        if (piece) {
+          // 기물 색상 구분 (백색: 흰색 채우기 + 검정 테두리 / 흑색: 검은색)
+          if (isWhite(piece)) {
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 1;
+          } else {
+            ctx.fillStyle = '#111111';
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1;
+          }
+          let symbol = pieceSymbols[piece];
+          let x = c * TILE_SIZE + TILE_SIZE / 2;
+          let y = r * TILE_SIZE + TILE_SIZE / 2 + 2;
+          ctx.fillText(symbol, x, y);
+          ctx.strokeText(symbol, x, y);
+        }
+      }
+    }
+  }
+
+  // 마우스 인터랙션 이벤트
+  canvas.addEventListener('click', (e) => {
+    if (gameOver || turn !== 'w') return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const c = Math.floor(x / TILE_SIZE);
+    const r = Math.floor(y / TILE_SIZE);
+
+    if (r < 0 || r >= 8 || c < 0 || c >= 8) return;
+
+    let clickedPiece = board[r][c];
+
+    // 이미 선택된 기물의 이동 가능 칸을 클릭한 경우 이동 실행
+    let foundMove = validMoves.find(m => m.r === r && m.c === c);
+    if (foundMove) {
+      executeMove(selectedCoord.r, selectedCoord.c, r, c);
+      return;
+    }
+
+    // 내 기물 선택
+    if (clickedPiece && isWhite(clickedPiece)) {
+      selectedCoord = { r, c };
+      validMoves = getValidMoves(r, c, board);
+      playSound('move');
+      drawBoard();
+    } else {
+      selectedCoord = null;
+      validMoves = [];
+      drawBoard();
+    }
+  });
+
+  function executeMove(fromR, fromC, toR, toC) {
+    let targetPiece = board[toR][toC];
+    let movingPiece = board[fromR][fromC];
+
+    board[toR][toC] = movingPiece;
+    board[fromR][fromC] = '';
+
+    selectedCoord = null;
+    validMoves = [];
+
+    // 사운드 및 피드백
+    if (targetPiece !== '') {
+      playSound('capture');
+      if (targetPiece.toLowerCase() === 'k') {
+        gameOver = true;
+        drawBoard();
+        document.getElementById('chess-panel').innerText = "🎉 플레이어 승리!";
+        alert("플레이어 승리!");
+        return;
+      }
+    } else {
+      playSound('move');
+    }
+
+    drawBoard();
+
+    // 턴 교체 및 AI 실행
+    if (turn === 'w') {
+      turn = 'b';
+      document.getElementById('chess-panel').innerText = "컴퓨터 AI 턴 계산 중...";
+      setTimeout(runAITurn, 600);
+    } else {
+      turn = 'w';
+      document.getElementById('chess-panel').innerText = "백색 진영 (플레이어 턴)";
+    }
+  }
+
+  // 컴퓨터 AI 자율 반격 지능 엔진
+  function runAITurn() {
+    if (gameOver) return;
+
+    let allMoves = [];
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        let p = board[r][c];
+        if (p && isBlack(p)) {
+          let moves = getValidMoves(r, c, board);
+          for (let m of moves) {
+            allMoves.push({ fromR: r, fromC: c, toR: m.r, toC: m.c });
+          }
+        }
+      }
+    }
+
+    if (allMoves.length === 0) {
+      gameOver = true;
+      document.getElementById('chess-panel').innerText = "🎉 플레이어 승리! (AI 기동 불가)";
+      alert("플레이어 승리! (AI 기동 불가)");
+      return;
+    }
+
+    // 공격 우선 가중치 부여 (플레이어 기물을 잡을 수 있다면 우선 선택)
+    let attackMoves = allMoves.filter(m => {
+      let target = board[m.toR][m.toC];
+      return target !== '' && isWhite(target);
+    });
+
+    let chosenMove;
+    if (attackMoves.length > 0) {
+      // 랜덤하게 공격 타깃 선택
+      chosenMove = attackMoves[Math.floor(Math.random() * attackMoves.length)];
+    } else {
+      chosenMove = allMoves[Math.floor(Math.random() * allMoves.length)];
+    }
+
+    let targetPiece = board[chosenMove.toR][chosenMove.toC];
+    board[chosenMove.toR][chosenMove.toC] = board[chosenMove.fromR][chosenMove.fromC];
+    board[chosenMove.fromR][chosenMove.fromC] = '';
+
+    if (targetPiece !== '') {
+      playSound('capture');
+      if (targetPiece.toLowerCase() === 'k') {
+        gameOver = true;
+        drawBoard();
+        document.getElementById('chess-panel').innerText = "💻 컴퓨터 AI 승리!";
+        alert("컴퓨터 AI 승리!");
+        return;
+      }
+    } else {
+      playSound('move');
+    }
+
+    turn = 'w';
+    drawBoard();
+    document.getElementById('chess-panel').innerText = "백색 진영 (플레이어 턴)";
+  }
+
+  // 초기 보드 그리기 실행
+  drawBoard();
+</script>
+
+</body>
+</html>
