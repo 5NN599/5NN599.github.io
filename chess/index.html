@@ -3,64 +3,52 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>정통 체스</title>
+  <title>정통 체스 - 프리미엄 에디션</title>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <style>
     :root { 
-      --bg: #f8f9fa; --text: #333; --canvas-bg: #151b22; 
-      --border: #e9ecef; --btn-bg: #fff; --win-color: #ffd43b;
-    }
-    [data-theme="dark"] { 
-      --bg: #0d1117; --text: #c9d1d9; --canvas-bg: #020305; 
-      --border: #30363d; --btn-bg: #21262d; --win-color: #f08c00;
-    }
-    [data-theme="beige"] { 
-      --bg: #f5ebe0; --text: #4e3d30; --canvas-bg: #14100c; 
-      --border: #ddcbbb; --btn-bg: #eddfd0; --win-color: #f7d070;
+      --bg: #f3f3f2; --text: #312e2b; --canvas-bg: #262421; 
+      --border: #e4e3e2; --btn-bg: #fff;
     }
     body { 
       background-color: var(--bg) !important; color: var(--text) !important; 
-      text-align: center; font-family: sans-serif; padding-top: 15px; margin: 0; 
-      transition: background-color 0.3s;
+      text-align: center; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+      padding-top: 15px; margin: 0; 
     }
     button, select, input { 
       background-color: var(--btn-bg) !important; color: var(--text) !important; 
       border: 1px solid var(--border) !important; padding: 8px 14px; font-size: 0.95rem; 
       border-radius: 8px; cursor: pointer; margin: 4px; font-weight: bold; transition: 0.2s;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
-    button:hover { opacity: 0.85; }
+    button:hover { background-color: #f8f8f8 !important; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
 
-    #chess-panel { font-size: 1.2rem; font-weight: bold; color: #fcc419; margin-bottom: 8px; min-height: 28px; }
-    .ping-badge { font-size: 0.85rem; color: #12b886; font-weight: normal; margin-left: 8px; }
+    #chess-panel { font-size: 1.15rem; font-weight: 700; color: #fcc419; margin-bottom: 8px; min-height: 28px; }
+    .ping-badge { font-size: 0.85rem; color: #739552; font-weight: normal; margin-left: 8px; }
 
     #game-container {
-      display: inline-block; background: var(--canvas-bg); padding: 15px; 
-      border-radius: 12px; border: 2px solid var(--border); box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+      display: inline-block; background: var(--canvas-bg); padding: 12px; 
+      border-radius: 8px; border: 1px solid #333; box-shadow: 0 12px 32px rgba(0,0,0,0.25);
     }
-    canvas { display: block; margin: 0 auto; border-radius: 6px; cursor: pointer; }
+    canvas { display: block; margin: 0 auto; border-radius: 4px; cursor: pointer; }
     .control-panel { margin-top: 12px; display: flex; justify-content: center; align-items: center; gap: 6px; flex-wrap: wrap; }
 
-    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 100; }
-    .modal-content { background: var(--bg); color: var(--text); padding: 25px; border-radius: 16px; border: 2px solid var(--border); text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.3); max-width: 420px; width: 90%; }
-    .p2p-card { background: rgba(0,0,0,0.05); border-radius: 12px; padding: 15px; margin: 12px 0; border: 1px solid var(--border); }
-    .room-code-display { font-size: 2.2rem; font-weight: bold; letter-spacing: 5px; color: #4dadf7; margin: 8px 0; user-select: all; }
-    .code-input { font-size: 1.3rem; text-align: center; letter-spacing: 4px; width: 140px; }
-    .divider { margin: 15px 0; border-top: 1px dashed var(--border); position: relative; }
-    .divider span { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: var(--bg); padding: 0 10px; font-size: 0.8rem; color: #888; }
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 100; backdrop-filter: blur(3px); }
+    .modal-content { background: var(--btn-bg); color: var(--text); padding: 25px; border-radius: 16px; border: 1px solid var(--border); text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.4); max-width: 420px; width: 90%; }
+    .p2p-card { background: rgba(0,0,0,0.03); border-radius: 12px; padding: 15px; margin: 12px 0; border: 1px solid var(--border); }
+    .room-code-display { font-size: 2.5rem; font-weight: 800; letter-spacing: 6px; color: #4dadf7; margin: 8px 0; user-select: all; }
+    .code-input { font-size: 1.4rem; text-align: center; letter-spacing: 5px; width: 150px; font-weight: bold; }
+    .divider { margin: 15px 0; border-top: 1px solid var(--border); position: relative; }
+    .divider span { position: absolute; top: -11px; left: 50%; transform: translateX(-50%); background: var(--btn-bg); padding: 0 10px; font-size: 0.85rem; color: #888; }
     
     .promo-btn-group { display: flex; justify-content: center; gap: 10px; margin-top: 15px; }
-    .promo-btn { font-size: 2rem; padding: 10px 20px; }
+    .promo-btn { font-size: 2.5rem; padding: 10px 15px; line-height: 1; }
   </style>
 </head>
 <body>
 
-<script>
-  const savedTheme = localStorage.getItem('minig-theme');
-  if (savedTheme && savedTheme !== 'white') document.documentElement.setAttribute('data-theme', savedTheme); 
-</script>
-
-  <h1>♟️ 정통 체스</h1>
+  <h1 style="margin-bottom: 5px;">♟️ 프리미엄 체스</h1>
   
   <div class="control-panel">
     <label for="modeSelect">모드:</label>
@@ -79,32 +67,32 @@
       </select>
     </span>
 
-    <button id="p2pSetupBtn" style="display:none; background:#4dadf7; color:#fff;" onclick="openP2PModal()">📡 방 설정</button>
-    <button onclick="resetGame()">🔄 새 게임</button>
+    <button id="p2pSetupBtn" style="display:none; background:#4dadf7 !important; color:#fff !important; border:none !important;" onclick="openP2PModal()">📡 방 설정</button>
+    <button onclick="resetGame()" style="background:#739552 !important; color:#fff !important; border:none !important;">🔄 새 게임</button>
   </div>
 
   <div id="chess-panel" style="margin-top: 10px;">
-    <span id="statusText">백색 턴 (플레이어)</span>
+    <span id="statusText">당신의 차례입니다 (White ♔)</span>
     <span id="ping-display" class="ping-badge"></span>
   </div>
   
   <div id="game-container">
-    <canvas id="chessCanvas" width="480" height="480"></canvas>
+    <canvas id="chessCanvas" width="560" height="560"></canvas>
   </div>
 
   <!-- 결과 모달 -->
   <div class="modal" id="overModal">
     <div class="modal-content">
       <h2 id="modalTitle" style="margin-top:0;">게임 종료</h2>
-      <button onclick="resetGame()">🔄 다시 하기</button>
-      <button onclick="closeModal('overModal')">닫기</button>
+      <button onclick="resetGame()" style="background:#739552 !important; color:#fff !important; font-size: 1.1rem; padding: 10px 20px;">🔄 다시 하기</button>
+      <button onclick="closeModal('overModal')" style="font-size: 1.1rem; padding: 10px 20px;">닫기</button>
     </div>
   </div>
 
   <!-- 프로모션 선택 모달 -->
   <div class="modal" id="promoModal">
     <div class="modal-content">
-      <h3 style="margin-top:0;">♟️ 승급할 기물을 선택하세요</h3>
+      <h3 style="margin-top:0;">✨ 승급할 기물을 선택하세요</h3>
       <div class="promo-btn-group">
         <button class="promo-btn" onclick="selectPromotion('Q')">♛</button>
         <button class="promo-btn" onclick="selectPromotion('R')">♜</button>
@@ -120,22 +108,22 @@
       <h3 style="margin-top:0;">🌐 1:1 온라인 접속</h3>
       <div class="p2p-card">
         <strong>🏠 방 만들기 (방장 - White ♔)</strong><br>
-        <button id="btnCreateRoom" onclick="handleCreateRoom()" style="margin-top:10px; background:#4dadf7; color:#fff;">방 번호 생성</button>
+        <button id="btnCreateRoom" onclick="handleCreateRoom()" style="margin-top:12px; background:#4dadf7 !important; color:#fff !important; padding: 10px 20px;">방 번호 생성</button>
         <div id="roomCodeArea" style="display:none;">
-          <div style="font-size:0.85rem; color:#888; margin-top:8px;">상대방에게 아래 6자리 숫자를 알려주세요</div>
+          <div style="font-size:0.85rem; color:#888; margin-top:10px;">상대방에게 아래 6자리 숫자를 알려주세요</div>
           <div id="displayRoomCode" class="room-code-display">------</div>
-          <div id="hostWaitStatus" style="font-size:0.85rem; color:#e03131;">⏳ 상대방 접속 대기 중...</div>
+          <div id="hostWaitStatus" style="font-size:0.9rem; color:#e03131; font-weight:bold;">⏳ 상대방 접속 대기 중...</div>
         </div>
       </div>
       <div class="divider"><span>또는</span></div>
       <div class="p2p-card">
         <strong>🎮 방 참가하기 (참가자 - Black ♚)</strong><br>
-        <div style="margin-top:10px;">
+        <div style="margin-top:12px;">
           <input type="text" id="inputRoomCode" class="code-input" maxlength="6" placeholder="000000">
-          <button id="btnJoinRoom" onclick="handleJoinRoom()">입장</button>
+          <button id="btnJoinRoom" onclick="handleJoinRoom()" style="padding: 10px 20px; background:#333 !important; color:#fff !important;">입장</button>
         </div>
       </div>
-      <button onclick="closeModal('p2pModal')">❌ 닫기</button>
+      <button onclick="closeModal('p2pModal')" style="margin-top: 10px;">❌ 닫기</button>
     </div>
   </div>
 
@@ -145,7 +133,6 @@
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
   }
-
   function playSound(type) {
     try {
       initAudio();
@@ -163,53 +150,44 @@
       } else if (type === 'check') {
         osc.type = 'square'; osc.frequency.setValueAtTime(523, now); osc.frequency.setValueAtTime(659, now + 0.08);
         gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.2); osc.start(now); osc.stop(now + 0.2);
-      } else if (type === 'win') {
-        osc.type = 'square'; osc.frequency.setValueAtTime(523.25, now); osc.frequency.setValueAtTime(659.25, now + 0.08); osc.frequency.setValueAtTime(783.99, now + 0.16); osc.frequency.setValueAtTime(1046.5, now + 0.24);
-        gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.35); osc.start(now); osc.stop(now + 0.35);
-      } else if (type === 'lose') {
-        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(250, now); osc.frequency.linearRampToValueAtTime(60, now + 0.3);
-        gain.gain.setValueAtTime(0.15, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.3); osc.start(now); osc.stop(now + 0.3);
-      } else if (type === 'draw') {
-        osc.type = 'triangle'; osc.frequency.setValueAtTime(350, now); osc.frequency.setValueAtTime(350, now + 0.08);
-        gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.16); osc.start(now); osc.stop(now + 0.16);
       }
     } catch(e){}
   }
 
-  // 체스닷컴 스타일 벡터(SVG) 기물 그래픽 데이터
-  const rawSVGs = {
-    'P': '<path d="M22 9c-2.21 0-4 1.79-4 4 0 .89.29 1.71.78 2.38-1.95.88-3.31 2.82-3.31 5.09 0 .93.23 1.81.63 2.59C13.63 24.11 12 26.36 12 29c0 1.22.38 2.35 1.03 3.28C11.53 33.32 10 35.47 10 38h25c0-2.53-1.53-4.68-3.03-5.72.65-.93 1.03-2.06 1.03-3.28 0-2.64-1.63-4.89-4.1-5.94.4-.78.63-1.66.63-2.59 0-2.27-1.36-4.21-3.31-5.09.49-.67.78-1.49.78-2.38 0-2.21-1.79-4-4-4z" fill="FILL" stroke="STROKE" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
-    'R': '<g fill="FILL" stroke="STROKE" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 39h27v-3H9v3zM12 36h21l-1.5-4H13.5l-1.5 4zM11 14h23l-1 17H12l-1-17zM9 9h3v5H9V9zM15 9h3v5h-3V9zM21 9h3v5h-3V9zM27 9h3v5h-3V9zM33 9h3v5h-3V9z"/><path d="M9 14h27v-3H9v3z"/></g>',
-    'N': '<g fill="FILL" stroke="STROKE" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M 22,10 C 32.5,11 38.5,18 38,39 L 15,39 C 15,30 25,32.5 23,18 C 23,18 20,22 15,21 C 12.5,20.5 8.5,17.5 10,13 C 11.5,8.5 18,8.5 22,10 z"/><path d="M 24,18 C 24.38,20.91 18.45,25.37 16,27 C 13,29 13.18,31.34 11,31 C 9.958,30.06 12.41,27.96 11,28 C 10,28 11.19,29.23 10,30 C 9,30 5.997,31 6,26 C 6,24 12,14 12,14 C 12,14 13.89,12.1 14,10.5 C 13.27,9.506 13.5,8.5 13.5,8.5 C 14.5,10 16.5,10 16.5,10 C 18.5,10 18.77,11.36 18.5,12.5 C 19.5,12 21.5,11.5 22,10.5 M 12.5,11 C 12.5,11 13.25,12.25 12,13 C 10.75,13.75 11,15 11,15"/></g>',
-    'B': '<g fill="FILL" stroke="STROKE" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M 9,36 C 12.39,35.03 19.11,36.46 22.5,34 C 25.89,36.46 32.61,35.03 36,36 C 36,36 37.65,36.54 39,38 C 38.32,38.97 37.35,38.99 36,38.5 C 32.61,37.53 25.89,38.96 22.5,36.5 C 19.11,38.96 12.39,37.53 9,38.5 C 7.646,38.99 6.677,38.97 6,38 C 7.348,36.54 9,36 9,36 z"/><path d="M 15,32 C 17.5,34.5 27.5,34.5 30,32 C 30.5,30.5 30,28 30,28 C 27.5,28.5 17.5,28.5 15,28 C 15,28 14.5,30.5 15,32 z"/><path d="M 25 8 A 2.5 2.5 0 1 1  20,8 A 2.5 2.5 0 1 1  25 8 z"/><path d="M 17.5,26 C 15,15.5 21.5,10 22.5,10 C 23.5,10 30,15.5 27.5,26 C 27.5,26 25.5,27.5 22.5,27.5 C 19.5,27.5 17.5,26 17.5,26 z"/><path d="M 20.08,12 C 18.5,12 17,14 17,14 C 17,14 18.5,13.5 20,13.5 C 21.5,13.5 22.5,14 22.5,14 C 22.5,14 21.5,12 20.08,12 z"/></g>',
-    'Q': '<g fill="FILL" stroke="STROKE" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M 9,26 C 17.5,24.5 30,24.5 36,26 C 36,26 38,13.5 36,13 C 33,13 32,22 30,22 C 28,22 26,10 22.5,10 C 19,10 17,22 15,22 C 13,22 12,13 9,13 C 7,13.5 9,26 9,26 z"/><path d="M 9,26 C 9,28 10.5,28 11.5,30 C 12.5,32 12.5,33 12.5,33 C 12.5,33 12.5,35 12,36 C 11.5,37 11.5,38 12,38 C 12.5,38 13.5,38 14.5,38 C 15.5,38 16.5,38 17.5,38 C 18.5,38 19.5,38 20.5,38 C 21.5,38 22.5,38 23.5,38 C 24.5,38 25.5,38 26.5,38 C 27.5,38 28.5,38 29.5,38 C 30.5,38 31.5,38 32.5,38 C 33,38 33.5,37 33,36 C 32.5,35 32.5,33 32.5,33 C 32.5,33 32.5,32 33.5,30 C 34.5,28 36,28 36,26"/><path d="M 11.5,30 C 15,29 30,29 34.5,30"/><circle cx="6" cy="12" r="2"/><circle cx="14" cy="9" r="2"/><circle cx="22.5" cy="8" r="2"/><circle cx="31" cy="9" r="2"/><circle cx="39" cy="12" r="2"/></g>',
-    'K': '<g fill="FILL" stroke="STROKE" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M 22.5,11.63 L 22.5,6 M 20,8 L 25,8 M 22.5,25 C 22.5,25 27,17.5 25.5,14.5 C 24,11.5 21,11.5 19.5,14.5 C 18,17.5 22.5,25 22.5,25 z"/><path d="M 11.5,37 C 17,35.5 28,35.5 33.5,37 C 34.5,38 33,39 31.5,39 C 28.5,39 16.5,39 13.5,39 C 12,39 10.5,38 11.5,37 z"/><path d="M 11.5,30 C 15,29 30,29 34.5,30 C 34.5,30 35.5,31.5 34.5,33 C 33.5,34.5 32.5,35 32.5,35 C 32.5,35 12.5,35 12.5,35 C 12.5,35 11.5,34.5 10.5,33 C 9.5,31.5 10.5,30 11.5,30 z"/><path d="M 12.5,21 C 12.5,21 17.5,20 22.5,22 C 27.5,20 32.5,21 32.5,21 C 32.5,21 34.5,22.5 34.5,25 C 34.5,27.5 32.5,28.5 32.5,28.5 L 12.5,28.5 C 12.5,28.5 10.5,27.5 10.5,25 C 10.5,22.5 12.5,21 12.5,21 z"/></g>'
+  // 최고급 Lichess Cburnett 프리미엄 벡터 셋 (내부 디테일 선 완벽 구현)
+  const pieceSVGs = {
+    'P': '<svg viewBox="0 0 45 45"><g fill="#ffffff" stroke="#111111" stroke-width="1.5" stroke-linecap="round"><path d="M 22,9 C 19.79,9 18,10.79 18,13 C 18,13.89 18.29,14.71 18.78,15.38 C 16.83,16.5 15.5,18.59 15.5,21 C 15.5,23.03 16.44,24.84 17.91,26.03 C 14.91,27.09 10.5,31.58 10.5,39.5 L 33.5,39.5 C 33.5,31.58 29.09,27.09 26.09,26.03 C 27.56,24.84 28.5,23.03 28.5,21 C 28.5,18.59 27.17,16.5 25.22,15.38 C 25.71,14.71 26,13.89 26,13 C 26,10.79 24.21,9 22,9 z"/><path d="M 11.5,37 L 32.5,37 M 11.5,34 L 32.5,34 M 15.5,25.5 L 28.5,25.5" fill="none"/></g></svg>',
+    'p': '<svg viewBox="0 0 45 45"><g fill="#202020" stroke="#111111" stroke-width="1.5" stroke-linecap="round"><path d="M 22,9 C 19.79,9 18,10.79 18,13 C 18,13.89 18.29,14.71 18.78,15.38 C 16.83,16.5 15.5,18.59 15.5,21 C 15.5,23.03 16.44,24.84 17.91,26.03 C 14.91,27.09 10.5,31.58 10.5,39.5 L 33.5,39.5 C 33.5,31.58 29.09,27.09 26.09,26.03 C 27.56,24.84 28.5,23.03 28.5,21 C 28.5,18.59 27.17,16.5 25.22,15.38 C 25.71,14.71 26,13.89 26,13 C 26,10.79 24.21,9 22,9 z"/><path d="M 11.5,37 L 32.5,37 M 11.5,34 L 32.5,34 M 15.5,25.5 L 28.5,25.5" stroke="#ffffff" fill="none"/></g></svg>',
+    'R': '<svg viewBox="0 0 45 45"><g fill="#ffffff" stroke="#111111" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M 9,39 L 36,39 L 36,36 L 9,36 z M 12,36 L 12,32 L 33,32 L 33,36 z M 11,14 L 11,9 L 15,9 L 15,11 L 20,11 L 20,9 L 25,9 L 25,11 L 30,11 L 30,9 L 34,9 L 34,14 z M 34,14 L 31,17 L 14,17 L 11,14 z M 31,17 L 31,29.5 L 14,29.5 L 14,17 z M 11,29.5 L 34,29.5 L 34,32 L 11,32 z"/><path d="M 11,14 L 34,14 M 14,17 L 31,17 M 14,29.5 L 31,29.5 M 11,32 L 34,32 M 12,36 L 33,36" fill="none"/></g></svg>',
+    'r': '<svg viewBox="0 0 45 45"><g fill="#202020" stroke="#111111" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M 9,39 L 36,39 L 36,36 L 9,36 z M 12,36 L 12,32 L 33,32 L 33,36 z M 11,14 L 11,9 L 15,9 L 15,11 L 20,11 L 20,9 L 25,9 L 25,11 L 30,11 L 30,9 L 34,9 L 34,14 z M 34,14 L 31,17 L 14,17 L 11,14 z M 31,17 L 31,29.5 L 14,29.5 L 14,17 z M 11,29.5 L 34,29.5 L 34,32 L 11,32 z"/><path d="M 11,14 L 34,14 M 14,17 L 31,17 M 14,29.5 L 31,29.5 M 11,32 L 34,32 M 12,36 L 33,36" stroke="#ffffff" fill="none"/></g></svg>',
+    'N': '<svg viewBox="0 0 45 45"><g fill="#ffffff" stroke="#111111" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M 22,10 C 32.5,11 38.5,18 38,39 L 15,39 C 15,30 25,32.5 23,18 C 23,18 20,22 15,21 C 12.5,20.5 8.5,17.5 10,13 C 11.5,8.5 18,8.5 22,10 z"/><path d="M 24,18 C 24.38,20.91 18.45,25.37 16,27 C 13,29 13.18,31.34 11,31 C 9.958,30.06 12.41,27.96 11,28 C 10,28 11.19,29.23 10,30 C 9,30 5.997,31 6,26 C 6,24 12,14 12,14 C 12,14 13.89,12.1 14,10.5 C 13.27,9.506 13.5,8.5 13.5,8.5 C 14.5,10 16.5,10 16.5,10 C 18.5,10 18.77,11.36 18.5,12.5 C 19.5,12 21.5,11.5 22,10.5 M 12.5,11 C 12.5,11 13.25,12.25 12,13 C 10.75,13.75 11,15 11,15" fill="none"/></g></svg>',
+    'n': '<svg viewBox="0 0 45 45"><g fill="#202020" stroke="#111111" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M 22,10 C 32.5,11 38.5,18 38,39 L 15,39 C 15,30 25,32.5 23,18 C 23,18 20,22 15,21 C 12.5,20.5 8.5,17.5 10,13 C 11.5,8.5 18,8.5 22,10 z"/><path d="M 24,18 C 24.38,20.91 18.45,25.37 16,27 C 13,29 13.18,31.34 11,31 C 9.958,30.06 12.41,27.96 11,28 C 10,28 11.19,29.23 10,30 C 9,30 5.997,31 6,26 C 6,24 12,14 12,14 C 12,14 13.89,12.1 14,10.5 C 13.27,9.506 13.5,8.5 13.5,8.5 C 14.5,10 16.5,10 16.5,10 C 18.5,10 18.77,11.36 18.5,12.5 C 19.5,12 21.5,11.5 22,10.5 M 12.5,11 C 12.5,11 13.25,12.25 12,13 C 10.75,13.75 11,15 11,15" stroke="#ffffff" fill="none"/></g></svg>',
+    'B': '<svg viewBox="0 0 45 45"><g fill="none" stroke="#111111" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><g fill="#ffffff"><path d="M 9,36 C 12.39,35.03 19.11,36.43 22.5,34 C 25.89,36.43 32.61,35.03 36,36 C 36,36 37.65,36.54 39,38 C 38.32,38.97 37.35,38.99 36,38.5 C 32.61,37.53 25.89,38.96 22.5,36.5 C 19.11,38.96 12.39,37.53 9,38.5 C 7.65,38.99 6.68,38.97 6,38 C 7.35,36.54 9,36 9,36 z"/><path d="M 15,32 C 17.5,34.5 27.5,34.5 30,32 C 30.5,30.5 30,28 30,28 C 27.5,27.5 17.5,27.5 15,28 C 15,28 14.5,30.5 15,32 z"/><path d="M 25 8 A 2.5 2.5 0 1 1  20,8 A 2.5 2.5 0 1 1  25 8 z"/><path d="M 17.5,26 C 17.5,26 15,15.5 22.5,10 C 30,15.5 27.5,26 27.5,26 C 27.5,26 25.5,27.5 22.5,27.5 C 19.5,27.5 17.5,26 17.5,26 z"/></g><path d="M 20,12 L 20,16 M 18,14 L 22,14" stroke-linejoin="miter"/><path d="M 15,28 L 30,28 M 15,32 L 30,32 M 9,36 L 36,36"/></g></svg>',
+    'b': '<svg viewBox="0 0 45 45"><g fill="none" stroke="#111111" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><g fill="#202020"><path d="M 9,36 C 12.39,35.03 19.11,36.43 22.5,34 C 25.89,36.43 32.61,35.03 36,36 C 36,36 37.65,36.54 39,38 C 38.32,38.97 37.35,38.99 36,38.5 C 32.61,37.53 25.89,38.96 22.5,36.5 C 19.11,38.96 12.39,37.53 9,38.5 C 7.65,38.99 6.68,38.97 6,38 C 7.35,36.54 9,36 9,36 z"/><path d="M 15,32 C 17.5,34.5 27.5,34.5 30,32 C 30.5,30.5 30,28 30,28 C 27.5,27.5 17.5,27.5 15,28 C 15,28 14.5,30.5 15,32 z"/><path d="M 25 8 A 2.5 2.5 0 1 1  20,8 A 2.5 2.5 0 1 1  25 8 z"/><path d="M 17.5,26 C 17.5,26 15,15.5 22.5,10 C 30,15.5 27.5,26 27.5,26 C 27.5,26 25.5,27.5 22.5,27.5 C 19.5,27.5 17.5,26 17.5,26 z"/></g><path d="M 20,12 L 20,16 M 18,14 L 22,14" stroke="#ffffff" stroke-linejoin="miter"/><path d="M 15,28 L 30,28 M 15,32 L 30,32 M 9,36 L 36,36" stroke="#ffffff"/></g></svg>',
+    'Q': '<svg viewBox="0 0 45 45"><g fill="#ffffff" stroke="#111111" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M 9,26 C 17.5,24.5 30,24.5 36,26 C 36,26 38,13.5 36,13 C 33,13 32,22 30,22 C 28,22 26,10 22.5,10 C 19,10 17,22 15,22 C 13,22 12,13 9,13 C 7,13.5 9,26 9,26 z"/><path d="M 9,26 C 9,28 10.5,28 11.5,30 C 12.5,31.5 12.5,33 12.5,33 C 12.5,33 12.5,35 12,36 C 11.5,37 11.5,38 12,38 C 12.5,38 13.5,38 14.5,38 C 15.5,38 16.5,38 17.5,38 C 18.5,38 19.5,38 20.5,38 C 21.5,38 22.5,38 23.5,38 C 24.5,38 25.5,38 26.5,38 C 27.5,38 28.5,38 29.5,38 C 30.5,38 31.5,38 32.5,38 C 33,38 33.5,37 33,36 C 32.5,35 32.5,33 32.5,33 C 32.5,33 32.5,31.5 33.5,30 C 34.5,28 36,28 36,26"/><path d="M 11.5,30 C 15,29 30,29 34.5,30"/><circle cx="6" cy="12" r="2"/><circle cx="14" cy="9" r="2"/><circle cx="22.5" cy="8" r="2"/><circle cx="31" cy="9" r="2"/><circle cx="39" cy="12" r="2"/><path d="M 12,36 L 33,36 M 12.5,33 L 32.5,33" fill="none"/></g></svg>',
+    'q': '<svg viewBox="0 0 45 45"><g fill="#202020" stroke="#111111" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M 9,26 C 17.5,24.5 30,24.5 36,26 C 36,26 38,13.5 36,13 C 33,13 32,22 30,22 C 28,22 26,10 22.5,10 C 19,10 17,22 15,22 C 13,22 12,13 9,13 C 7,13.5 9,26 9,26 z"/><path d="M 9,26 C 9,28 10.5,28 11.5,30 C 12.5,31.5 12.5,33 12.5,33 C 12.5,33 12.5,35 12,36 C 11.5,37 11.5,38 12,38 C 12.5,38 13.5,38 14.5,38 C 15.5,38 16.5,38 17.5,38 C 18.5,38 19.5,38 20.5,38 C 21.5,38 22.5,38 23.5,38 C 24.5,38 25.5,38 26.5,38 C 27.5,38 28.5,38 29.5,38 C 30.5,38 31.5,38 32.5,38 C 33,38 33.5,37 33,36 C 32.5,35 32.5,33 32.5,33 C 32.5,33 32.5,31.5 33.5,30 C 34.5,28 36,28 36,26"/><path d="M 11.5,30 C 15,29 30,29 34.5,30"/><circle cx="6" cy="12" r="2"/><circle cx="14" cy="9" r="2"/><circle cx="22.5" cy="8" r="2"/><circle cx="31" cy="9" r="2"/><circle cx="39" cy="12" r="2"/><path d="M 12,36 L 33,36 M 12.5,33 L 32.5,33 M 11.5,30 C 15,29 30,29 34.5,30" stroke="#ffffff" fill="none"/></g></svg>',
+    'K': '<svg viewBox="0 0 45 45"><g fill="none" stroke="#111111" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><g fill="#ffffff"><path d="M 22.5,11.63 L 22.5,6 M 20,8 L 25,8"/><path d="M 22.5,25 C 22.5,25 27,17.5 25.5,14.5 C 24,11.5 21,11.5 19.5,14.5 C 18,17.5 22.5,25 22.5,25 z"/><path d="M 11.5,37 C 17,35.5 28,35.5 33.5,37 C 34.5,38 33,39 31.5,39 C 28.5,39 16.5,39 13.5,39 C 12,39 10.5,38 11.5,37 z"/><path d="M 11.5,30 C 15,29 30,29 34.5,30 C 34.5,30 35.5,31.5 34.5,33 C 33.5,34.5 32.5,35 32.5,35 C 32.5,35 12.5,35 12.5,35 C 12.5,35 11.5,34.5 10.5,33 C 9.5,31.5 10.5,30 11.5,30 z"/><path d="M 12.5,21 C 12.5,21 17.5,20 22.5,22 C 27.5,20 32.5,21 32.5,21 C 32.5,21 34.5,22.5 34.5,25 C 34.5,27.5 32.5,28.5 32.5,28.5 L 12.5,28.5 C 12.5,28.5 10.5,27.5 10.5,25 C 10.5,22.5 12.5,21 12.5,21 z"/></g><path d="M 12.5,35 L 32.5,35 M 11.5,37 L 33.5,37"/></g></svg>',
+    'k': '<svg viewBox="0 0 45 45"><g fill="none" stroke="#111111" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><g fill="#202020"><path d="M 22.5,11.63 L 22.5,6 M 20,8 L 25,8"/><path d="M 22.5,25 C 22.5,25 27,17.5 25.5,14.5 C 24,11.5 21,11.5 19.5,14.5 C 18,17.5 22.5,25 22.5,25 z"/><path d="M 11.5,37 C 17,35.5 28,35.5 33.5,37 C 34.5,38 33,39 31.5,39 C 28.5,39 16.5,39 13.5,39 C 12,39 10.5,38 11.5,37 z"/><path d="M 11.5,30 C 15,29 30,29 34.5,30 C 34.5,30 35.5,31.5 34.5,33 C 33.5,34.5 32.5,35 32.5,35 C 32.5,35 12.5,35 12.5,35 C 12.5,35 11.5,34.5 10.5,33 C 9.5,31.5 10.5,30 11.5,30 z"/><path d="M 12.5,21 C 12.5,21 17.5,20 22.5,22 C 27.5,20 32.5,21 32.5,21 C 32.5,21 34.5,22.5 34.5,25 C 34.5,27.5 32.5,28.5 32.5,28.5 L 12.5,28.5 C 12.5,28.5 10.5,27.5 10.5,25 C 10.5,22.5 12.5,21 12.5,21 z"/></g><path d="M 12.5,35 L 32.5,35 M 11.5,37 L 33.5,37" stroke="#ffffff"/></g></svg>'
   };
 
   const pieceImages = {};
+  let imagesLoaded = 0;
   function preloadPieceImages() {
-    const types = ['P', 'R', 'N', 'B', 'Q', 'K'];
-    types.forEach(t => {
-      // White Pieces (순백색 fill)
-      const wSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45">${rawSVGs[t].replaceAll('FILL', '#ffffff').replaceAll('STROKE', '#1a1a1a')}</svg>`;
-      const wImg = new Image();
-      wImg.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(wSvg);
-      wImg.onload = () => drawBoard();
-      pieceImages[t] = wImg;
-
-      // Black Pieces (선명한 다크 그레이 fill)
-      const bSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45">${rawSVGs[t].replaceAll('FILL', '#3b3a36').replaceAll('STROKE', '#1a1a1a')}</svg>`;
-      const bImg = new Image();
-      bImg.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(bSvg);
-      bImg.onload = () => drawBoard();
-      pieceImages[t.toLowerCase()] = bImg;
-    });
+    for (const [key, svgStr] of Object.entries(pieceSVGs)) {
+      const img = new Image();
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgStr);
+      img.onload = () => {
+        imagesLoaded++;
+        if(imagesLoaded === 12) drawBoard();
+      };
+      pieceImages[key] = img;
+    }
   }
   preloadPieceImages();
 
   const canvas = document.getElementById('chessCanvas');
   const ctx = canvas.getContext('2d');
-  const TILE_SIZE = 60;
+  const TILE_SIZE = 70; // 크기를 키워 해상도 대폭 상향
 
   let board = [];
   let turn = 'w'; 
@@ -219,17 +197,13 @@
   let currentGameMode = 'ai';
   let myColor = 'w';
 
-  let hasMoved = {
-    wK: false, wRa: false, wRh: false,
-    bK: false, bRa: false, bRh: false
-  };
+  let hasMoved = { wK: false, wRa: false, wRh: false, bK: false, bRa: false, bRh: false };
   let enPassantTarget = null;
   let pendingPromoMove = null;
 
   let peer = null;
   let conn = null;
   let pingTimer = null;
-  let currentPing = 0;
 
   const pieceValues = { 'p': 10, 'n': 30, 'b': 30, 'r': 50, 'q': 90, 'k': 900 };
 
@@ -255,34 +229,20 @@
       ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
       ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
     ];
-    turn = 'w';
-    selectedCoord = null;
-    validMoves = [];
-    gameOver = false;
+    turn = 'w'; selectedCoord = null; validMoves = []; gameOver = false;
     hasMoved = { wK: false, wRa: false, wRh: false, bK: false, bRa: false, bRh: false };
-    enPassantTarget = null;
-    pendingPromoMove = null;
+    enPassantTarget = null; pendingPromoMove = null;
 
-    closeModal('overModal');
-    closeModal('promoModal');
-
-    if (currentGameMode === 'p2p' && sendNetworkSync && conn && conn.open) {
-      conn.send({ type: 'RESET' });
-    }
-
-    updateStatusUI();
-    drawBoard();
+    closeModal('overModal'); closeModal('promoModal');
+    if (currentGameMode === 'p2p' && sendNetworkSync && conn && conn.open) conn.send({ type: 'RESET' });
+    updateStatusUI(); drawBoard();
   }
 
   function resetGame() { initGame(true); }
 
   function findKing(color, b) {
     const target = (color === 'w') ? 'K' : 'k';
-    for (let r = 0; r < 8; r++) {
-      for (let c = 0; c < 8; c++) {
-        if (b[r][c] === target) return { r, c };
-      }
-    }
+    for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) if (b[r][c] === target) return { r, c };
     return null;
   }
 
@@ -304,7 +264,6 @@
     if (!piece) return [];
     const color = getColor(piece);
     const moves = [];
-
     const addLinear = (dirs) => {
       for (let d of dirs) {
         let nr = r + d[0], nc = c + d[1];
@@ -319,88 +278,50 @@
         }
       }
     };
-
     const type = piece.toLowerCase();
     if (type === 'p') {
       let dir = (color === 'w') ? -1 : 1;
       let startRow = (color === 'w') ? 6 : 1;
       let nr = r + dir;
-
       if (nr >= 0 && nr < 8 && b[nr][c] === '') {
         moves.push({ r: nr, c: c });
         let doubleNr = r + dir * 2;
-        if (r === startRow && b[doubleNr][c] === '') {
-          moves.push({ r: doubleNr, c: c, isDoublePawn: true });
-        }
+        if (r === startRow && b[doubleNr][c] === '') moves.push({ r: doubleNr, c: c, isDoublePawn: true });
       }
       for (let dc of [-1, 1]) {
         let nc = c + dc;
         if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
           let target = b[nr][nc];
-          if (target !== '' && getColor(target) !== color) {
-            moves.push({ r: nr, c: nc });
-          }
-          if (enPassantTarget && enPassantTarget.r === nr && enPassantTarget.c === nc) {
-            moves.push({ r: nr, c: nc, isEnPassant: true });
-          }
+          if (target !== '' && getColor(target) !== color) moves.push({ r: nr, c: nc });
+          if (enPassantTarget && enPassantTarget.r === nr && enPassantTarget.c === nc) moves.push({ r: nr, c: nc, isEnPassant: true });
         }
       }
     } else if (type === 'n') {
       const offsets = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
       for (let o of offsets) {
         let nr = r + o[0], nc = c + o[1];
-        if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
-          if (getColor(b[nr][nc]) !== color) moves.push({ r: nr, c: nc });
-        }
+        if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8 && getColor(b[nr][nc]) !== color) moves.push({ r: nr, c: nc });
       }
-    } else if (type === 'b') {
-      addLinear([[-1,-1],[-1,1],[1,-1],[1,1]]);
-    } else if (type === 'r') {
-      addLinear([[-1,0],[1,0],[0,-1],[0,1]]);
-    } else if (type === 'q') {
-      addLinear([[-1,-1],[-1,1],[1,-1],[1,1],[-1,0],[1,0],[0,-1],[0,1]]);
-    } else if (type === 'k') {
+    } else if (type === 'b') addLinear([[-1,-1],[-1,1],[1,-1],[1,1]]);
+    else if (type === 'r') addLinear([[-1,0],[1,0],[0,-1],[0,1]]);
+    else if (type === 'q') addLinear([[-1,-1],[-1,1],[1,-1],[1,1],[-1,0],[1,0],[0,-1],[0,1]]);
+    else if (type === 'k') {
       const offsets = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
       for (let o of offsets) {
         let nr = r + o[0], nc = c + o[1];
-        if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
-          if (getColor(b[nr][nc]) !== color) moves.push({ r: nr, c: nc });
-        }
+        if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8 && getColor(b[nr][nc]) !== color) moves.push({ r: nr, c: nc });
       }
-
       if (includeCastling && !isInCheck(color, b)) {
         if (color === 'w' && r === 7 && c === 4) {
-          if (!hasMoved.wK && !hasMoved.wRh && b[7][5] === '' && b[7][6] === '') {
-            if (!isSquareAttacked(7, 5, 'w', b) && !isSquareAttacked(7, 6, 'w', b)) {
-              moves.push({ r: 7, c: 6, isCastling: 'ks' });
-            }
-          }
-          if (!hasMoved.wK && !hasMoved.wRa && b[7][1] === '' && b[7][2] === '' && b[7][3] === '') {
-            if (!isSquareAttacked(7, 2, 'w', b) && !isSquareAttacked(7, 3, 'w', b)) {
-              moves.push({ r: 7, c: 2, isCastling: 'qs' });
-            }
-          }
+          if (!hasMoved.wK && !hasMoved.wRh && b[7][5] === '' && b[7][6] === '' && !isSquareAttacked(7, 5, 'w', b) && !isSquareAttacked(7, 6, 'w', b)) moves.push({ r: 7, c: 6, isCastling: 'ks' });
+          if (!hasMoved.wK && !hasMoved.wRa && b[7][1] === '' && b[7][2] === '' && b[7][3] === '' && !isSquareAttacked(7, 2, 'w', b) && !isSquareAttacked(7, 3, 'w', b)) moves.push({ r: 7, c: 2, isCastling: 'qs' });
         } else if (color === 'b' && r === 0 && c === 4) {
-          if (!hasMoved.bK && !hasMoved.bRh && b[0][5] === '' && b[0][6] === '') {
-            if (!isSquareAttacked(0, 5, 'b', b) && !isSquareAttacked(0, 6, 'b', b)) {
-              moves.push({ r: 0, c: 6, isCastling: 'ks' });
-            }
-          }
-          if (!hasMoved.bK && !hasMoved.bRa && b[0][1] === '' && b[0][2] === '' && b[0][3] === '') {
-            if (!isSquareAttacked(0, 2, 'b', b) && !isSquareAttacked(0, 3, 'b', b)) {
-              moves.push({ r: 0, c: 2, isCastling: 'qs' });
-            }
-          }
+          if (!hasMoved.bK && !hasMoved.bRh && b[0][5] === '' && b[0][6] === '' && !isSquareAttacked(0, 5, 'b', b) && !isSquareAttacked(0, 6, 'b', b)) moves.push({ r: 0, c: 6, isCastling: 'ks' });
+          if (!hasMoved.bK && !hasMoved.bRa && b[0][1] === '' && b[0][2] === '' && b[0][3] === '' && !isSquareAttacked(0, 2, 'b', b) && !isSquareAttacked(0, 3, 'b', b)) moves.push({ r: 0, c: 2, isCastling: 'qs' });
         }
       }
     }
     return moves;
-  }
-
-  function isInCheck(color, b) {
-    const kingPos = findKing(color, b);
-    if (!kingPos) return false;
-    return isSquareAttacked(kingPos.r, kingPos.c, color, b);
   }
 
   function getLegalMoves(r, c, b) {
@@ -409,21 +330,12 @@
     const color = getColor(piece);
     const pseudo = getPseudoLegalMoves(r, c, b, true);
     const legal = [];
-
     for (let m of pseudo) {
       let tempBoard = cloneBoard(b);
-      
-      if (m.isEnPassant && enPassantTarget) {
-        tempBoard[enPassantTarget.pawnR][enPassantTarget.pawnC] = '';
-      }
-      
+      if (m.isEnPassant && enPassantTarget) tempBoard[enPassantTarget.pawnR][enPassantTarget.pawnC] = '';
       tempBoard[m.r][m.c] = tempBoard[r][c];
       tempBoard[r][c] = '';
-
-      if (piece.toLowerCase() === 'p' && (m.r === 0 || m.r === 7)) {
-        tempBoard[m.r][m.c] = (color === 'w') ? 'Q' : 'q';
-      }
-
+      if (piece.toLowerCase() === 'p' && (m.r === 0 || m.r === 7)) tempBoard[m.r][m.c] = (color === 'w') ? 'Q' : 'q';
       if (!isInCheck(color, tempBoard)) legal.push(m);
     }
     return legal;
@@ -445,18 +357,22 @@
   function drawBoard() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const flipped = isBoardFlipped();
+    
+    // 체스닷컴 공식 보드 컬러
+    const lightColor = '#ebecd0';
+    const darkColor = '#739552';
+    const highlightColor = 'rgba(255, 255, 51, 0.5)';
+    const checkColor = 'rgba(235, 97, 80, 0.8)';
 
-    // 체스닷컴 스타일 보드 타일 색상
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
         let drawR = flipped ? 7 - r : r;
         let drawC = flipped ? 7 - c : c;
-
-        ctx.fillStyle = ((r + c) % 2 === 0) ? '#ebeed0' : '#769656';
+        ctx.fillStyle = ((r + c) % 2 === 0) ? lightColor : darkColor;
         ctx.fillRect(drawC * TILE_SIZE, drawR * TILE_SIZE, TILE_SIZE, TILE_SIZE);
 
         if (selectedCoord && selectedCoord.r === r && selectedCoord.c === c) {
-          ctx.fillStyle = 'rgba(255, 255, 0, 0.45)';
+          ctx.fillStyle = highlightColor;
           ctx.fillRect(drawC * TILE_SIZE, drawR * TILE_SIZE, TILE_SIZE, TILE_SIZE);
         }
       }
@@ -467,7 +383,7 @@
       if (kp) {
         let drawR = flipped ? 7 - kp.r : kp.r;
         let drawC = flipped ? 7 - kp.c : kp.c;
-        ctx.fillStyle = 'rgba(255, 0, 0, 0.45)';
+        ctx.fillStyle = checkColor;
         ctx.fillRect(drawC * TILE_SIZE, drawR * TILE_SIZE, TILE_SIZE, TILE_SIZE);
       }
     }
@@ -475,20 +391,27 @@
     for (let m of validMoves) {
       let drawR = flipped ? 7 - m.r : m.r;
       let drawC = flipped ? 7 - m.c : m.c;
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
       ctx.beginPath();
-      ctx.arc(drawC * TILE_SIZE + TILE_SIZE / 2, drawR * TILE_SIZE + TILE_SIZE / 2, 10, 0, Math.PI * 2);
+      ctx.arc(drawC * TILE_SIZE + TILE_SIZE / 2, drawR * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE * 0.18, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // 선명한 벡터 SVG 기물 그리기
+    // 프리미엄 기물 렌더링 (그림자 효과 포함)
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
         let piece = board[r][c];
         if (piece && pieceImages[piece]) {
           let drawR = flipped ? 7 - r : r;
           let drawC = flipped ? 7 - c : c;
-          ctx.drawImage(pieceImages[piece], drawC * TILE_SIZE + 3, drawR * TILE_SIZE + 3, TILE_SIZE - 6, TILE_SIZE - 6);
+          
+          ctx.save();
+          // 입체감 있는 드롭 섀도우 추가
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+          ctx.shadowBlur = 4;
+          ctx.shadowOffsetY = 3;
+          ctx.drawImage(pieceImages[piece], drawC * TILE_SIZE, drawR * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+          ctx.restore();
         }
       }
     }
@@ -496,7 +419,6 @@
 
   canvas.addEventListener('click', (e) => {
     if (gameOver) return;
-
     if (currentGameMode === 'p2p') {
       if (!conn || !conn.open) return alert("상대방과 연결되지 않았습니다.");
       if (turn !== myColor) return;
@@ -519,14 +441,10 @@
       let piece = board[selectedCoord.r][selectedCoord.c];
       if (piece.toLowerCase() === 'p' && (r === 0 || r === 7)) {
         pendingPromoMove = { fromR: selectedCoord.r, fromC: selectedCoord.c, moveObj: moveFound };
-        if (currentGameMode === 'ai' && turn === 'b') {
-          executeMove(selectedCoord.r, selectedCoord.c, moveFound, 'q', false);
-        } else {
-          document.getElementById('promoModal').style.display = 'flex';
-        }
+        if (currentGameMode === 'ai' && turn === 'b') executeMove(selectedCoord.r, selectedCoord.c, moveFound, 'q', false);
+        else document.getElementById('promoModal').style.display = 'flex';
         return;
       }
-
       executeMove(selectedCoord.r, selectedCoord.c, moveFound, null, false);
       return;
     }
@@ -535,12 +453,9 @@
     if (piece && getColor(piece) === turn) {
       selectedCoord = { r, c };
       validMoves = getLegalMoves(r, c, board);
-      playSound('move');
-      drawBoard();
+      playSound('move'); drawBoard();
     } else {
-      selectedCoord = null;
-      validMoves = [];
-      drawBoard();
+      selectedCoord = null; validMoves = []; drawBoard();
     }
   });
 
@@ -553,64 +468,37 @@
   }
 
   function executeMove(fromR, fromC, moveObj, promoPiece = null, isRemote = false) {
-    let toR = moveObj.r;
-    let toC = moveObj.c;
+    let toR = moveObj.r, toC = moveObj.c;
     let target = board[toR][toC];
     let piece = board[fromR][fromC];
     let isCapture = target !== '';
 
-    if (moveObj.isEnPassant && enPassantTarget) {
-      board[enPassantTarget.pawnR][enPassantTarget.pawnC] = '';
-      isCapture = true;
-    }
-
+    if (moveObj.isEnPassant && enPassantTarget) { board[enPassantTarget.pawnR][enPassantTarget.pawnC] = ''; isCapture = true; }
     if (moveObj.isCastling) {
-      if (moveObj.isCastling === 'ks') {
-        board[toR][5] = board[toR][7]; board[toR][7] = '';
-      } else if (moveObj.isCastling === 'qs') {
-        board[toR][3] = board[toR][0]; board[toR][0] = '';
-      }
+      if (moveObj.isCastling === 'ks') { board[toR][5] = board[toR][7]; board[toR][7] = ''; }
+      else if (moveObj.isCastling === 'qs') { board[toR][3] = board[toR][0]; board[toR][0] = ''; }
     }
 
-    board[toR][toC] = piece;
-    board[fromR][fromC] = '';
-
+    board[toR][toC] = piece; board[fromR][fromC] = '';
     if (piece.toLowerCase() === 'p' && (toR === 0 || toR === 7)) {
       let choice = promoPiece ? promoPiece : 'Q';
       board[toR][toC] = (getColor(piece) === 'w') ? choice.toUpperCase() : choice.toLowerCase();
     }
 
-    if (piece === 'K') hasMoved.wK = true;
-    if (piece === 'k') hasMoved.bK = true;
-    if (fromR === 7 && fromC === 0) hasMoved.wRa = true;
-    if (fromR === 7 && fromC === 7) hasMoved.wRh = true;
-    if (fromR === 0 && fromC === 0) hasMoved.bRa = true;
-    if (fromR === 0 && fromC === 7) hasMoved.bRh = true;
+    if (piece === 'K') hasMoved.wK = true; if (piece === 'k') hasMoved.bK = true;
+    if (fromR === 7 && fromC === 0) hasMoved.wRa = true; if (fromR === 7 && fromC === 7) hasMoved.wRh = true;
+    if (fromR === 0 && fromC === 0) hasMoved.bRa = true; if (fromR === 0 && fromC === 7) hasMoved.bRh = true;
 
-    if (moveObj.isDoublePawn) {
-      enPassantTarget = {
-        r: (fromR + toR) / 2, c: fromC,
-        pawnR: toR, pawnC: toC
-      };
-    } else {
-      enPassantTarget = null;
-    }
+    enPassantTarget = moveObj.isDoublePawn ? { r: (fromR + toR) / 2, c: fromC, pawnR: toR, pawnC: toC } : null;
+    selectedCoord = null; validMoves = [];
 
-    selectedCoord = null;
-    validMoves = [];
-
-    if (isCapture) playSound('capture');
-    else playSound('move');
-
-    if (currentGameMode === 'p2p' && !isRemote && conn && conn.open) {
-      conn.send({ type: 'MOVE', fromR, fromC, moveObj, promoPiece });
-    }
+    if (isCapture) playSound('capture'); else playSound('move');
+    if (currentGameMode === 'p2p' && !isRemote && conn && conn.open) conn.send({ type: 'MOVE', fromR, fromC, moveObj, promoPiece });
 
     turn = (turn === 'w') ? 'b' : 'w';
     drawBoard();
 
     if (checkGameState()) return;
-
     if (currentGameMode === 'ai' && turn === 'b') {
       document.getElementById('statusText').innerText = "컴퓨터 AI 수 계산 중...";
       setTimeout(runAITurn, 400);
@@ -623,174 +511,82 @@
 
     if (legalMoves.length === 0) {
       gameOver = true;
-      if (checked) {
-        const winner = (turn === 'w') ? "흑색 (Black)" : "백색 (White)";
-        const isIWin = (currentGameMode === 'p2p') ? (turn !== myColor) : (turn === 'b');
-        playSound(isIWin ? 'win' : 'lose');
-        showEndModal(`🏆 체크메이트! ${winner} 승리!`, isIWin ? "#4dadf7" : "#ff6b6b");
-      } else {
-        playSound('draw');
-        showEndModal("🤝 스테일메이트 (무승부)", "#777");
-      }
+      if (checked) showEndModal(`🏆 체크메이트! ${(turn === 'w') ? "Black" : "White"} 승리!`);
+      else showEndModal("🤝 스테일메이트 (무승부)");
       return true;
     }
-
-    if (checked) {
-      playSound('check');
-      const side = (turn === 'w') ? "백색" : "흑색";
-      document.getElementById('statusText').innerText = `🚨 ${side} 체크! 킹을 보호하세요!`;
-    } else {
-      updateStatusUI();
-    }
+    if (checked) { playSound('check'); document.getElementById('statusText').innerText = `🚨 ${(turn === 'w') ? "백색" : "흑색"} 체크!`; } 
+    else updateStatusUI();
     return false;
   }
 
   function updateStatusUI() {
     const statusEl = document.getElementById('statusText');
-    if (currentGameMode === 'ai') {
-      statusEl.innerText = (turn === 'w') ? "당신의 차례입니다 (White ♔)" : "컴퓨터 생각 중...";
-    } else if (currentGameMode === 'local') {
-      statusEl.innerText = (turn === 'w') ? "백색 턴 (White ♔)" : "흑색 턴 (Black ♚)";
-    } else if (currentGameMode === 'p2p') {
-      if (!conn || !conn.open) {
-        statusEl.innerText = "📡 P2P 연결 대기 중...";
-      } else if (turn === myColor) {
-        statusEl.innerText = `당신의 차례입니다 (${myColor === 'w' ? 'White ♔' : 'Black ♚'})`;
-      } else {
-        statusEl.innerText = `상대방 차례입니다 (${turn === 'w' ? 'White ♔' : 'Black ♚'})`;
-      }
+    if (currentGameMode === 'ai') statusEl.innerText = (turn === 'w') ? "당신의 차례입니다 (White ♔)" : "컴퓨터 생각 중...";
+    else if (currentGameMode === 'local') statusEl.innerText = (turn === 'w') ? "백색 턴 (White ♔)" : "흑색 턴 (Black ♚)";
+    else if (currentGameMode === 'p2p') {
+      if (!conn || !conn.open) statusEl.innerText = "📡 P2P 연결 대기 중...";
+      else statusEl.innerText = (turn === myColor) ? `당신의 차례입니다 (${myColor === 'w' ? 'White ♔' : 'Black ♚'})` : `상대방 차례입니다 (${turn === 'w' ? 'White ♔' : 'Black ♚'})`;
     }
   }
 
   function disconnectP2P() {
     if (pingTimer) clearInterval(pingTimer);
-    if (conn) conn.close();
-    if (peer) peer.destroy();
-    conn = null; peer = null;
-    document.getElementById("ping-display").innerText = "";
+    if (conn) conn.close(); if (peer) peer.destroy();
+    conn = null; peer = null; document.getElementById("ping-display").innerText = "";
   }
 
   function setupConnectionEvents() {
-    conn.on('open', () => {
-      closeModal('p2pModal');
-      alert("✅ 상대방과 연결되었습니다! 게임을 시작합니다.");
-      resetGame();
-      startHeartbeat();
-    });
-
+    conn.on('open', () => { closeModal('p2pModal'); alert("✅ 상대방과 연결되었습니다!"); resetGame(); startHeartbeat(); });
     conn.on('data', (data) => {
-      if (data.type === 'MOVE') {
-        executeMove(data.fromR, data.fromC, data.moveObj, data.promoPiece, true);
-      } else if (data.type === 'RESET') {
-        initGame(false);
-      } else if (data.type === 'PING') {
-        conn.send({ type: 'PONG', time: data.time });
-      } else if (data.type === 'PONG') {
-        currentPing = Date.now() - data.time;
-        document.getElementById("ping-display").innerText = `📶 ${currentPing}ms`;
-      }
+      if (data.type === 'MOVE') executeMove(data.fromR, data.fromC, data.moveObj, data.promoPiece, true);
+      else if (data.type === 'RESET') initGame(false);
+      else if (data.type === 'PING') conn.send({ type: 'PONG', time: data.time });
+      else if (data.type === 'PONG') document.getElementById("ping-display").innerText = `📶 ${Date.now() - data.time}ms`;
     });
-
-    conn.on('close', () => {
-      alert("❌ 상대방과의 연결이 끊어졌습니다.");
-      disconnectP2P();
-      updateStatusUI();
-    });
+    conn.on('close', () => { alert("❌ 연결이 끊어졌습니다."); disconnectP2P(); updateStatusUI(); });
   }
 
   function startHeartbeat() {
     if (pingTimer) clearInterval(pingTimer);
-    pingTimer = setInterval(() => {
-      if (conn && conn.open) conn.send({ type: 'PING', time: Date.now() });
-    }, 1000);
+    pingTimer = setInterval(() => { if (conn && conn.open) conn.send({ type: 'PING', time: Date.now() }); }, 1000);
   }
 
   function handleCreateRoom() {
-    disconnectP2P();
-    myColor = 'w';
+    disconnectP2P(); myColor = 'w';
     const roomCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const btn = document.getElementById("btnCreateRoom");
-    btn.disabled = true; btn.innerText = "⏳ 서버 등록 중...";
-
-    peer = new Peer('minig-chess-' + roomCode);
-
-    peer.on('open', () => {
-      document.getElementById("roomCodeArea").style.display = "block";
-      document.getElementById("displayRoomCode").innerText = roomCode;
-      btn.style.display = "none";
-    });
-
-    peer.on('connection', (c) => {
-      conn = c;
-      setupConnectionEvents();
-    });
-
-    peer.on('error', (err) => {
-      alert("방 생성 오류: " + err.type);
-      btn.disabled = false; btn.innerText = "방 번호 생성";
-    });
+    const btn = document.getElementById("btnCreateRoom"); btn.disabled = true; btn.innerText = "⏳ 서버 등록 중...";
+    peer = new Peer('chess-premium-' + roomCode);
+    peer.on('open', () => { document.getElementById("roomCodeArea").style.display = "block"; document.getElementById("displayRoomCode").innerText = roomCode; btn.style.display = "none"; });
+    peer.on('connection', (c) => { conn = c; setupConnectionEvents(); });
+    peer.on('error', () => { alert("방 생성 오류"); btn.disabled = false; btn.innerText = "방 번호 생성"; });
   }
 
   function handleJoinRoom() {
     const roomCode = document.getElementById("inputRoomCode").value.trim();
     if (roomCode.length !== 6) return alert("6자리 방 번호를 올바르게 입력해주세요.");
-
-    disconnectP2P();
-    myColor = 'b';
-    const btn = document.getElementById("btnJoinRoom");
-    btn.disabled = true; btn.innerText = "⏳ 접속 중...";
-
+    disconnectP2P(); myColor = 'b';
+    const btn = document.getElementById("btnJoinRoom"); btn.disabled = true; btn.innerText = "⏳ 접속 중...";
     peer = new Peer();
-
-    peer.on('open', () => {
-      conn = peer.connect('minig-chess-' + roomCode);
-      setupConnectionEvents();
-    });
-
-    peer.on('error', (err) => {
-      alert("방을 찾을 수 없거나 연결 실패했습니다.");
-      btn.disabled = false; btn.innerText = "입장";
-    });
+    peer.on('open', () => { conn = peer.connect('chess-premium-' + roomCode); setupConnectionEvents(); });
+    peer.on('error', () => { alert("연결 실패"); btn.disabled = false; btn.innerText = "입장"; });
   }
 
   function switchGameMode() {
     currentGameMode = document.getElementById("modeSelect").value;
-    const diffBox = document.getElementById("aiDiffContainer");
-    const p2pBtn = document.getElementById("p2pSetupBtn");
-
-    if (currentGameMode === 'p2p') {
-      diffBox.style.display = "none";
-      p2pBtn.style.display = "inline-block";
-      openP2PModal();
-    } else {
-      diffBox.style.display = (currentGameMode === 'ai') ? "inline-block" : "none";
-      p2pBtn.style.display = "none";
-      disconnectP2P();
-      myColor = 'w';
-    }
+    const diffBox = document.getElementById("aiDiffContainer"), p2pBtn = document.getElementById("p2pSetupBtn");
+    if (currentGameMode === 'p2p') { diffBox.style.display = "none"; p2pBtn.style.display = "inline-block"; openP2PModal(); } 
+    else { diffBox.style.display = (currentGameMode === 'ai') ? "inline-block" : "none"; p2pBtn.style.display = "none"; disconnectP2P(); myColor = 'w'; }
     resetGame();
   }
 
-  function showEndModal(text, color) {
-    const title = document.getElementById("modalTitle");
-    title.innerText = text; title.style.color = color;
-    document.getElementById("overModal").style.display = "flex";
-  }
-
+  function showEndModal(text) { document.getElementById("modalTitle").innerText = text; document.getElementById("overModal").style.display = "flex"; }
   function openP2PModal() { document.getElementById("p2pModal").style.display = "flex"; }
   function closeModal(id) { document.getElementById(id).style.display = "none"; }
 
   function evaluateBoard(b) {
     let score = 0;
-    for (let r = 0; r < 8; r++) {
-      for (let c = 0; c < 8; c++) {
-        let p = b[r][c];
-        if (p) {
-          let val = pieceValues[p.toLowerCase()];
-          score += isBlack(p) ? val : -val;
-        }
-      }
-    }
+    for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) if (b[r][c]) score += isBlack(b[r][c]) ? pieceValues[b[r][c].toLowerCase()] : -pieceValues[b[r][c].toLowerCase()];
     return score;
   }
 
@@ -798,65 +594,39 @@
     if (gameOver) return;
     const diff = document.getElementById('diffSelect').value;
     const allMoves = getAllLegalMoves('b', board);
-
     if (allMoves.length === 0) return;
-
     let chosenMove = null;
 
-    if (diff === 'easy') {
-      chosenMove = allMoves[Math.floor(Math.random() * allMoves.length)];
-    } else if (diff === 'medium') {
-      let bestScore = -9999;
-      let bestMoves = [];
+    if (diff === 'easy') chosenMove = allMoves[Math.floor(Math.random() * allMoves.length)];
+    else if (diff === 'medium') {
+      let bestScore = -9999, bestMoves = [];
       for (let m of allMoves) {
-        let tempBoard = cloneBoard(board);
-        tempBoard[m.r][m.c] = tempBoard[m.fromR][m.fromC];
-        tempBoard[m.fromR][m.fromC] = '';
+        let tempBoard = cloneBoard(board); tempBoard[m.r][m.c] = tempBoard[m.fromR][m.fromC]; tempBoard[m.fromR][m.fromC] = '';
         let score = evaluateBoard(tempBoard);
-        if (score > bestScore) {
-          bestScore = score; bestMoves = [m];
-        } else if (score === bestScore) {
-          bestMoves.push(m);
-        }
+        if (score > bestScore) { bestScore = score; bestMoves = [m]; } else if (score === bestScore) bestMoves.push(m);
       }
       chosenMove = bestMoves[Math.floor(Math.random() * bestMoves.length)];
     } else {
       let bestScore = -9999;
       for (let m of allMoves) {
-        let tempBoard = cloneBoard(board);
-        tempBoard[m.r][m.c] = tempBoard[m.fromR][m.fromC];
-        tempBoard[m.fromR][m.fromC] = '';
-
-        let whiteMoves = getAllLegalMoves('w', tempBoard);
-        let minScore = 9999;
-        if (whiteMoves.length === 0) {
-          minScore = 10000; 
-        } else {
+        let tempBoard = cloneBoard(board); tempBoard[m.r][m.c] = tempBoard[m.fromR][m.fromC]; tempBoard[m.fromR][m.fromC] = '';
+        let whiteMoves = getAllLegalMoves('w', tempBoard), minScore = 9999;
+        if (whiteMoves.length === 0) minScore = 10000; 
+        else {
           for (let wm of whiteMoves) {
-            let tempBoard2 = cloneBoard(tempBoard);
-            tempBoard2[wm.r][wm.c] = tempBoard2[wm.fromR][wm.fromC];
-            tempBoard2[wm.fromR][wm.fromC] = '';
-            let score = evaluateBoard(tempBoard2);
-            if (score < minScore) minScore = score;
+            let tempBoard2 = cloneBoard(tempBoard); tempBoard2[wm.r][wm.c] = tempBoard2[wm.fromR][wm.fromC]; tempBoard2[wm.fromR][wm.fromC] = '';
+            let score = evaluateBoard(tempBoard2); if (score < minScore) minScore = score;
           }
         }
-
-        if (minScore > bestScore) {
-          bestScore = minScore;
-          chosenMove = m;
-        }
+        if (minScore > bestScore) { bestScore = minScore; chosenMove = m; }
       }
       if (!chosenMove) chosenMove = allMoves[Math.floor(Math.random() * allMoves.length)];
     }
-
     let piece = board[chosenMove.fromR][chosenMove.fromC];
-    let promoPiece = (piece.toLowerCase() === 'p' && (chosenMove.r === 0 || chosenMove.r === 7)) ? 'q' : null;
-
-    executeMove(chosenMove.fromR, chosenMove.fromC, chosenMove, promoPiece, true);
+    executeMove(chosenMove.fromR, chosenMove.fromC, chosenMove, (piece.toLowerCase() === 'p' && chosenMove.r === 7) ? 'q' : null, true);
   }
 
   initGame();
 </script>
-
 </body>
 </html>
