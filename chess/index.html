@@ -3,91 +3,44 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>미니지 - 정통 체스 (P2P 온라인 멀티)</title>
-  <!-- PeerJS CDN (자동 신호 중계 라이브러리) -->
+  <title>미니지 - 정통 체스 (FIDE 풀 규칙 지원)</title>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <style>
     :root { 
-      --bg: #f8f9fa; 
-      --text: #333; 
-      --canvas-bg: #151b22; 
-      --border: #e9ecef; 
-      --btn-bg: #fff; 
-      --win-color: #ffd43b;
+      --bg: #f8f9fa; --text: #333; --canvas-bg: #151b22; 
+      --border: #e9ecef; --btn-bg: #fff; --win-color: #ffd43b;
     }
     [data-theme="dark"] { 
-      --bg: #0d1117; 
-      --text: #c9d1d9; 
-      --canvas-bg: #020305; 
-      --border: #30363d; 
-      --btn-bg: #21262d; 
-      --win-color: #f08c00;
+      --bg: #0d1117; --text: #c9d1d9; --canvas-bg: #020305; 
+      --border: #30363d; --btn-bg: #21262d; --win-color: #f08c00;
     }
     [data-theme="beige"] { 
-      --bg: #f5ebe0; 
-      --text: #4e3d30; 
-      --canvas-bg: #14100c; 
-      --border: #ddcbbb; 
-      --btn-bg: #eddfd0; 
-      --win-color: #f7d070;
+      --bg: #f5ebe0; --text: #4e3d30; --canvas-bg: #14100c; 
+      --border: #ddcbbb; --btn-bg: #eddfd0; --win-color: #f7d070;
     }
     body { 
-      background-color: var(--bg) !important; 
-      color: var(--text) !important; 
-      text-align: center; 
-      font-family: sans-serif; 
-      padding-top: 15px; 
-      margin: 0; 
+      background-color: var(--bg) !important; color: var(--text) !important; 
+      text-align: center; font-family: sans-serif; padding-top: 15px; margin: 0; 
       transition: background-color 0.3s;
     }
     button, select, input { 
-      background-color: var(--btn-bg) !important; 
-      color: var(--text) !important; 
-      border: 1px solid var(--border) !important; 
-      padding: 8px 14px; 
-      font-size: 0.95rem; 
-      border-radius: 8px; 
-      cursor: pointer; 
-      margin: 4px; 
-      font-weight: bold; 
-      transition: 0.2s;
+      background-color: var(--btn-bg) !important; color: var(--text) !important; 
+      border: 1px solid var(--border) !important; padding: 8px 14px; font-size: 0.95rem; 
+      border-radius: 8px; cursor: pointer; margin: 4px; font-weight: bold; transition: 0.2s;
     }
     button:hover { opacity: 0.85; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
 
-    #chess-panel { 
-      font-size: 1.2rem; 
-      font-weight: bold; 
-      color: #fcc419; 
-      margin-bottom: 8px; 
-      min-height: 28px;
-    }
+    #chess-panel { font-size: 1.2rem; font-weight: bold; color: #fcc419; margin-bottom: 8px; min-height: 28px; }
     .ping-badge { font-size: 0.85rem; color: #12b886; font-weight: normal; margin-left: 8px; }
 
     #game-container {
-      display: inline-block;
-      background: var(--canvas-bg);
-      padding: 15px;
-      border-radius: 12px;
-      border: 2px solid var(--border);
-      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+      display: inline-block; background: var(--canvas-bg); padding: 15px; 
+      border-radius: 12px; border: 2px solid var(--border); box-shadow: 0 8px 24px rgba(0,0,0,0.3);
     }
-    canvas {
-      display: block;
-      margin: 0 auto;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-    .control-panel {
-      margin-top: 12px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
+    canvas { display: block; margin: 0 auto; border-radius: 6px; cursor: pointer; }
+    .control-panel { margin-top: 12px; display: flex; justify-content: center; align-items: center; gap: 6px; flex-wrap: wrap; }
 
-    /* P2P 및 결과 모달 디자인 */
     .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 100; }
     .modal-content { background: var(--bg); color: var(--text); padding: 25px; border-radius: 16px; border: 2px solid var(--border); text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.3); max-width: 420px; width: 90%; }
     .p2p-card { background: rgba(0,0,0,0.05); border-radius: 12px; padding: 15px; margin: 12px 0; border: 1px solid var(--border); }
@@ -95,18 +48,19 @@
     .code-input { font-size: 1.3rem; text-align: center; letter-spacing: 4px; width: 140px; }
     .divider { margin: 15px 0; border-top: 1px dashed var(--border); position: relative; }
     .divider span { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: var(--bg); padding: 0 10px; font-size: 0.8rem; color: #888; }
+    
+    .promo-btn-group { display: flex; justify-content: center; gap: 10px; margin-top: 15px; }
+    .promo-btn { font-size: 2rem; padding: 10px 20px; }
   </style>
 </head>
 <body>
 
 <script>
   const savedTheme = localStorage.getItem('minig-theme');
-  if (savedTheme && savedTheme !== 'white') { 
-    document.documentElement.setAttribute('data-theme', savedTheme); 
-  }
+  if (savedTheme && savedTheme !== 'white') document.documentElement.setAttribute('data-theme', savedTheme); 
 </script>
 
-  <h1>♟️ 정통 체스</h1>
+  <h1>♟️ 정통 체스 (FIDE 룰 완벽 적용)</h1>
   
   <div class="control-panel">
     <label for="modeSelect">모드:</label>
@@ -138,7 +92,7 @@
     <canvas id="chessCanvas" width="480" height="480"></canvas>
   </div>
 
-  <!-- 결과 안내 모달 -->
+  <!-- 결과 모달 -->
   <div class="modal" id="overModal">
     <div class="modal-content">
       <h2 id="modalTitle" style="margin-top:0;">게임 종료</h2>
@@ -147,12 +101,23 @@
     </div>
   </div>
 
+  <!-- 프로모션 선택 모달 -->
+  <div class="modal" id="promoModal">
+    <div class="modal-content">
+      <h3 style="margin-top:0;">♟️ 승급할 기물을 선택하세요</h3>
+      <div class="promo-btn-group">
+        <button class="promo-btn" onclick="selectPromotion('Q')">♛</button>
+        <button class="promo-btn" onclick="selectPromotion('R')">♜</button>
+        <button class="promo-btn" onclick="selectPromotion('B')">♝</button>
+        <button class="promo-btn" onclick="selectPromotion('N')">♞</button>
+      </div>
+    </div>
+  </div>
+
   <!-- P2P 접속 모달 -->
   <div class="modal" id="p2pModal">
     <div class="modal-content">
       <h3 style="margin-top:0;">🌐 1:1 온라인 접속</h3>
-      
-      <!-- 방 생성 (방장 - 백색) -->
       <div class="p2p-card">
         <strong>🏠 방 만들기 (방장 - White ♔)</strong><br>
         <button id="btnCreateRoom" onclick="handleCreateRoom()" style="margin-top:10px; background:#4dadf7; color:#fff;">방 번호 생성</button>
@@ -162,10 +127,7 @@
           <div id="hostWaitStatus" style="font-size:0.85rem; color:#e03131;">⏳ 상대방 접속 대기 중...</div>
         </div>
       </div>
-
       <div class="divider"><span>또는</span></div>
-
-      <!-- 방 참가 (참가자 - 흑색) -->
       <div class="p2p-card">
         <strong>🎮 방 참가하기 (참가자 - Black ♚)</strong><br>
         <div style="margin-top:10px;">
@@ -173,13 +135,11 @@
           <button id="btnJoinRoom" onclick="handleJoinRoom()">입장</button>
         </div>
       </div>
-
       <button onclick="closeModal('p2pModal')">❌ 닫기</button>
     </div>
   </div>
 
 <script>
-  // Web Audio 사운드 효과
   let audioCtx = null;
   function initAudio() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -191,8 +151,7 @@
       initAudio();
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
+      osc.connect(gain); gain.connect(audioCtx.destination);
       const now = audioCtx.currentTime;
 
       if (type === 'move') {
@@ -217,7 +176,6 @@
     } catch(e){}
   }
 
-  // 체스 및 게임 상태
   const canvas = document.getElementById('chessCanvas');
   const ctx = canvas.getContext('2d');
   const TILE_SIZE = 60;
@@ -228,9 +186,16 @@
   let validMoves = [];
   let gameOver = false;
   let currentGameMode = 'ai';
-  let myColor = 'w'; // P2P 시 방장: 'w', 참가자: 'b'
+  let myColor = 'w';
 
-  // PeerJS 통신 객체
+  // 특수 규칙 추적 상태 변수
+  let hasMoved = {
+    wK: false, wRa: false, wRh: false,
+    bK: false, bRa: false, bRh: false
+  };
+  let enPassantTarget = null; // { r: 노리는위치, c: 노리는위치, pawnR: 피격폰위치, pawnC: 피격폰위치 }
+  let pendingPromoMove = null;
+
   let peer = null;
   let conn = null;
   let pingTimer = null;
@@ -240,7 +205,6 @@
     'R': '♜', 'N': '♞', 'B': '♝', 'Q': '♛', 'K': '♚', 'P': '♟',
     'r': '♜', 'n': '♞', 'b': '♝', 'q': '♛', 'k': '♚', 'p': '♟'
   };
-
   const pieceValues = { 'p': 10, 'n': 30, 'b': 30, 'r': 50, 'q': 90, 'k': 900 };
 
   function isWhite(p) { return p >= 'A' && p <= 'Z'; }
@@ -263,8 +227,12 @@
     selectedCoord = null;
     validMoves = [];
     gameOver = false;
+    hasMoved = { wK: false, wRa: false, wRh: false, bK: false, bRa: false, bRh: false };
+    enPassantTarget = null;
+    pendingPromoMove = null;
 
     closeModal('overModal');
+    closeModal('promoModal');
 
     if (currentGameMode === 'p2p' && sendNetworkSync && conn && conn.open) {
       conn.send({ type: 'RESET' });
@@ -274,9 +242,7 @@
     drawBoard();
   }
 
-  function resetGame() {
-    initGame(true);
-  }
+  function resetGame() { initGame(true); }
 
   function findKing(color, b) {
     const target = (color === 'w') ? 'K' : 'k';
@@ -288,8 +254,22 @@
     return null;
   }
 
-  // 기본 이동 가능 범위 계산
-  function getPseudoLegalMoves(r, c, b) {
+  // 특정한 칸이 상대 기물로부터 공격받고 있는지 여부 측정
+  function isSquareAttacked(r, c, defenderColor, b) {
+    const attackerColor = (defenderColor === 'w') ? 'b' : 'w';
+    for (let nr = 0; nr < 8; nr++) {
+      for (let nc = 0; nc < 8; nc++) {
+        if (getColor(b[nr][nc]) === attackerColor) {
+          const pm = getPseudoLegalMoves(nr, nc, b, false);
+          if (pm.some(m => m.r === r && m.c === c)) return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  // 기본 의사 공격 이동 범위 (includeCastling: 캐슬링 이동 생성 시 무한루프 방지)
+  function getPseudoLegalMoves(r, c, b, includeCastling = true) {
     const piece = b[r][c];
     if (!piece) return [];
     const color = getColor(piece);
@@ -300,9 +280,8 @@
         let nr = r + d[0], nc = c + d[1];
         while (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
           let target = b[nr][nc];
-          if (target === '') {
-            moves.push({ r: nr, c: nc });
-          } else {
+          if (target === '') moves.push({ r: nr, c: nc });
+          else {
             if (getColor(target) !== color) moves.push({ r: nr, c: nc });
             break;
           }
@@ -321,7 +300,7 @@
         moves.push({ r: nr, c: c });
         let doubleNr = r + dir * 2;
         if (r === startRow && b[doubleNr][c] === '') {
-          moves.push({ r: doubleNr, c: c });
+          moves.push({ r: doubleNr, c: c, isDoublePawn: true });
         }
       }
       for (let dc of [-1, 1]) {
@@ -330,6 +309,10 @@
           let target = b[nr][nc];
           if (target !== '' && getColor(target) !== color) {
             moves.push({ r: nr, c: nc });
+          }
+          // 앙파상 (En Passant) 검증
+          if (enPassantTarget && enPassantTarget.r === nr && enPassantTarget.c === nc) {
+            moves.push({ r: nr, c: nc, isEnPassant: true });
           }
         }
       }
@@ -355,39 +338,62 @@
           if (getColor(b[nr][nc]) !== color) moves.push({ r: nr, c: nc });
         }
       }
-    }
-    return moves;
-  }
 
-  // 체크 여부 검증
-  function isInCheck(color, b) {
-    const kingPos = findKing(color, b);
-    if (!kingPos) return false;
-    const enemyColor = (color === 'w') ? 'b' : 'w';
-
-    for (let r = 0; r < 8; r++) {
-      for (let c = 0; c < 8; c++) {
-        if (getColor(b[r][c]) === enemyColor) {
-          const pm = getPseudoLegalMoves(r, c, b);
-          if (pm.some(m => m.r === kingPos.r && m.c === kingPos.c)) {
-            return true;
+      // 캐슬링 (Castling) 검증
+      if (includeCastling && !isInCheck(color, b)) {
+        if (color === 'w' && r === 7 && c === 4) {
+          // 킹사이드 캐슬링 (O-O)
+          if (!hasMoved.wK && !hasMoved.wRh && b[7][5] === '' && b[7][6] === '') {
+            if (!isSquareAttacked(7, 5, 'w', b) && !isSquareAttacked(7, 6, 'w', b)) {
+              moves.push({ r: 7, c: 6, isCastling: 'ks' });
+            }
+          }
+          // 퀸사이드 캐슬링 (O-O-O)
+          if (!hasMoved.wK && !hasMoved.wRa && b[7][1] === '' && b[7][2] === '' && b[7][3] === '') {
+            if (!isSquareAttacked(7, 2, 'w', b) && !isSquareAttacked(7, 3, 'w', b)) {
+              moves.push({ r: 7, c: 2, isCastling: 'qs' });
+            }
+          }
+        } else if (color === 'b' && r === 0 && c === 4) {
+          // 킹사이드 캐슬링 (O-O)
+          if (!hasMoved.bK && !hasMoved.bRh && b[0][5] === '' && b[0][6] === '') {
+            if (!isSquareAttacked(0, 5, 'b', b) && !isSquareAttacked(0, 6, 'b', b)) {
+              moves.push({ r: 0, c: 6, isCastling: 'ks' });
+            }
+          }
+          // 퀸사이드 캐슬링 (O-O-O)
+          if (!hasMoved.bK && !hasMoved.bRa && b[0][1] === '' && b[0][2] === '' && b[0][3] === '') {
+            if (!isSquareAttacked(0, 2, 'b', b) && !isSquareAttacked(0, 3, 'b', b)) {
+              moves.push({ r: 0, c: 2, isCastling: 'qs' });
+            }
           }
         }
       }
     }
-    return false;
+    return moves;
   }
 
-  // 킹 안전성을 보장하는 합법적 이동 경로
+  function isInCheck(color, b) {
+    const kingPos = findKing(color, b);
+    if (!kingPos) return false;
+    return isSquareAttacked(kingPos.r, kingPos.c, color, b);
+  }
+
   function getLegalMoves(r, c, b) {
     const piece = b[r][c];
     if (!piece) return [];
     const color = getColor(piece);
-    const pseudo = getPseudoLegalMoves(r, c, b);
+    const pseudo = getPseudoLegalMoves(r, c, b, true);
     const legal = [];
 
     for (let m of pseudo) {
       let tempBoard = cloneBoard(b);
+      
+      // 앙파상 시뮬레이션 적용
+      if (m.isEnPassant && enPassantTarget) {
+        tempBoard[enPassantTarget.pawnR][enPassantTarget.pawnC] = '';
+      }
+      
       tempBoard[m.r][m.c] = tempBoard[r][c];
       tempBoard[r][c] = '';
 
@@ -395,9 +401,7 @@
         tempBoard[m.r][m.c] = (color === 'w') ? 'Q' : 'q';
       }
 
-      if (!isInCheck(color, tempBoard)) {
-        legal.push(m);
-      }
+      if (!isInCheck(color, tempBoard)) legal.push(m);
     }
     return legal;
   }
@@ -408,9 +412,7 @@
       for (let c = 0; c < 8; c++) {
         if (getColor(b[r][c]) === color) {
           let leg = getLegalMoves(r, c, b);
-          for (let m of leg) {
-            moves.push({ fromR: r, fromC: c, toR: m.r, toC: m.c });
-          }
+          for (let m of leg) moves.push({ fromR: r, fromC: c, ...m });
         }
       }
     }
@@ -469,13 +471,12 @@
     }
   }
 
-  // 보드 클릭 이벤트 Listener
   canvas.addEventListener('click', (e) => {
     if (gameOver) return;
 
     if (currentGameMode === 'p2p') {
-      if (!conn || !conn.open) return alert("상대방과 연결되지 않았증니다.");
-      if (turn !== myColor) return; // 상대방 턴이면 클릭 불가
+      if (!conn || !conn.open) return alert("상대방과 연결되지 않았습니다.");
+      if (turn !== myColor) return;
     } else if (currentGameMode === 'ai') {
       if (turn !== 'w') return;
     }
@@ -488,7 +489,19 @@
 
     let moveFound = validMoves.find(m => m.r === r && m.c === c);
     if (moveFound) {
-      executeMove(selectedCoord.r, selectedCoord.c, r, c, false);
+      let piece = board[selectedCoord.r][selectedCoord.c];
+      // 폰 프로모션 발생 체크
+      if (piece.toLowerCase() === 'p' && (r === 0 || r === 7)) {
+        pendingPromoMove = { fromR: selectedCoord.r, fromC: selectedCoord.c, moveObj: moveFound };
+        if (currentGameMode === 'ai' && turn === 'b') {
+          executeMove(selectedCoord.r, selectedCoord.c, moveFound, 'q', false);
+        } else {
+          document.getElementById('promoModal').style.display = 'flex';
+        }
+        return;
+      }
+
+      executeMove(selectedCoord.r, selectedCoord.c, moveFound, null, false);
       return;
     }
 
@@ -505,27 +518,73 @@
     }
   });
 
-  function executeMove(fromR, fromC, toR, toC, isRemote = false) {
+  function selectPromotion(pieceType) {
+    closeModal('promoModal');
+    if (pendingPromoMove) {
+      executeMove(pendingPromoMove.fromR, pendingPromoMove.fromC, pendingPromoMove.moveObj, pieceType, false);
+      pendingPromoMove = null;
+    }
+  }
+
+  function executeMove(fromR, fromC, moveObj, promoPiece = null, isRemote = false) {
+    let toR = moveObj.r;
+    let toC = moveObj.c;
     let target = board[toR][toC];
     let piece = board[fromR][fromC];
+    let isCapture = target !== '';
 
+    // 앙파상 실제 격파 처리
+    if (moveObj.isEnPassant && enPassantTarget) {
+      board[enPassantTarget.pawnR][enPassantTarget.pawnC] = '';
+      isCapture = true;
+    }
+
+    // 캐슬링 룩 이동 처리
+    if (moveObj.isCastling) {
+      if (moveObj.isCastling === 'ks') {
+        board[toR][5] = board[toR][7]; board[toR][7] = '';
+      } else if (moveObj.isCastling === 'qs') {
+        board[toR][3] = board[toR][0]; board[toR][0] = '';
+      }
+    }
+
+    // 이동 처리
     board[toR][toC] = piece;
     board[fromR][fromC] = '';
 
-    // 폰 프로모션 (퀸 승급)
+    // 프로모션 체인지 적용
     if (piece.toLowerCase() === 'p' && (toR === 0 || toR === 7)) {
-      board[toR][toC] = (getColor(piece) === 'w') ? 'Q' : 'q';
+      let choice = promoPiece ? promoPiece : 'Q';
+      board[toR][toC] = (getColor(piece) === 'w') ? choice.toUpperCase() : choice.toLowerCase();
+    }
+
+    // 캐슬링 이동 권한 상태 갱신
+    if (piece === 'K') hasMoved.wK = true;
+    if (piece === 'k') hasMoved.bK = true;
+    if (fromR === 7 && fromC === 0) hasMoved.wRa = true;
+    if (fromR === 7 && fromC === 7) hasMoved.wRh = true;
+    if (fromR === 0 && fromC === 0) hasMoved.bRa = true;
+    if (fromR === 0 && fromC === 7) hasMoved.bRh = true;
+
+    // 앙파상 타겟 등록 또는 해제
+    if (moveObj.isDoublePawn) {
+      enPassantTarget = {
+        r: (fromR + toR) / 2, c: fromC,
+        pawnR: toR, pawnC: toC
+      };
+    } else {
+      enPassantTarget = null;
     }
 
     selectedCoord = null;
     validMoves = [];
 
-    if (target !== '') playSound('capture');
+    if (isCapture) playSound('capture');
     else playSound('move');
 
-    // P2P 네트워크 신호 전송
+    // P2P 네트워크 동기화 전송
     if (currentGameMode === 'p2p' && !isRemote && conn && conn.open) {
-      conn.send({ type: 'MOVE', fromR, fromC, toR, toC });
+      conn.send({ type: 'MOVE', fromR, fromC, moveObj, promoPiece });
     }
 
     turn = (turn === 'w') ? 'b' : 'w';
@@ -584,14 +643,13 @@
     }
   }
 
-  // --- PeerJS P2P 통신 로직 ---
+  // --- PeerJS P2P 통신 ---
 
   function disconnectP2P() {
     if (pingTimer) clearInterval(pingTimer);
     if (conn) conn.close();
     if (peer) peer.destroy();
-    conn = null;
-    peer = null;
+    conn = null; peer = null;
     document.getElementById("ping-display").innerText = "";
   }
 
@@ -605,7 +663,7 @@
 
     conn.on('data', (data) => {
       if (data.type === 'MOVE') {
-        executeMove(data.fromR, data.fromC, data.toR, data.toC, true);
+        executeMove(data.fromR, data.fromC, data.moveObj, data.promoPiece, true);
       } else if (data.type === 'RESET') {
         initGame(false);
       } else if (data.type === 'PING') {
@@ -626,9 +684,7 @@
   function startHeartbeat() {
     if (pingTimer) clearInterval(pingTimer);
     pingTimer = setInterval(() => {
-      if (conn && conn.open) {
-        conn.send({ type: 'PING', time: Date.now() });
-      }
+      if (conn && conn.open) conn.send({ type: 'PING', time: Date.now() });
     }, 1000);
   }
 
@@ -636,10 +692,8 @@
     disconnectP2P();
     myColor = 'w';
     const roomCode = Math.floor(100000 + Math.random() * 900000).toString();
-    
     const btn = document.getElementById("btnCreateRoom");
-    btn.disabled = true;
-    btn.innerText = "⏳ 서버 등록 중...";
+    btn.disabled = true; btn.innerText = "⏳ 서버 등록 중...";
 
     peer = new Peer('minig-chess-' + roomCode);
 
@@ -655,9 +709,8 @@
     });
 
     peer.on('error', (err) => {
-      alert("방 생성 오류: " + err.type + "\n다시 시도해 주세요.");
-      btn.disabled = false;
-      btn.innerText = "방 번호 생성";
+      alert("방 생성 오류: " + err.type);
+      btn.disabled = false; btn.innerText = "방 번호 생성";
     });
   }
 
@@ -667,10 +720,8 @@
 
     disconnectP2P();
     myColor = 'b';
-
     const btn = document.getElementById("btnJoinRoom");
-    btn.disabled = true;
-    btn.innerText = "⏳ 접속 중...";
+    btn.disabled = true; btn.innerText = "⏳ 접속 중...";
 
     peer = new Peer();
 
@@ -680,9 +731,8 @@
     });
 
     peer.on('error', (err) => {
-      alert("방을 찾을 수 없거나 연결에 실패했습니다. 방 번호를 확인해 주세요.");
-      btn.disabled = false;
-      btn.innerText = "입장";
+      alert("방을 찾을 수 없거나 연결 실패했습니다.");
+      btn.disabled = false; btn.innerText = "입장";
     });
   }
 
@@ -706,15 +756,14 @@
 
   function showEndModal(text, color) {
     const title = document.getElementById("modalTitle");
-    title.innerText = text;
-    title.style.color = color;
+    title.innerText = text; title.style.color = color;
     document.getElementById("overModal").style.display = "flex";
   }
 
   function openP2PModal() { document.getElementById("p2pModal").style.display = "flex"; }
   function closeModal(id) { document.getElementById(id).style.display = "none"; }
 
-  // --- AI 가중치 평가 및 미니맥스 알고리즘 ---
+  // --- AI 가중치 평가 및 미니맥스 ---
   function evaluateBoard(b) {
     let score = 0;
     for (let r = 0; r < 8; r++) {
@@ -745,22 +794,21 @@
       let bestMoves = [];
       for (let m of allMoves) {
         let tempBoard = cloneBoard(board);
-        tempBoard[m.toR][m.toC] = tempBoard[m.fromR][m.fromC];
+        tempBoard[m.r][m.c] = tempBoard[m.fromR][m.fromC];
         tempBoard[m.fromR][m.fromC] = '';
         let score = evaluateBoard(tempBoard);
         if (score > bestScore) {
-          bestScore = score;
-          bestMoves = [m];
+          bestScore = score; bestMoves = [m];
         } else if (score === bestScore) {
           bestMoves.push(m);
         }
       }
       chosenMove = bestMoves[Math.floor(Math.random() * bestMoves.length)];
-    } else { // hard (2-depth minimax)
+    } else {
       let bestScore = -9999;
       for (let m of allMoves) {
         let tempBoard = cloneBoard(board);
-        tempBoard[m.toR][m.toC] = tempBoard[m.fromR][m.fromC];
+        tempBoard[m.r][m.c] = tempBoard[m.fromR][m.fromC];
         tempBoard[m.fromR][m.fromC] = '';
 
         let whiteMoves = getAllLegalMoves('w', tempBoard);
@@ -770,7 +818,7 @@
         } else {
           for (let wm of whiteMoves) {
             let tempBoard2 = cloneBoard(tempBoard);
-            tempBoard2[wm.toR][wm.toC] = tempBoard2[wm.fromR][wm.fromC];
+            tempBoard2[wm.r][wm.c] = tempBoard2[wm.fromR][wm.fromC];
             tempBoard2[wm.fromR][wm.fromC] = '';
             let score = evaluateBoard(tempBoard2);
             if (score < minScore) minScore = score;
@@ -785,10 +833,12 @@
       if (!chosenMove) chosenMove = allMoves[Math.floor(Math.random() * allMoves.length)];
     }
 
-    executeMove(chosenMove.fromR, chosenMove.fromC, chosenMove.toR, chosenMove.toC, true);
+    let piece = board[chosenMove.fromR][chosenMove.fromC];
+    let promoPiece = (piece.toLowerCase() === 'p' && (chosenMove.r === 0 || chosenMove.r === 7)) ? 'q' : null;
+
+    executeMove(chosenMove.fromR, chosenMove.fromC, chosenMove, promoPiece, true);
   }
 
-  // 초기화 실행
   initGame();
 </script>
 
