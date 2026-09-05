@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>미니지 - 정통 체스 (FIDE 풀 규칙 지원)</title>
+  <title>정통 체스</title>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <style>
     :root { 
@@ -60,7 +60,7 @@
   if (savedTheme && savedTheme !== 'white') document.documentElement.setAttribute('data-theme', savedTheme); 
 </script>
 
-  <h1>♟️ 정통 체스 (FIDE 룰 완벽 적용)</h1>
+  <h1>♟️ 정통 체스</h1>
   
   <div class="control-panel">
     <label for="modeSelect">모드:</label>
@@ -188,12 +188,11 @@
   let currentGameMode = 'ai';
   let myColor = 'w';
 
-  // 특수 규칙 추적 상태 변수
   let hasMoved = {
     wK: false, wRa: false, wRh: false,
     bK: false, bRa: false, bRh: false
   };
-  let enPassantTarget = null; // { r: 노리는위치, c: 노리는위치, pawnR: 피격폰위치, pawnC: 피격폰위치 }
+  let enPassantTarget = null;
   let pendingPromoMove = null;
 
   let peer = null;
@@ -211,6 +210,13 @@
   function isBlack(p) { return p >= 'a' && p <= 'z'; }
   function getColor(p) { return !p ? null : (isWhite(p) ? 'w' : 'b'); }
   function cloneBoard(b) { return b.map(row => [...row]); }
+
+  // 화면 회전(보드 반전) 여부 결정 함수
+  function isBoardFlipped() {
+    if (currentGameMode === 'local') return turn === 'b';
+    if (currentGameMode === 'p2p') return myColor === 'b';
+    return false;
+  }
 
   function initGame(sendNetworkSync = true) {
     board = [
@@ -254,7 +260,6 @@
     return null;
   }
 
-  // 특정한 칸이 상대 기물로부터 공격받고 있는지 여부 측정
   function isSquareAttacked(r, c, defenderColor, b) {
     const attackerColor = (defenderColor === 'w') ? 'b' : 'w';
     for (let nr = 0; nr < 8; nr++) {
@@ -268,7 +273,6 @@
     return false;
   }
 
-  // 기본 의사 공격 이동 범위 (includeCastling: 캐슬링 이동 생성 시 무한루프 방지)
   function getPseudoLegalMoves(r, c, b, includeCastling = true) {
     const piece = b[r][c];
     if (!piece) return [];
@@ -310,7 +314,6 @@
           if (target !== '' && getColor(target) !== color) {
             moves.push({ r: nr, c: nc });
           }
-          // 앙파상 (En Passant) 검증
           if (enPassantTarget && enPassantTarget.r === nr && enPassantTarget.c === nc) {
             moves.push({ r: nr, c: nc, isEnPassant: true });
           }
@@ -339,29 +342,24 @@
         }
       }
 
-      // 캐슬링 (Castling) 검증
       if (includeCastling && !isInCheck(color, b)) {
         if (color === 'w' && r === 7 && c === 4) {
-          // 킹사이드 캐슬링 (O-O)
           if (!hasMoved.wK && !hasMoved.wRh && b[7][5] === '' && b[7][6] === '') {
             if (!isSquareAttacked(7, 5, 'w', b) && !isSquareAttacked(7, 6, 'w', b)) {
               moves.push({ r: 7, c: 6, isCastling: 'ks' });
             }
           }
-          // 퀸사이드 캐슬링 (O-O-O)
           if (!hasMoved.wK && !hasMoved.wRa && b[7][1] === '' && b[7][2] === '' && b[7][3] === '') {
             if (!isSquareAttacked(7, 2, 'w', b) && !isSquareAttacked(7, 3, 'w', b)) {
               moves.push({ r: 7, c: 2, isCastling: 'qs' });
             }
           }
         } else if (color === 'b' && r === 0 && c === 4) {
-          // 킹사이드 캐슬링 (O-O)
           if (!hasMoved.bK && !hasMoved.bRh && b[0][5] === '' && b[0][6] === '') {
             if (!isSquareAttacked(0, 5, 'b', b) && !isSquareAttacked(0, 6, 'b', b)) {
               moves.push({ r: 0, c: 6, isCastling: 'ks' });
             }
           }
-          // 퀸사이드 캐슬링 (O-O-O)
           if (!hasMoved.bK && !hasMoved.bRa && b[0][1] === '' && b[0][2] === '' && b[0][3] === '') {
             if (!isSquareAttacked(0, 2, 'b', b) && !isSquareAttacked(0, 3, 'b', b)) {
               moves.push({ r: 0, c: 2, isCastling: 'qs' });
@@ -389,7 +387,6 @@
     for (let m of pseudo) {
       let tempBoard = cloneBoard(b);
       
-      // 앙파상 시뮬레이션 적용
       if (m.isEnPassant && enPassantTarget) {
         tempBoard[enPassantTarget.pawnR][enPassantTarget.pawnC] = '';
       }
@@ -421,15 +418,19 @@
 
   function drawBoard() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const flipped = isBoardFlipped();
 
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
+        let drawR = flipped ? 7 - r : r;
+        let drawC = flipped ? 7 - c : c;
+
         ctx.fillStyle = ((r + c) % 2 === 0) ? '#eeeed2' : '#769656';
-        ctx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        ctx.fillRect(drawC * TILE_SIZE, drawR * TILE_SIZE, TILE_SIZE, TILE_SIZE);
 
         if (selectedCoord && selectedCoord.r === r && selectedCoord.c === c) {
           ctx.fillStyle = 'rgba(255, 255, 0, 0.45)';
-          ctx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+          ctx.fillRect(drawC * TILE_SIZE, drawR * TILE_SIZE, TILE_SIZE, TILE_SIZE);
         }
       }
     }
@@ -437,15 +438,19 @@
     if (isInCheck(turn, board)) {
       const kp = findKing(turn, board);
       if (kp) {
+        let drawR = flipped ? 7 - kp.r : kp.r;
+        let drawC = flipped ? 7 - kp.c : kp.c;
         ctx.fillStyle = 'rgba(255, 0, 0, 0.45)';
-        ctx.fillRect(kp.c * TILE_SIZE, kp.r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        ctx.fillRect(drawC * TILE_SIZE, drawR * TILE_SIZE, TILE_SIZE, TILE_SIZE);
       }
     }
 
     for (let m of validMoves) {
+      let drawR = flipped ? 7 - m.r : m.r;
+      let drawC = flipped ? 7 - m.c : m.c;
       ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
       ctx.beginPath();
-      ctx.arc(m.c * TILE_SIZE + TILE_SIZE / 2, m.r * TILE_SIZE + TILE_SIZE / 2, 10, 0, Math.PI * 2);
+      ctx.arc(drawC * TILE_SIZE + TILE_SIZE / 2, drawR * TILE_SIZE + TILE_SIZE / 2, 10, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -457,13 +462,16 @@
       for (let c = 0; c < 8; c++) {
         let piece = board[r][c];
         if (piece) {
+          let drawR = flipped ? 7 - r : r;
+          let drawC = flipped ? 7 - c : c;
+
           ctx.fillStyle = isWhite(piece) ? '#ffffff' : '#111111';
           ctx.strokeStyle = isWhite(piece) ? '#000000' : '#ffffff';
           ctx.lineWidth = 1;
           
           let symbol = pieceSymbols[piece];
-          let x = c * TILE_SIZE + TILE_SIZE / 2;
-          let y = r * TILE_SIZE + TILE_SIZE / 2 + 2;
+          let x = drawC * TILE_SIZE + TILE_SIZE / 2;
+          let y = drawR * TILE_SIZE + TILE_SIZE / 2 + 2;
           ctx.fillText(symbol, x, y);
           ctx.strokeText(symbol, x, y);
         }
@@ -482,15 +490,18 @@
     }
 
     const rect = canvas.getBoundingClientRect();
-    const c = Math.floor((e.clientX - rect.left) / TILE_SIZE);
-    const r = Math.floor((e.clientY - rect.top) / TILE_SIZE);
+    let clickC = Math.floor((e.clientX - rect.left) / TILE_SIZE);
+    let clickR = Math.floor((e.clientY - rect.top) / TILE_SIZE);
+
+    const flipped = isBoardFlipped();
+    const c = flipped ? 7 - clickC : clickC;
+    const r = flipped ? 7 - clickR : clickR;
 
     if (r < 0 || r >= 8 || c < 0 || c >= 8) return;
 
     let moveFound = validMoves.find(m => m.r === r && m.c === c);
     if (moveFound) {
       let piece = board[selectedCoord.r][selectedCoord.c];
-      // 폰 프로모션 발생 체크
       if (piece.toLowerCase() === 'p' && (r === 0 || r === 7)) {
         pendingPromoMove = { fromR: selectedCoord.r, fromC: selectedCoord.c, moveObj: moveFound };
         if (currentGameMode === 'ai' && turn === 'b') {
@@ -533,13 +544,11 @@
     let piece = board[fromR][fromC];
     let isCapture = target !== '';
 
-    // 앙파상 실제 격파 처리
     if (moveObj.isEnPassant && enPassantTarget) {
       board[enPassantTarget.pawnR][enPassantTarget.pawnC] = '';
       isCapture = true;
     }
 
-    // 캐슬링 룩 이동 처리
     if (moveObj.isCastling) {
       if (moveObj.isCastling === 'ks') {
         board[toR][5] = board[toR][7]; board[toR][7] = '';
@@ -548,17 +557,14 @@
       }
     }
 
-    // 이동 처리
     board[toR][toC] = piece;
     board[fromR][fromC] = '';
 
-    // 프로모션 체인지 적용
     if (piece.toLowerCase() === 'p' && (toR === 0 || toR === 7)) {
       let choice = promoPiece ? promoPiece : 'Q';
       board[toR][toC] = (getColor(piece) === 'w') ? choice.toUpperCase() : choice.toLowerCase();
     }
 
-    // 캐슬링 이동 권한 상태 갱신
     if (piece === 'K') hasMoved.wK = true;
     if (piece === 'k') hasMoved.bK = true;
     if (fromR === 7 && fromC === 0) hasMoved.wRa = true;
@@ -566,7 +572,6 @@
     if (fromR === 0 && fromC === 0) hasMoved.bRa = true;
     if (fromR === 0 && fromC === 7) hasMoved.bRh = true;
 
-    // 앙파상 타겟 등록 또는 해제
     if (moveObj.isDoublePawn) {
       enPassantTarget = {
         r: (fromR + toR) / 2, c: fromC,
@@ -582,7 +587,6 @@
     if (isCapture) playSound('capture');
     else playSound('move');
 
-    // P2P 네트워크 동기화 전송
     if (currentGameMode === 'p2p' && !isRemote && conn && conn.open) {
       conn.send({ type: 'MOVE', fromR, fromC, moveObj, promoPiece });
     }
@@ -642,8 +646,6 @@
       }
     }
   }
-
-  // --- PeerJS P2P 통신 ---
 
   function disconnectP2P() {
     if (pingTimer) clearInterval(pingTimer);
@@ -763,7 +765,6 @@
   function openP2PModal() { document.getElementById("p2pModal").style.display = "flex"; }
   function closeModal(id) { document.getElementById(id).style.display = "none"; }
 
-  // --- AI 가중치 평가 및 미니맥스 ---
   function evaluateBoard(b) {
     let score = 0;
     for (let r = 0; r < 8; r++) {
