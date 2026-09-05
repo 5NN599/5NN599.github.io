@@ -176,6 +176,37 @@
     } catch(e){}
   }
 
+  // 체스닷컴 스타일 벡터(SVG) 기물 그래픽 데이터
+  const rawSVGs = {
+    'P': '<path d="M22 9c-2.21 0-4 1.79-4 4 0 .89.29 1.71.78 2.38-1.95.88-3.31 2.82-3.31 5.09 0 .93.23 1.81.63 2.59C13.63 24.11 12 26.36 12 29c0 1.22.38 2.35 1.03 3.28C11.53 33.32 10 35.47 10 38h25c0-2.53-1.53-4.68-3.03-5.72.65-.93 1.03-2.06 1.03-3.28 0-2.64-1.63-4.89-4.1-5.94.4-.78.63-1.66.63-2.59 0-2.27-1.36-4.21-3.31-5.09.49-.67.78-1.49.78-2.38 0-2.21-1.79-4-4-4z" fill="FILL" stroke="STROKE" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
+    'R': '<g fill="FILL" stroke="STROKE" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 39h27v-3H9v3zM12 36h21l-1.5-4H13.5l-1.5 4zM11 14h23l-1 17H12l-1-17zM9 9h3v5H9V9zM15 9h3v5h-3V9zM21 9h3v5h-3V9zM27 9h3v5h-3V9zM33 9h3v5h-3V9z"/><path d="M9 14h27v-3H9v3z"/></g>',
+    'N': '<g fill="FILL" stroke="STROKE" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M 22,10 C 32.5,11 38.5,18 38,39 L 15,39 C 15,30 25,32.5 23,18 C 23,18 20,22 15,21 C 12.5,20.5 8.5,17.5 10,13 C 11.5,8.5 18,8.5 22,10 z"/><path d="M 24,18 C 24.38,20.91 18.45,25.37 16,27 C 13,29 13.18,31.34 11,31 C 9.958,30.06 12.41,27.96 11,28 C 10,28 11.19,29.23 10,30 C 9,30 5.997,31 6,26 C 6,24 12,14 12,14 C 12,14 13.89,12.1 14,10.5 C 13.27,9.506 13.5,8.5 13.5,8.5 C 14.5,10 16.5,10 16.5,10 C 18.5,10 18.77,11.36 18.5,12.5 C 19.5,12 21.5,11.5 22,10.5 M 12.5,11 C 12.5,11 13.25,12.25 12,13 C 10.75,13.75 11,15 11,15"/></g>',
+    'B': '<g fill="FILL" stroke="STROKE" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M 9,36 C 12.39,35.03 19.11,36.46 22.5,34 C 25.89,36.46 32.61,35.03 36,36 C 36,36 37.65,36.54 39,38 C 38.32,38.97 37.35,38.99 36,38.5 C 32.61,37.53 25.89,38.96 22.5,36.5 C 19.11,38.96 12.39,37.53 9,38.5 C 7.646,38.99 6.677,38.97 6,38 C 7.348,36.54 9,36 9,36 z"/><path d="M 15,32 C 17.5,34.5 27.5,34.5 30,32 C 30.5,30.5 30,28 30,28 C 27.5,28.5 17.5,28.5 15,28 C 15,28 14.5,30.5 15,32 z"/><path d="M 25 8 A 2.5 2.5 0 1 1  20,8 A 2.5 2.5 0 1 1  25 8 z"/><path d="M 17.5,26 C 15,15.5 21.5,10 22.5,10 C 23.5,10 30,15.5 27.5,26 C 27.5,26 25.5,27.5 22.5,27.5 C 19.5,27.5 17.5,26 17.5,26 z"/><path d="M 20.08,12 C 18.5,12 17,14 17,14 C 17,14 18.5,13.5 20,13.5 C 21.5,13.5 22.5,14 22.5,14 C 22.5,14 21.5,12 20.08,12 z"/></g>',
+    'Q': '<g fill="FILL" stroke="STROKE" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M 9,26 C 17.5,24.5 30,24.5 36,26 C 36,26 38,13.5 36,13 C 33,13 32,22 30,22 C 28,22 26,10 22.5,10 C 19,10 17,22 15,22 C 13,22 12,13 9,13 C 7,13.5 9,26 9,26 z"/><path d="M 9,26 C 9,28 10.5,28 11.5,30 C 12.5,32 12.5,33 12.5,33 C 12.5,33 12.5,35 12,36 C 11.5,37 11.5,38 12,38 C 12.5,38 13.5,38 14.5,38 C 15.5,38 16.5,38 17.5,38 C 18.5,38 19.5,38 20.5,38 C 21.5,38 22.5,38 23.5,38 C 24.5,38 25.5,38 26.5,38 C 27.5,38 28.5,38 29.5,38 C 30.5,38 31.5,38 32.5,38 C 33,38 33.5,37 33,36 C 32.5,35 32.5,33 32.5,33 C 32.5,33 32.5,32 33.5,30 C 34.5,28 36,28 36,26"/><path d="M 11.5,30 C 15,29 30,29 34.5,30"/><circle cx="6" cy="12" r="2"/><circle cx="14" cy="9" r="2"/><circle cx="22.5" cy="8" r="2"/><circle cx="31" cy="9" r="2"/><circle cx="39" cy="12" r="2"/></g>',
+    'K': '<g fill="FILL" stroke="STROKE" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M 22.5,11.63 L 22.5,6 M 20,8 L 25,8 M 22.5,25 C 22.5,25 27,17.5 25.5,14.5 C 24,11.5 21,11.5 19.5,14.5 C 18,17.5 22.5,25 22.5,25 z"/><path d="M 11.5,37 C 17,35.5 28,35.5 33.5,37 C 34.5,38 33,39 31.5,39 C 28.5,39 16.5,39 13.5,39 C 12,39 10.5,38 11.5,37 z"/><path d="M 11.5,30 C 15,29 30,29 34.5,30 C 34.5,30 35.5,31.5 34.5,33 C 33.5,34.5 32.5,35 32.5,35 C 32.5,35 12.5,35 12.5,35 C 12.5,35 11.5,34.5 10.5,33 C 9.5,31.5 10.5,30 11.5,30 z"/><path d="M 12.5,21 C 12.5,21 17.5,20 22.5,22 C 27.5,20 32.5,21 32.5,21 C 32.5,21 34.5,22.5 34.5,25 C 34.5,27.5 32.5,28.5 32.5,28.5 L 12.5,28.5 C 12.5,28.5 10.5,27.5 10.5,25 C 10.5,22.5 12.5,21 12.5,21 z"/></g>'
+  };
+
+  const pieceImages = {};
+  function preloadPieceImages() {
+    const types = ['P', 'R', 'N', 'B', 'Q', 'K'];
+    types.forEach(t => {
+      // White Pieces (순백색 fill)
+      const wSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45">${rawSVGs[t].replaceAll('FILL', '#ffffff').replaceAll('STROKE', '#1a1a1a')}</svg>`;
+      const wImg = new Image();
+      wImg.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(wSvg);
+      wImg.onload = () => drawBoard();
+      pieceImages[t] = wImg;
+
+      // Black Pieces (선명한 다크 그레이 fill)
+      const bSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45">${rawSVGs[t].replaceAll('FILL', '#3b3a36').replaceAll('STROKE', '#1a1a1a')}</svg>`;
+      const bImg = new Image();
+      bImg.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(bSvg);
+      bImg.onload = () => drawBoard();
+      pieceImages[t.toLowerCase()] = bImg;
+    });
+  }
+  preloadPieceImages();
+
   const canvas = document.getElementById('chessCanvas');
   const ctx = canvas.getContext('2d');
   const TILE_SIZE = 60;
@@ -200,10 +231,6 @@
   let pingTimer = null;
   let currentPing = 0;
 
-  const pieceSymbols = {
-    'R': '♜', 'N': '♞', 'B': '♝', 'Q': '♛', 'K': '♚', 'P': '♟',
-    'r': '♜', 'n': '♞', 'b': '♝', 'q': '♛', 'k': '♚', 'p': '♟'
-  };
   const pieceValues = { 'p': 10, 'n': 30, 'b': 30, 'r': 50, 'q': 90, 'k': 900 };
 
   function isWhite(p) { return p >= 'A' && p <= 'Z'; }
@@ -211,7 +238,6 @@
   function getColor(p) { return !p ? null : (isWhite(p) ? 'w' : 'b'); }
   function cloneBoard(b) { return b.map(row => [...row]); }
 
-  // 화면 회전(보드 반전) 여부 결정 함수
   function isBoardFlipped() {
     if (currentGameMode === 'local') return turn === 'b';
     if (currentGameMode === 'p2p') return myColor === 'b';
@@ -420,12 +446,13 @@
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const flipped = isBoardFlipped();
 
+    // 체스닷컴 스타일 보드 타일 색상
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
         let drawR = flipped ? 7 - r : r;
         let drawC = flipped ? 7 - c : c;
 
-        ctx.fillStyle = ((r + c) % 2 === 0) ? '#eeeed2' : '#769656';
+        ctx.fillStyle = ((r + c) % 2 === 0) ? '#ebeed0' : '#769656';
         ctx.fillRect(drawC * TILE_SIZE, drawR * TILE_SIZE, TILE_SIZE, TILE_SIZE);
 
         if (selectedCoord && selectedCoord.r === r && selectedCoord.c === c) {
@@ -454,26 +481,14 @@
       ctx.fill();
     }
 
-    ctx.font = '38px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
+    // 선명한 벡터 SVG 기물 그리기
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
         let piece = board[r][c];
-        if (piece) {
+        if (piece && pieceImages[piece]) {
           let drawR = flipped ? 7 - r : r;
           let drawC = flipped ? 7 - c : c;
-
-          ctx.fillStyle = isWhite(piece) ? '#ffffff' : '#111111';
-          ctx.strokeStyle = isWhite(piece) ? '#000000' : '#ffffff';
-          ctx.lineWidth = 1;
-          
-          let symbol = pieceSymbols[piece];
-          let x = drawC * TILE_SIZE + TILE_SIZE / 2;
-          let y = drawR * TILE_SIZE + TILE_SIZE / 2 + 2;
-          ctx.fillText(symbol, x, y);
-          ctx.strokeText(symbol, x, y);
+          ctx.drawImage(pieceImages[piece], drawC * TILE_SIZE + 3, drawR * TILE_SIZE + 3, TILE_SIZE - 6, TILE_SIZE - 6);
         }
       }
     }
@@ -844,7 +859,4 @@
 </script>
 
 </body>
-  <div style="margin: 15px auto; text-align: center; clear: both; position: relative; z-index: 9999;">
-        <button onclick="location.href='../'" style="font-weight: bold; cursor: pointer; padding: 10px 20px; font-size: 0.95rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: 0.2s;">🏠 오락실 메인으로 돌아가기</button>
-    </div>
 </html>
