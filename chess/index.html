@@ -154,9 +154,9 @@
     } catch(e){}
   }
 
-  // 특수문자 기물 매핑 (유니코드)
+  // 실루엣 유니코드 기물로 일괄 변경 (속이 참)
   const pieceSymbols = {
-    'K': '♔', 'Q': '♕', 'R': '♖', 'B': '♗', 'N': '♘', 'P': '♙',
+    'K': '♚', 'Q': '♛', 'R': '♜', 'B': '♝', 'N': '♞', 'P': '♟',
     'k': '♚', 'q': '♛', 'r': '♜', 'b': '♝', 'n': '♞', 'p': '♟'
   };
 
@@ -377,7 +377,7 @@
       ctx.fill();
     }
 
-    // 텍스트(특수문자) 기물 그리기
+    // 텍스트 기물 렌더링 (백색 기물 내부 채우기 적용)
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
         let piece = board[r][c];
@@ -394,11 +394,11 @@
           if (isWhite(piece)) {
             ctx.fillStyle = '#ffffff';
             ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 2.5;
+            ctx.lineWidth = 3;
             ctx.strokeText(pieceSymbols[piece], x, y);
             ctx.fillText(pieceSymbols[piece], x, y);
           } else {
-            ctx.fillStyle = '#1c1c1c';
+            ctx.fillStyle = '#222222';
             ctx.strokeStyle = '#ffffff';
             ctx.lineWidth = 1;
             ctx.strokeText(pieceSymbols[piece], x, y);
