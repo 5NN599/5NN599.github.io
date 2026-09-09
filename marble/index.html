@@ -40,6 +40,8 @@
     .participant .state { font-size:.75rem; color:#868e96; white-space:nowrap; }
     .participant.me { border-color:#4dabf7; background:rgba(77,171,247,.10); }
 
+    .color-badge { display:inline-block; width:12px; height:12px; border-radius:50%; border:1px solid rgba(255,255,255,0.8); vertical-align:middle; margin-right:4px; }
+
     @media (max-width:820px) {
       .container { max-width:680px; }
       .lobby-layout { grid-template-columns:1fr; }
@@ -129,7 +131,7 @@
       "🎈", "🚗", "🚀", "💎", "🦁", "🐱", "🐶", "🦊",
       "👑", "⚡", "🔥", "🍀", "🤖", "👻", "🦄", "⚽",
       "👾", "🎲", "🎯", "🎨", "🎪", "🎭", "🎮", "🕹️",
-      "🎰", "🎳", "🎸", "🎷", "🎺", "🥁", "🏆", "🍕"
+      "🎰", "🎸", "🎷", "🎺", "🥁", "🏆", "🍕", "🍔"
     ];
 
     const savedTheme = localStorage.getItem('minig-theme');
@@ -231,7 +233,7 @@
     for (let j = 1; j <= 9; j++) TILE_POS.push({ x: 10 * S, y: j * S });
 
     const PLAYER_CONFIG = [
-      { name: "P1", color: "#ff6b6b" },
+      { name: "P1", color: "#ff4d4d" },
       { name: "P2", color: "#4dabf7" },
       { name: "P3", color: "#51cf66" },
       { name: "P4", color: "#fcc419" }
@@ -346,7 +348,6 @@
       attemptCreatePeer();
     }
 
-    // 6자리 숫자를 생성하되, 만약 서버 상에서 중복(unavailable-id)이 발생하면 자동으로 재시도합니다.
     function attemptCreatePeer() {
       const candidateCode = generate6DigitCode();
       peer = new Peer(candidateCode, PEER_OPTIONS);
@@ -369,7 +370,6 @@
 
       peer.on('error', err => {
         if (err?.type === 'unavailable-id') {
-          // 중복 발생 시 peer 객체를 정리하고 새 코드 재발급 시도
           try { peer.destroy(); } catch (_) {}
           attemptCreatePeer();
         } else {
@@ -948,6 +948,7 @@
         let stateText = p.isAI ? '🤖 AI 컴퓨터' : (p.id ? '👤 연결됨' : '⌛ 연결 중...');
         let nameText = `P${idx+1}`;
         
+        const colorBadge = `<span class="color-badge" style="background-color:${PLAYER_CONFIG[idx].color};"></span>`;
         let emojiPickerHtml = '';
         if (idx === localPlayerIndex && gameState.status === 'lobby') {
           emojiPickerHtml = `<select onchange="requestEmojiChange(this.value)">${EMOJI_OPTIONS.map(e => `<option value="${e}" ${e === p.emoji ? 'selected' : ''}>${e}</option>`).join('')}</select>`;
@@ -955,7 +956,7 @@
           emojiPickerHtml = `<span style="font-size:1.25rem">${p.emoji}</span>`;
         }
 
-        div.innerHTML = `<div class="who">${emojiPickerHtml}<span class="name">${nameText}</span></div><span class="state">${stateText}</span>`;
+        div.innerHTML = `<div class="who">${colorBadge}${emojiPickerHtml}<span class="name">${nameText}</span></div><span class="state">${stateText}</span>`;
         el.appendChild(div);
       });
       const cntEl = document.getElementById('participants-count');
@@ -993,13 +994,16 @@
       ctx.font = 'bold 36px sans-serif';
       ctx.fillText(`🎲 ${gameState.dice1}   🎲 ${gameState.dice2}`, 330, 360);
 
+      // 보드 칸 그리기
       TILES.forEach((tile, i) => {
         const pos = TILE_POS[i];
         const b = gameState.board[i];
 
+        // 소유한 땅인 경우 해당 플레이어 색상 적용
         ctx.fillStyle = b.owner >= 0 ? PLAYER_CONFIG[b.owner].color : '#1e293b';
         ctx.fillRect(pos.x, pos.y, S, S);
         ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 1;
         ctx.strokeRect(pos.x, pos.y, S, S);
 
         ctx.fillStyle = '#ffffff';
@@ -1019,16 +1023,34 @@
         }
       });
 
+      // 예시 이미지 반영: 플레이어 부루마블 말 그리기 (플레이어 색상 원 + 두꺼운 검은색 테두리 + 이모지)
       gameState.players.forEach((p, idx) => {
         if (p.bankrupt) return;
         const pos = TILE_POS[p.pos];
-        const offsetX = (idx % 2) * 24 + 14;
-        const offsetY = Math.floor(idx / 2) * 24 + 14;
+        
+        // 타일 안 4명 오프셋 위치
+        const cx = pos.x + (idx % 2) * 26 + 17;
+        const cy = pos.y + Math.floor(idx / 2) * 26 + 17;
+        const radius = 11;
 
-        ctx.font = '16px sans-serif';
+        // 1. 원 배경 (플레이어 고유 색상)
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+        ctx.fillStyle = PLAYER_CONFIG[idx].color;
+        ctx.fill();
+
+        // 2. 예시 이미지처럼 선명하고 두꺼운 검은색 테두리
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = '#000000';
+        ctx.stroke();
+
+        // 3. 원 중심에 플레이어 선택 이모지 배치
+        ctx.font = '12px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(p.emoji, pos.x + offsetX, pos.y + offsetY);
+        ctx.textBaseline = 'middle';
+        ctx.fillText(p.emoji, cx, cy + 1);
       });
+      ctx.textBaseline = 'alphabetic'; // 캔버스 기본 텍스트 정렬 복원
     }
 
     function updateActionPanel() {
@@ -1116,8 +1138,9 @@
       gameState.players.forEach((p, idx) => {
         const div = document.createElement('div');
         div.className = 'p-status' + (gameState.turn === idx ? ' active' : '');
+        const colorBadge = `<span class="color-badge" style="background-color:${PLAYER_CONFIG[idx].color};"></span>`;
         div.innerHTML = `
-          <div><b>P${idx + 1} ${p.emoji}</b> ${p.bankrupt ? '<span style="color:#fa5252">[파산/제외]</span>' : ''}</div>
+          <div>${colorBadge}<b>P${idx + 1} ${p.emoji}</b> ${p.bankrupt ? '<span style="color:#fa5252">[파산/제외]</span>' : ''}</div>
           <div>자산: <b>${p.money}만 원</b></div>
           <div>위치: ${TILES[p.pos].name}</div>
         `;
