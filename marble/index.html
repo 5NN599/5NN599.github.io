@@ -72,7 +72,7 @@
           <h4>🏠 방 만들기 (방장)</h4>
           <button class="online-primary" onclick="createRoom()">방 코드 생성</button>
           <div id="host-room-info" style="display:none; margin-top:10px; color:#4dabf7; font-size:.95rem;">
-            발급된 방 코드: <b id="host-room-code" style="font-size:1.1rem; word-break:break-all;"></b>
+            발급된 방 코드: <b id="host-room-code" style="font-size:1.2rem; letter-spacing: 0.05em;"></b>
           </div>
           <div id="host-controls" style="display:none; margin-top:10px;">
             <button onclick="startGame()" style="background:#40c057 !important; color:#fff !important; border:none !important; width:100%; padding:9px 12px;">🚀 게임 시작 (방장)</button>
@@ -84,7 +84,7 @@
         <div class="online-section">
           <h4>🎮 방 참가하기 (참가자)</h4>
           <div class="join-row">
-            <input id="room-code-input" class="room-input" type="text" placeholder="방 코드 입력" autocomplete="off">
+            <input id="room-code-input" class="room-input" type="text" placeholder="6자리 방 코드" maxlength="6" autocomplete="off">
             <button class="online-secondary" onclick="joinRoom()">입장</button>
           </div>
         </div>
@@ -296,6 +296,10 @@
       return String(value || '').trim();
     }
 
+    function generate6DigitCode() {
+      return Math.floor(100000 + Math.random() * 900000).toString();
+    }
+
     function cloneState() {
       return JSON.parse(JSON.stringify(gameState));
     }
@@ -328,11 +332,10 @@
       gameState = makeInitialState();
       gameState.players[0].isAI = false;
 
-      // 발급받기 전에는 방 정보 및 시작 버튼을 노출하지 않음
       document.getElementById('host-room-info').style.display = 'none';
       document.getElementById('host-controls').style.display = 'none';
       document.getElementById('guest-waiting').style.display = 'none';
-      setNetworkStatus('서버로부터 P2P 방 코드 발급 중...', false);
+      setNetworkStatus('중복 체크 및 6자리 방 코드 발급 중...', false);
       updateUI();
 
       if (typeof Peer === 'undefined') {
@@ -340,25 +343,38 @@
         return;
       }
 
-      // ID 파라미터를 넘기지 않아 PeerJS 서버에서 고유 ID를 할당받음
-      peer = new Peer(PEER_OPTIONS);
+      attemptCreatePeer();
+    }
+
+    // 6자리 숫자를 생성하되, 만약 서버 상에서 중복(unavailable-id)이 발생하면 자동으로 재시도합니다.
+    function attemptCreatePeer() {
+      const candidateCode = generate6DigitCode();
+      peer = new Peer(candidateCode, PEER_OPTIONS);
+
       peer.on('open', id => {
         roomCode = id;
         gameState.roomCode = roomCode;
         myClientId = id;
         gameState.players[0].id = id;
 
-        // 서버 발급 완료 후에만 화면에 노출
         document.getElementById('host-room-info').style.display = 'block';
         document.getElementById('host-room-code').innerText = roomCode;
         document.getElementById('host-controls').style.display = 'block';
 
-        setNetworkStatus(`P2P 방 개설 완료 · 코드 발급됨`, true);
+        setNetworkStatus(`P2P 방 개설 완료 · 코드: ${roomCode}`, true);
         syncStateToNetwork();
       });
+
       peer.on('connection', conn => attachGuestConnection(conn));
+
       peer.on('error', err => {
-        setNetworkStatus(`P2P 오류: ${err?.type || '연결 오류'}`, false);
+        if (err?.type === 'unavailable-id') {
+          // 중복 발생 시 peer 객체를 정리하고 새 코드 재발급 시도
+          try { peer.destroy(); } catch (_) {}
+          attemptCreatePeer();
+        } else {
+          setNetworkStatus(`P2P 오류: ${err?.type || '연결 오류'}`, false);
+        }
       });
     }
 
@@ -366,8 +382,8 @@
       initAudio();
       closeNetworking();
       const code = normalizeRoomCode(document.getElementById('room-code-input').value);
-      if (!code) {
-        alert('방 코드를 올바르게 입력해주세요!');
+      if (!code || code.length !== 6) {
+        alert('6자리 방 코드를 올바르게 입력해주세요!');
         return;
       }
       roomCode = code;
