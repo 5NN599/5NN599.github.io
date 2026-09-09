@@ -54,7 +54,9 @@
     .p-status { border: 1px solid var(--border); padding: 8px; border-radius: 6px; text-align: left; background: var(--btn-bg); }
     .p-status.active { border-color: #fcc419; background: rgba(252, 196, 25, 0.1); }
     
-    #action-panel { margin-top: 8px; padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--btn-bg); display: flex; justify-content: center; align-items: center; gap: 6px; flex-wrap: wrap; }
+    #action-panel { margin-top: 8px; padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--btn-bg); display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px; }
+    .buy-options-group { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; align-items: center; margin-bottom: 6px; font-size: 0.9rem; font-weight: bold; }
+    .buy-options-group label { cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px; }
     .btn-action { font-size: 0.85rem; padding: 8px 12px; border-radius: 6px; }
     .btn-buy { background: #40c057 !important; color: #fff !important; border: none !important; }
     .btn-danger { background: #fa5252 !important; color: #fff !important; border: none !important; }
@@ -750,9 +752,16 @@
 
       if (tile.type === 'city') {
         if (b.owner === -1) {
-          gameState.awaitingAction = { type: 'BUY_PROPERTY', tileIdx, options: ['land', 'villa', 'bldg', 'hotel'] };
+          gameState.awaitingAction = { type: 'BUY_PROPERTY', tileIdx };
         } else if (b.owner === playerIdx) {
-          gameState.awaitingAction = { type: 'UPGRADE_PROPERTY', tileIdx };
+          // 추가 건설 가능 여부 확인
+          if (!b.villa || !b.bldg || !b.hotel) {
+            gameState.awaitingAction = { type: 'UPGRADE_PROPERTY', tileIdx };
+          } else {
+            gameState.message = `이미 랜드마크까지 완공된 지역입니다.`;
+            finishTurn();
+            return;
+          }
         } else {
           let rent = tile.rLand;
           if (b.villa) rent += tile.rVilla;
@@ -839,7 +848,8 @@
         if (p.money >= cost && cost > 0) {
           p.money -= cost;
           playSound('buy');
-          gameState.message = `P${playerIdx + 1}이(가) ${tile.name}에 건물 매수! (-${cost}만)`;
+          const names = action.build.map(item => ({ land:'대지', villa:'별장', bldg:'빌딩', hotel:'호텔' }[item])).join(', ');
+          gameState.message = `P${playerIdx + 1}이(가) ${tile.name}에 [${names}] 매수 완료! (-${cost}만)`;
         }
       } else {
         gameState.message = `P${playerIdx + 1}이(가) 매수를 포기했습니다.`;
@@ -916,17 +926,19 @@
       let totalCost = 0;
 
       if (awaiting.type === 'BUY_PROPERTY') {
-        if (p.money >= tile.land + tile.villa + 20) {
-          build.push('land', 'villa');
-          totalCost = tile.land + tile.villa;
-        }
+        build.push('land');
+        totalCost += tile.land;
+        if (p.money >= totalCost + tile.villa + 15) { build.push('villa'); totalCost += tile.villa; }
+        if (p.money >= totalCost + tile.bldg + 15) { build.push('bldg'); totalCost += tile.bldg; }
+        if (p.money >= totalCost + tile.hotel + 15) { build.push('hotel'); totalCost += tile.hotel; }
       } else if (awaiting.type === 'UPGRADE_PROPERTY') {
         const b = gameState.board[awaiting.tileIdx];
-        if (!b.bldg && p.money >= tile.bldg + 10) { build.push('bldg'); totalCost += tile.bldg; }
-        if (!b.hotel && p.money >= totalCost + tile.hotel + 10) { build.push('hotel'); totalCost += tile.hotel; }
+        if (!b.villa && p.money >= totalCost + tile.villa + 15) { build.push('villa'); totalCost += tile.villa; }
+        if (!b.bldg && p.money >= totalCost + tile.bldg + 15) { build.push('bldg'); totalCost += tile.bldg; }
+        if (!b.hotel && p.money >= totalCost + tile.hotel + 15) { build.push('hotel'); totalCost += tile.hotel; }
       }
 
-      if (build.length > 0) {
+      if (build.length > 0 && p.money >= totalCost) {
         handleHostAction(gameState.turn, { type: awaiting.type === 'BUY_PROPERTY' ? 'BUY' : 'UPGRADE', build });
       } else {
         handleHostAction(gameState.turn, { type: 'PASS' });
@@ -994,12 +1006,10 @@
       ctx.font = 'bold 36px sans-serif';
       ctx.fillText(`🎲 ${gameState.dice1}   🎲 ${gameState.dice2}`, 330, 360);
 
-      // 보드 칸 그리기
       TILES.forEach((tile, i) => {
         const pos = TILE_POS[i];
         const b = gameState.board[i];
 
-        // 소유한 땅인 경우 해당 플레이어 색상 적용
         ctx.fillStyle = b.owner >= 0 ? PLAYER_CONFIG[b.owner].color : '#1e293b';
         ctx.fillRect(pos.x, pos.y, S, S);
         ctx.strokeStyle = '#334155';
@@ -1023,34 +1033,73 @@
         }
       });
 
-      // 예시 이미지 반영: 플레이어 부루마블 말 그리기 (플레이어 색상 원 + 두꺼운 검은색 테두리 + 이모지)
       gameState.players.forEach((p, idx) => {
         if (p.bankrupt) return;
         const pos = TILE_POS[p.pos];
         
-        // 타일 안 4명 오프셋 위치
         const cx = pos.x + (idx % 2) * 26 + 17;
         const cy = pos.y + Math.floor(idx / 2) * 26 + 17;
         const radius = 11;
 
-        // 1. 원 배경 (플레이어 고유 색상)
         ctx.beginPath();
         ctx.arc(cx, cy, radius, 0, Math.PI * 2);
         ctx.fillStyle = PLAYER_CONFIG[idx].color;
         ctx.fill();
 
-        // 2. 예시 이미지처럼 선명하고 두꺼운 검은색 테두리
         ctx.lineWidth = 2.5;
         ctx.strokeStyle = '#000000';
         ctx.stroke();
 
-        // 3. 원 중심에 플레이어 선택 이모지 배치
         ctx.font = '12px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(p.emoji, cx, cy + 1);
       });
-      ctx.textBaseline = 'alphabetic'; // 캔버스 기본 텍스트 정렬 복원
+      ctx.textBaseline = 'alphabetic';
+    }
+
+    function updateBuyTotal(landCost, villaCost, bldgCost, hotelCost, playerMoney) {
+      const v = document.getElementById('chk-villa')?.checked ? villaCost : 0;
+      const b = document.getElementById('chk-bldg')?.checked ? bldgCost : 0;
+      const h = document.getElementById('chk-hotel')?.checked ? hotelCost : 0;
+      const total = landCost + v + b + h;
+      
+      const btn = document.getElementById('btn-buy-submit');
+      if (btn) {
+        btn.innerText = `매수하기 (${total}만 원)`;
+        btn.disabled = (total > playerMoney);
+      }
+    }
+
+    function submitCustomBuy(tileIdx) {
+      const build = ['land'];
+      if (document.getElementById('chk-villa')?.checked) build.push('villa');
+      if (document.getElementById('chk-bldg')?.checked) build.push('bldg');
+      if (document.getElementById('chk-hotel')?.checked) build.push('hotel');
+      sendPlayerAction({ type: 'BUY', build });
+    }
+
+    function updateUpgradeTotal(vCost, bCost, hCost, playerMoney) {
+      const v = document.getElementById('chk-up-villa')?.checked ? vCost : 0;
+      const b = document.getElementById('chk-up-bldg')?.checked ? bCost : 0;
+      const h = document.getElementById('chk-up-hotel')?.checked ? hCost : 0;
+      const total = v + b + h;
+      
+      const btn = document.getElementById('btn-upgrade-submit');
+      if (btn) {
+        btn.innerText = `추가 건설 (${total}만 원)`;
+        btn.disabled = (total === 0 || total > playerMoney);
+      }
+    }
+
+    function submitCustomUpgrade(tileIdx) {
+      const build = [];
+      if (document.getElementById('chk-up-villa')?.checked) build.push('villa');
+      if (document.getElementById('chk-up-bldg')?.checked) build.push('bldg');
+      if (document.getElementById('chk-up-hotel')?.checked) build.push('hotel');
+      if (build.length > 0) {
+        sendPlayerAction({ type: 'UPGRADE', build });
+      }
     }
 
     function updateActionPanel() {
@@ -1071,8 +1120,10 @@
               <div style="width:100%; margin-bottom:8px; font-weight:bold; color:#fa5252;">
                 ⚠️ P${gameState.vote.targetIdx + 1} 님이 퇴장했습니다. 대처 방식을 투표해주세요:
               </div>
-              <button class="btn-action btn-buy" onclick="submitVote('ai')">🤖 AI로 전환</button>
-              <button class="btn-action btn-danger" onclick="submitVote('remove')">❌ 완전 삭제 (파산)</button>
+              <div style="display:flex; gap:6px;">
+                <button class="btn-action btn-buy" onclick="submitVote('ai')">🤖 AI로 전환</button>
+                <button class="btn-action btn-danger" onclick="submitVote('remove')">❌ 완전 삭제 (파산)</button>
+              </div>
             `;
           }
         } else {
@@ -1087,6 +1138,8 @@
         return;
       }
 
+      const p = gameState.players[gameState.turn];
+
       if (!gameState.isRolling && !gameState.isMoving && !gameState.awaitingAction) {
         const btn = document.createElement('button');
         btn.className = 'btn-action';
@@ -1100,34 +1153,32 @@
         const tile = TILES[awaiting.tileIdx];
 
         if (awaiting.type === 'BUY_PROPERTY') {
-          const btnLand = document.createElement('button');
-          btnLand.className = 'btn-action btn-buy';
-          btnLand.innerText = `토지+별장 구매 (${tile.land + tile.villa}만)`;
-          btnLand.onclick = () => sendPlayerAction({ type: 'BUY', build: ['land', 'villa'] });
-          panel.appendChild(btnLand);
+          let html = `<div style="width:100%; margin-bottom:6px; font-weight:bold;">🏠 ${tile.name} 매수 선택</div>`;
+          html += `<div class="buy-options-group">`;
+          html += `<label><input type="checkbox" id="chk-land" checked disabled> 대지 (${tile.land}만)</label>`;
+          html += `<label><input type="checkbox" id="chk-villa" onchange="updateBuyTotal(${tile.land}, ${tile.villa}, ${tile.bldg}, ${tile.hotel}, ${p.money})"> 별장 (${tile.villa}만)</label>`;
+          html += `<label><input type="checkbox" id="chk-bldg" onchange="updateBuyTotal(${tile.land}, ${tile.villa}, ${tile.bldg}, ${tile.hotel}, ${p.money})"> 빌딩 (${tile.bldg}만)</label>`;
+          html += `<label><input type="checkbox" id="chk-hotel" onchange="updateBuyTotal(${tile.land}, ${tile.villa}, ${tile.bldg}, ${tile.hotel}, ${p.money})"> 호텔 (${tile.hotel}만)</label>`;
+          html += `</div>`;
+          html += `<div style="display:flex; gap:6px;">`;
+          html += `<button id="btn-buy-submit" class="btn-action btn-buy" onclick="submitCustomBuy(${awaiting.tileIdx})" ${p.money < tile.land ? 'disabled' : ''}>매수하기 (${tile.land}만 원)</button>`;
+          html += `<button class="btn-action btn-danger" onclick="sendPlayerAction({ type: 'PASS' })">패스</button>`;
+          html += `</div>`;
+          panel.innerHTML = html;
         } else if (awaiting.type === 'UPGRADE_PROPERTY') {
           const b = gameState.board[awaiting.tileIdx];
-          if (!b.bldg) {
-            const btnBldg = document.createElement('button');
-            btnBldg.className = 'btn-action btn-buy';
-            btnBldg.innerText = `빌딩 건설 (${tile.bldg}만)`;
-            btnBldg.onclick = () => sendPlayerAction({ type: 'UPGRADE', build: ['bldg'] });
-            panel.appendChild(btnBldg);
-          }
-          if (!b.hotel) {
-            const btnHotel = document.createElement('button');
-            btnHotel.className = 'btn-action btn-buy';
-            btnHotel.innerText = `호텔 건설 (${tile.hotel}만)`;
-            btnHotel.onclick = () => sendPlayerAction({ type: 'UPGRADE', build: ['hotel'] });
-            panel.appendChild(btnHotel);
-          }
+          let html = `<div style="width:100%; margin-bottom:6px; font-weight:bold;">🏗️ ${tile.name} 추가 건물 건설</div>`;
+          html += `<div class="buy-options-group">`;
+          if (!b.villa) html += `<label><input type="checkbox" id="chk-up-villa" onchange="updateUpgradeTotal(${tile.villa}, ${tile.bldg}, ${tile.hotel}, ${p.money})"> 별장 (${tile.villa}만)</label>`;
+          if (!b.bldg) html += `<label><input type="checkbox" id="chk-up-bldg" onchange="updateUpgradeTotal(${tile.villa}, ${tile.bldg}, ${tile.hotel}, ${p.money})"> 빌딩 (${tile.bldg}만)</label>`;
+          if (!b.hotel) html += `<label><input type="checkbox" id="chk-up-hotel" onchange="updateUpgradeTotal(${tile.villa}, ${tile.bldg}, ${tile.hotel}, ${p.money})"> 호텔 (${tile.hotel}만)</label>`;
+          html += `</div>`;
+          html += `<div style="display:flex; gap:6px;">`;
+          html += `<button id="btn-upgrade-submit" class="btn-action btn-buy" disabled onclick="submitCustomUpgrade(${awaiting.tileIdx})">추가 건설 (0만 원)</button>`;
+          html += `<button class="btn-action btn-danger" onclick="sendPlayerAction({ type: 'PASS' })">패스</button>`;
+          html += `</div>`;
+          panel.innerHTML = html;
         }
-
-        const btnPass = document.createElement('button');
-        btnPass.className = 'btn-action btn-danger';
-        btnPass.innerText = '패스 / 턴 종료';
-        btnPass.onclick = () => sendPlayerAction({ type: 'PASS' });
-        panel.appendChild(btnPass);
       }
     }
 
