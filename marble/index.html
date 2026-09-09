@@ -25,7 +25,7 @@
     .online-section h4 { margin:0 0 10px; font-size:.98rem; }
     .online-primary { background:#4dabf7 !important; color:#fff !important; border:none !important; padding:9px 16px; }
     .join-row { display:flex; justify-content:center; align-items:center; gap:7px; }
-    .room-input { width:145px !important; font-size:1rem !important; letter-spacing:.2em; }
+    .room-input { width:165px !important; font-size:1.1rem !important; letter-spacing:.2em; text-align:center; }
     .online-secondary { padding:8px 16px; }
     .or-divider { display:flex; align-items:center; gap:10px; margin:9px 0; color:#adb5bd; font-size:.82rem; }
     .or-divider::before,.or-divider::after { content:""; flex:1; height:1px; background:var(--border); }
@@ -70,9 +70,9 @@
 
         <div class="online-section">
           <h4>🏠 방 만들기 (방장)</h4>
-          <button class="online-primary" onclick="createRoom()">방 번호 생성</button>
-          <div id="host-room-info" style="display:none; margin-top:10px; color:#4dabf7; font-size:.86rem;">
-            방 번호: <b id="host-room-code"></b>
+          <button class="online-primary" onclick="createRoom()">방 코드 생성</button>
+          <div id="host-room-info" style="display:none; margin-top:10px; color:#4dabf7; font-size:.95rem;">
+            발급된 방 코드: <b id="host-room-code" style="font-size:1.2rem; letter-spacing:1px;"></b>
           </div>
           <div id="host-controls" style="display:none; margin-top:10px;">
             <button onclick="startGame()" style="background:#40c057 !important; color:#fff !important; border:none !important; width:100%; padding:9px 12px;">🚀 게임 시작 (방장)</button>
@@ -84,7 +84,7 @@
         <div class="online-section">
           <h4>🎮 방 참가하기 (참가자)</h4>
           <div class="join-row">
-            <input id="room-code-input" class="room-input" type="text" maxlength="4" placeholder="0000" inputmode="numeric" autocomplete="off">
+            <input id="room-code-input" class="room-input" type="text" maxlength="6" placeholder="000000" inputmode="numeric" autocomplete="off">
             <button class="online-secondary" onclick="joinRoom()">입장</button>
           </div>
         </div>
@@ -125,7 +125,13 @@
 
   <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js"></script>
   <script>
-    const EMOJI_OPTIONS = ["🎈", "🚗", "🚀", "💎", "🦁", "🐱", "🐶", "🦊", "👑", "⚡", "🔥", "🍀", "🤖", "👻", "🦄", "⚽"];
+    // 드롭다운 선택용 이모지 32개 설정
+    const EMOJI_OPTIONS = [
+      "🎈", "🚗", "🚀", "💎", "🦁", "🐱", "🐶", "🦊",
+      "👑", "⚡", "🔥", "🍀", "🤖", "👻", "🦄", "⚽",
+      "👾", "🎲", "🎯", "🎨", "🎪", "🎭", "🎮", "🕹️",
+      "🎰", "🎳", "🎸", "🎷", "🎺", "🥁", "🏆", "🍕"
+    ];
 
     const savedTheme = localStorage.getItem('minig-theme');
     if (savedTheme && savedTheme !== 'white') document.documentElement.setAttribute('data-theme', savedTheme);
@@ -267,7 +273,7 @@
         isRolling: false,
         isMoving: false,
         awaitingAction: null,
-        vote: null, // { targetIdx: number, votes: { playerIdx: 'ai' | 'remove' } }
+        vote: null,
         socialFundPool: 0,
         message: "방장이 게임을 시작하기를 기다립니다.",
         players: [
@@ -288,8 +294,8 @@
     }
 
     function normalizeRoomCode(value) {
-      const code = String(value || '').replace(/\D/g, '').slice(0, 4);
-      return code.length === 4 ? code : '';
+      const code = String(value || '').replace(/\D/g, '').slice(0, 6);
+      return code.length === 6 ? code : '';
     }
 
     function hostPeerId(code) {
@@ -322,9 +328,9 @@
     function createRoom() {
       initAudio();
       closeNetworking();
-      const input = normalizeRoomCode(document.getElementById('room-code-input').value);
-      roomCode = input || String(Math.floor(1000 + Math.random() * 9000));
-      document.getElementById('room-code-input').value = roomCode;
+      
+      roomCode = String(Math.floor(100000 + Math.random() * 900000));
+      
       isHost = true;
       localPlayerIndex = 0;
       gameState = makeInitialState();
@@ -347,13 +353,14 @@
       peer.on('open', id => {
         myClientId = id;
         gameState.players[0].id = id;
-        setNetworkStatus(`P2P 방 개설 완료 · 방 번호 ${roomCode}`, true);
+        setNetworkStatus(`P2P 방 개설 완료 · 코드 ${roomCode}`, true);
         syncStateToNetwork();
       });
       peer.on('connection', conn => attachGuestConnection(conn));
       peer.on('error', err => {
         if (err && err.type === 'unavailable-id') {
-          setNetworkStatus('이미 사용 중인 방 번호입니다.', false);
+          setNetworkStatus('중복 코드 재시도 중...', false);
+          setTimeout(createRoom, 300);
         } else {
           setNetworkStatus(`P2P 오류: ${err?.type || '연결 오류'}`, false);
         }
@@ -365,7 +372,7 @@
       closeNetworking();
       const code = normalizeRoomCode(document.getElementById('room-code-input').value);
       if (!code) {
-        alert('방 번호 4자리를 입력해주세요!');
+        alert('6자리 방 코드를 올바르게 입력해주세요!');
         return;
       }
       roomCode = code;
@@ -421,7 +428,6 @@
       conn.on('close', () => handleGuestDisconnect(conn));
     }
 
-    /* 플레이어 이탈 시 투표 처리 로직 */
     function handleGuestDisconnect(conn) {
       const clientId = conn.metadata?.clientId || [...connections.entries()].find(([, c]) => c === conn)?.[0];
       if (!clientId) return;
@@ -1021,7 +1027,6 @@
 
       if (gameState.status !== 'playing') return;
 
-      /* 퇴장 플레이어 발생 시 투표 UI */
       if (gameState.vote) {
         const myVote = gameState.vote.votes[localPlayerIndex];
         const me = gameState.players[localPlayerIndex];
