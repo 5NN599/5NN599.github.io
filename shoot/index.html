@@ -1,14 +1,24 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>미니지 - 지구 방위대 최후의 함선 '미니지호'</title>
   <style>
+    /* 기본 라이트 테마 */
     :root {
+      --bg: #f4f6f8;
+      --text: #1f2328;
+      --canvas-bg: #05070a; /* 우주 게임창은 어둡게 유지 */
+      --border: #d0d7de;
+      --btn-bg: #ffffff;
+      --hud-bg: #eaeef2;
+    }
+
+    /* 다크 테마 */
+    [data-theme="dark"] {
       --bg: #0d1117;
       --text: #c9d1d9;
-      --canvas-bg: #020305;
       --border: #30363d;
       --btn-bg: #21262d;
       --hud-bg: #161b22;
@@ -21,6 +31,7 @@
     body {
       background-color: var(--bg);
       color: var(--text);
+      transition: background-color 0.3s, color 0.3s;
       margin: 0;
       padding: 0;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -36,7 +47,7 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.15);
       border-radius: 10px;
     }
 
@@ -52,26 +63,28 @@
       border: 3px solid var(--border);
       border-bottom: 1px solid var(--border);
       border-radius: 10px 10px 0 0;
-      padding: 8px 12px;
+      padding: 8px 10px;
       z-index: 10;
+      transition: background-color 0.3s, color 0.3s, border-color 0.3s;
     }
     .hud-item {
       display: flex;
       align-items: center;
-      gap: 3px;
+      gap: 2px;
     }
     .hud-btn {
       cursor: pointer;
-      padding: 3px 7px;
+      padding: 3px 6px;
       font-size: 10px;
       font-weight: bold;
       border-radius: 4px;
       background-color: var(--btn-bg);
       color: var(--text);
       border: 1px solid var(--border);
+      transition: background-color 0.3s, color 0.3s, border-color 0.3s;
     }
     .hud-btn:hover {
-      filter: brightness(1.2);
+      filter: brightness(0.9);
     }
 
     #game-container {
@@ -83,6 +96,7 @@
       border-radius: 0 0 10px 10px;
       overflow: hidden;
       background-color: var(--canvas-bg);
+      transition: border-color 0.3s;
     }
     canvas {
       display: block;
@@ -123,6 +137,7 @@
       z-index: 20;
       padding: 20px;
       text-align: center;
+      transition: background-color 0.3s, color 0.3s;
     }
     h1 {
       margin: 0 0 10px 0;
@@ -144,7 +159,7 @@
       background-color: var(--btn-bg);
       color: var(--text);
       border: 1px solid var(--border);
-      transition: transform 0.1s ease;
+      transition: transform 0.1s ease, background-color 0.3s, color 0.3s;
     }
     button:active {
       transform: scale(0.96);
@@ -155,6 +170,7 @@
       height: 130px;
       border: 1px solid var(--border);
       background-color: var(--btn-bg);
+      color: var(--text);
       padding: 12px;
       font-family: monospace;
       font-size: 11px;
@@ -172,7 +188,7 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background-color: rgba(0, 0, 0, 0.8);
+      background-color: rgba(0, 0, 0, 0.65);
       display: none;
       justify-content: center;
       align-items: center;
@@ -181,7 +197,7 @@
     }
     .modal-content {
       width: 92%;
-      background-color: var(--btn-bg);
+      background-color: var(--bg);
       color: var(--text);
       border: 1px solid var(--border);
       border-radius: 6px;
@@ -199,6 +215,7 @@
       border: 1px solid var(--border);
       border-radius: 4px;
       font-size: 11px;
+      background-color: var(--btn-bg);
     }
     .shop-item button {
       margin-top: 0;
@@ -221,7 +238,10 @@
       <div class="hud-item">LV:<span id="level-val">1</span></div>
       <div class="hud-item">💰<span id="points-val">0</span>P</div>
       <div class="hud-item">🔫<span id="weapon-val">기본</span></div>
-      <button class="hud-btn" onclick="openShop()">🛒연구소</button>
+      <div style="display:flex; gap:4px;">
+        <button class="hud-btn" onclick="toggleTheme()" id="theme-btn">☀️모드</button>
+        <button class="hud-btn" onclick="openShop()">🛒연구소</button>
+      </div>
     </div>
 
     <div id="game-container">
@@ -242,7 +262,7 @@
       </div>
 
       <div id="victory-screen" class="overlay-screen" style="display: none;">
-        <h1 style="color:#00ffcc;">🎉 인류 승리 (VICTORY)</h1>
+        <h1 style="color:#00cc99;">🎉 인류 승리 (VICTORY)</h1>
         <p id="victory-desc">외계인 본진 하이브 마인드를 완전 파괴했습니다!</p>
         <button onclick="startGame()">🚀 인류의 영웅으로 재출격</button>
       </div>
@@ -307,6 +327,21 @@
     const ctx = canvas.getContext('2d');
     const CANVAS_WIDTH = 360;
     const CANVAS_HEIGHT = 500;
+
+    // 테마 토글 로직
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const themeBtn = document.getElementById('theme-btn');
+
+      if (current === 'dark') {
+        html.setAttribute('data-theme', 'light');
+        themeBtn.innerText = '☀️라이트';
+      } else {
+        html.setAttribute('data-theme', 'dark');
+        themeBtn.innerText = '🌙다크';
+      }
+    }
 
     let audioCtx = null;
     let bgmTimer = null;
@@ -561,7 +596,6 @@
         }
       }
 
-      // 아군 총알 이동 및 유도 드론 가속 알고리즘
       bullets.forEach((b, bIdx) => {
         if (b.type === 'DRONE_SHOT') {
           b.speed = Math.min(12.0, (b.speed || 3.5) + 0.3);
@@ -587,7 +621,6 @@
         }
       });
 
-      // 적 총알 이동 및 충돌
       enemyBullets.forEach((eb, index) => {
         eb.x += eb.vx;
         eb.y += eb.vy;
@@ -608,7 +641,6 @@
         }
       });
 
-      // 적 생성 타이머
       enemySpawnTimer++;
       if (enemySpawnTimer > Math.max(20, 50 - level * 2) && !boss && !bossSpawned) {
         spawnEnemy();
@@ -619,11 +651,9 @@
         spawnBoss();
       }
 
-      // 🔥 복구 완료: 10가지 적 AI 패턴 계산 및 총알 발사
       enemies.forEach((e, eIdx) => {
         e.time += 0.05;
 
-        // 패턴별 궤적 계산
         if (e.pType === 'sine') {
           e.y += e.speed;
           e.x = e.baseX + Math.sin(e.time * 2.5) * 45;
@@ -653,7 +683,6 @@
           e.y += e.speed;
         }
 
-        // 적 사격 로직 (플레이어 조준 사격)
         e.shootTimer++;
         if (e.shootTimer > 85) {
           e.shootTimer = 0;
@@ -666,7 +695,6 @@
           });
         }
 
-        // 플레이어 포격 충돌 판정
         bullets.forEach((b, bIdx) => {
           if (Math.hypot(b.x - e.x, b.y - e.y) < e.w / 2 + 10) {
             e.hp -= b.power;
@@ -687,7 +715,6 @@
         if (e.y > CANVAS_HEIGHT + 40) enemies.splice(eIdx, 1);
       });
 
-      // 보스 업데이트
       if (boss) {
         if (boss.y < boss.targetY) {
           boss.y += 1.5;
@@ -729,7 +756,6 @@
         });
       }
 
-      // 아이템 습득
       items.forEach((item, index) => {
         item.y += item.speed;
         if (Math.hypot(player.x - item.x, player.y - item.y) < player.w / 2 + item.w / 2) {
@@ -741,7 +767,6 @@
         }
       });
 
-      // 파티클 업데이트
       particles.forEach((p, index) => {
         p.x += p.vx;
         p.y += p.vy;
@@ -832,13 +857,11 @@
       ctx.fillStyle = '#05070a';
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-      // 별 배경
       stars.forEach(s => {
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(s.x, s.y, s.size, s.size);
       });
 
-      // 플레이어 및 유도 드론 렌더링
       ctx.save();
       ctx.translate(player.x, player.y);
       if (currentWeapon.type === 'DRONE') {
@@ -854,13 +877,11 @@
       ctx.fillText('🚀', 0, 0);
       ctx.restore();
 
-      // 총알 렌더링
       bullets.forEach(b => {
         ctx.fillStyle = b.type === 'DRONE_SHOT' ? '#00ffaa' : '#00ffff';
         ctx.fillRect(b.x - 2, b.y - 8, 4, 10);
       });
 
-      // 적 총알 렌더링
       enemyBullets.forEach(eb => {
         ctx.fillStyle = '#ff0055';
         ctx.beginPath();
@@ -868,7 +889,6 @@
         ctx.fill();
       });
 
-      // 적 렌더링 (스텔스는 투명도 적용)
       enemies.forEach(e => {
         ctx.save();
         ctx.globalAlpha = e.alpha || 1.0;
@@ -879,7 +899,6 @@
         ctx.restore();
       });
 
-      // 보스 렌더링
       if (boss) {
         ctx.font = '54px sans-serif';
         ctx.textAlign = 'center';
@@ -892,7 +911,6 @@
         document.getElementById('boss-bar-container').style.display = 'none';
       }
 
-      // 아이템 렌더링
       items.forEach(item => {
         ctx.font = '20px sans-serif';
         ctx.textAlign = 'center';
@@ -900,7 +918,6 @@
         ctx.fillText(item.emoji, item.x, item.y);
       });
 
-      // 폭발 파티클 렌더링
       particles.forEach(p => {
         ctx.save();
         ctx.globalAlpha = p.alpha;
@@ -911,7 +928,6 @@
         ctx.restore();
       });
 
-      // HUD 데이터 업데이트
       document.getElementById('hp-val').innerText = Math.ceil(player.hp);
       document.getElementById('max-hp-val').innerText = player.maxHp;
       document.getElementById('score-val').innerText = score;
