@@ -610,7 +610,9 @@
         maxHp: hpVal,
         vx: 1.8,
         shootTimer: 0,
-        patternCount: 0
+        attackMode: 0,
+        modeTimer: 0,
+        spiralAngle: 0
       };
     }
 
@@ -914,74 +916,93 @@
         if (e.y > CANVAS_HEIGHT + 40) enemies.splice(eIdx, 1);
       });
 
+      // 규칙적인 보스 탄막 패턴 제어 로직
       if (boss) {
-        if (boss.y < boss.targetY) boss.y += 1.2;
-        else {
+        if (boss.y < boss.targetY) {
+          boss.y += 1.2;
+        } else {
           boss.x += boss.vx;
           if (boss.x < boss.w / 2 + 15 || boss.x > CANVAS_WIDTH - boss.w / 2 - 15) boss.vx *= -1;
 
+          boss.modeTimer++;
           boss.shootTimer++;
-          const bossDelay = marsMode ? 20 : 25;
 
-          if (boss.shootTimer > bossDelay) {
+          // 240 프레임(약 4초)마다 고유 공격 패턴 전환
+          if (boss.modeTimer > 240) {
+            boss.modeTimer = 0;
             boss.shootTimer = 0;
-            boss.patternCount++;
+            boss.attackMode = (boss.attackMode + 1) % 4;
+          }
 
-            const pattern = boss.patternCount % 10;
-
-            if (pattern === 0) {
-              const count = 7;
-              for (let i = 0; i < count; i++) {
-                const angle = (Math.PI / (count - 1)) * i;
-                enemyBullets.push({ x: boss.x, y: boss.y + 20, vx: Math.cos(angle) * 3, vy: Math.sin(angle) * 3, radius: 3.5 });
+          // 패턴 0: 회전 나선 탄막 (Spiral Wave)
+          if (boss.attackMode === 0) {
+            if (boss.shootTimer >= 6) {
+              boss.shootTimer = 0;
+              boss.spiralAngle += 0.22;
+              const arms = 3;
+              for (let i = 0; i < arms; i++) {
+                const angle = boss.spiralAngle + (Math.PI * 2 / arms) * i;
+                enemyBullets.push({
+                  x: boss.x, y: boss.y + 20,
+                  vx: Math.cos(angle) * 3.2,
+                  vy: Math.sin(angle) * 3.2,
+                  radius: 3.5
+                });
               }
-            } else if (pattern === 1) {
-              const targetAngle = Math.atan2(player.y - boss.y, player.x - boss.x);
-              for (let i = -1; i <= 1; i++) {
-                const angle = targetAngle + (i * 0.18);
-                enemyBullets.push({ x: boss.x, y: boss.y + 20, vx: Math.cos(angle) * 4.2, vy: Math.sin(angle) * 4.2, radius: 4 });
-              }
-            } else if (pattern === 2) {
-              const count = 12;
-              const baseAngle = boss.patternCount * 0.4;
-              for (let i = 0; i < count; i++) {
-                const angle = baseAngle + (Math.PI * 2 / count) * i;
-                enemyBullets.push({ x: boss.x, y: boss.y + 20, vx: Math.cos(angle) * 2.8, vy: Math.sin(angle) * 2.8, radius: 3.5 });
-              }
-            } else if (pattern === 3) {
-              for (let dir of [-1, 1]) {
-                enemyBullets.push({ x: boss.x, y: boss.y + 20, vx: dir * 3.5, vy: 3.5, radius: 4 });
-                enemyBullets.push({ x: boss.x, y: boss.y + 20, vx: dir * 1.5, vy: 4.5, radius: 4 });
-              }
-            } else if (pattern === 4) {
-              const angle = Math.atan2(player.y - boss.y, player.x - boss.x);
-              enemyBullets.push({ x: boss.x, y: boss.y + 20, vx: Math.cos(angle) * 6.5, vy: Math.sin(angle) * 6.5, radius: 5 });
-            } else if (pattern === 5) {
+            }
+          }
+          // 패턴 1: 리드미컬 동심원 파동 (Ring Pulse)
+          else if (boss.attackMode === 1) {
+            if (boss.shootTimer >= 45) {
+              boss.shootTimer = 0;
               const count = 16;
+              const offset = (Math.floor(boss.modeTimer / 45) % 2 === 0) ? 0 : (Math.PI / count);
               for (let i = 0; i < count; i++) {
-                const angle = (Math.PI * 2 / count) * i;
-                enemyBullets.push({ x: boss.x, y: boss.y + 20, vx: Math.cos(angle) * 2.2, vy: Math.sin(angle) * 2.2, radius: 3 });
+                const angle = offset + (Math.PI * 2 / count) * i;
+                enemyBullets.push({
+                  x: boss.x, y: boss.y + 20,
+                  vx: Math.cos(angle) * 2.8,
+                  vy: Math.sin(angle) * 2.8,
+                  radius: 4.0
+                });
               }
-            } else if (pattern === 6) {
-              for (let vx = -4; vx <= 4; vx += 2) {
-                enemyBullets.push({ x: boss.x, y: boss.y + 20, vx: vx, vy: 3, radius: 3.5 });
-              }
-            } else if (pattern === 7) {
+            }
+          }
+          // 패턴 2: 정밀 추적 5갈래 부채꼴 (Targeted Spread)
+          else if (boss.attackMode === 2) {
+            if (boss.shootTimer >= 28) {
+              boss.shootTimer = 0;
               const targetAngle = Math.atan2(player.y - boss.y, player.x - boss.x);
-              enemyBullets.push({ x: boss.x - 15, y: boss.y + 20, vx: Math.cos(targetAngle - 0.4) * 3, vy: Math.sin(targetAngle - 0.4) * 3, radius: 3.5 });
-              enemyBullets.push({ x: boss.x + 15, y: boss.y + 20, vx: Math.cos(targetAngle + 0.4) * 3, vy: Math.sin(targetAngle + 0.4) * 3, radius: 3.5 });
-            } else if (pattern === 8) {
-              const centerAngle = Math.atan2(CANVAS_HEIGHT / 2 - boss.y, CANVAS_WIDTH / 2 - boss.x);
+              const spread = 0.18;
               for (let i = -2; i <= 2; i++) {
-                const angle = centerAngle + (i * 0.15);
-                enemyBullets.push({ x: boss.x, y: boss.y + 20, vx: Math.cos(angle) * 3.5, vy: Math.sin(angle) * 3.5, radius: 3.5 });
+                const angle = targetAngle + i * spread;
+                enemyBullets.push({
+                  x: boss.x, y: boss.y + 20,
+                  vx: Math.cos(angle) * 3.8,
+                  vy: Math.sin(angle) * 3.8,
+                  radius: 3.5
+                });
               }
-            } else if (pattern === 9) {
-              for (let i = 0; i < 6; i++) {
-                const randomVx = (Math.random() - 0.5) * 6;
-                const randomVy = Math.random() * 2 + 2.5;
-                enemyBullets.push({ x: boss.x, y: boss.y + 20, vx: randomVx, vy: randomVy, radius: 4 });
-              }
+            }
+          }
+          // 패턴 3: 좌우 교차 핑퐁탄 (Cross Wave)
+          else if (boss.attackMode === 3) {
+            if (boss.shootTimer >= 10) {
+              boss.shootTimer = 0;
+              const step = (Math.floor(boss.modeTimer / 10) % 8);
+              const angle = (Math.PI * 0.2) + (step * 0.08 * Math.PI);
+              enemyBullets.push({
+                x: boss.x, y: boss.y + 20,
+                vx: Math.cos(angle) * 3.4,
+                vy: Math.sin(angle) * 3.4,
+                radius: 3.5
+              });
+              enemyBullets.push({
+                x: boss.x, y: boss.y + 20,
+                vx: Math.cos(Math.PI - angle) * 3.4,
+                vy: Math.sin(Math.PI - angle) * 3.4,
+                radius: 3.5
+              });
             }
           }
         }
@@ -1086,7 +1107,6 @@
       });
     }
 
-    // 진입 암전 잔상 및 플레이어 투명화 버그 수정 함수
     function triggerMoonTransition() {
       gameState = 'TRANSITION';
       const fadeScreen = document.getElementById('fade-screen');
@@ -1291,7 +1311,6 @@
         ctx.restore();
       });
 
-      // 플레이어 선명도 고정 및 발광 효과
       ctx.save();
       ctx.globalAlpha = 1.0;
       ctx.translate(player.x, player.y);
@@ -1318,7 +1337,6 @@
       ctx.fillText(shipEmoji, 0, 0);
       ctx.restore();
 
-      // 아군 탄막 투명도 및 시인성 선명화
       ctx.save();
       ctx.globalAlpha = 1.0;
       bullets.forEach(b => {
@@ -1485,7 +1503,4 @@
     };
   </script>
 </body>
-  <div style="margin: 15px auto; text-align: center; clear: both; position: relative; z-index: 9999;">
-        <button onclick="location.href='../'" style="font-weight: bold; cursor: pointer; padding: 10px 20px; font-size: 0.95rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: 0.2s;">🏠 오락실 메인으로 돌아가기</button>
-    </div>
 </html>
