@@ -336,11 +336,20 @@
     let bgmTimer = null;
     let bgmStep = 0;
 
-    const bgmNotes = [
+    // 스테이지별 다채로운 음계 시퀀스
+    const earthBgmNotes = [
       261.63, 329.63, 392.00, 523.25, 392.00, 329.63, 261.63, 392.00,
-      293.66, 349.23, 440.00, 587.33, 440.00, 349.23, 293.66, 440.00,
-      329.63, 392.00, 493.88, 659.25, 493.88, 392.00, 329.63, 493.88,
-      349.23, 440.00, 523.25, 698.46, 523.25, 440.00, 349.23, 523.25
+      293.66, 349.23, 440.00, 587.33, 440.00, 349.23, 293.66, 440.00
+    ];
+    // 달 (신스웨이브/앰비언트 - 몽환적 서정 음계)
+    const moonBgmNotes = [
+      220.00, 261.63, 329.63, 440.00, 329.63, 261.63, 196.00, 246.94,
+      293.66, 392.00, 293.66, 246.94, 174.61, 220.00, 261.63, 349.23
+    ];
+    // 화성 (인더스트리얼 테크노 - 다크하고 빠름)
+    const marsBgmNotes = [
+      110.00, 110.00, 220.00, 110.00, 130.81, 110.00, 146.83, 110.00,
+      110.00, 110.00, 246.94, 110.00, 130.81, 110.00, 123.47, 98.00
     ];
 
     function initAudio() {
@@ -355,26 +364,92 @@
     function startBGM() {
       if (bgmTimer) clearInterval(bgmTimer);
       bgmStep = 0;
+
+      let intervalTime = 125;
+      if (marsMode) intervalTime = 90; // 화성: 긴박하고 빠른 템포
+      else if (moonMode) intervalTime = 160; // 달: 몽환적 앰비언트 템포
+
       bgmTimer = setInterval(() => {
         if (!audioCtx || gameState !== 'PLAYING') return;
         const now = audioCtx.currentTime;
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
 
-        osc.type = 'sawtooth';
-        const freq = bgmNotes[bgmStep % bgmNotes.length];
+        let notes = earthBgmNotes;
+        let waveType = 'sawtooth';
+        let volume = 0.015;
+
+        if (marsMode) {
+          notes = marsBgmNotes;
+          waveType = 'sawtooth';
+          volume = 0.025;
+        } else if (moonMode) {
+          notes = moonBgmNotes;
+          waveType = 'sine';
+          volume = 0.02;
+        }
+
+        osc.type = waveType;
+        const freq = notes[bgmStep % notes.length];
         osc.frequency.setValueAtTime(freq, now);
 
-        gain.gain.setValueAtTime(0.015, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        gain.gain.setValueAtTime(volume, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + (intervalTime / 1000) * 0.9);
 
         osc.connect(gain);
         gain.connect(audioCtx.destination);
         osc.start(now);
-        osc.stop(now + 0.12);
+        osc.stop(now + (intervalTime / 1000) * 0.9);
 
         bgmStep++;
-      }, 125);
+      }, intervalTime);
+    }
+
+    function playBossIntroSound() {
+      if (!audioCtx) return;
+      const now = audioCtx.currentTime;
+
+      if (marsMode) {
+        // 화성 보스: 경보 사이렌 + 묵직한 레이저 폭발음
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(300, now);
+        osc.frequency.linearRampToValueAtTime(900, now + 0.3);
+        osc.frequency.linearRampToValueAtTime(300, now + 0.6);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.6);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.6);
+      } else if (moonMode) {
+        // 달 보스: 신비로운 공명 울림
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(800, now);
+        osc.frequency.exponentialRampToValueAtTime(150, now + 0.8);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.8);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.8);
+      } else {
+        // 지구 보스: 클래식 워닝 서번트
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.setValueAtTime(880, now + 0.15);
+        gain.gain.setValueAtTime(0.08, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.4);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.4);
+      }
     }
 
     function playSound(type) {
@@ -553,50 +628,50 @@
     let enemySpawnTimer = 0;
     let buildingSpawnTimer = 0;
 
-    const ENEMY_EMOJIS = ['🛸', '👾', '👽', '🤖', '🛸'];
-    const AI_PATTERNS = ['sine', 'rush', 'track', 'diamond', 'loop'];
+    const ENEMY_EMOJIS = ['🛸', '👾', '👽', '🤖', '🛸', '🛰️', '🛩️', '👻', '👾', '💣'];
+    // 10가지 다채로운 AI 패턴
+    const AI_PATTERNS = [
+      'sine',     // 1. 사인 파동
+      'swoop',    // 2. 급강하 유턴
+      'spiral',   // 3. 나선 소용돌이
+      'zigzag',   // 4. 지그재그 스텝
+      'flank',    // 5. 양측 교차 포위
+      'hover',    // 6. 호버링 저격
+      'bounce',   // 7. 핑퐁 반사
+      'stealth',  // 8. 투명 은신 기습
+      'split',    // 9. 분열 돌진
+      'minedrop'  // 10. 기뢰 도망자
+    ];
 
     function spawnEnemy() {
       if (boss || bossSpawned) return;
-      const typeIdx = Math.floor(Math.random() * 5);
+      const typeIdx = Math.floor(Math.random() * 10);
       const pType = AI_PATTERNS[typeIdx];
-      const enemyX = Math.random() * (CANVAS_WIDTH - 40) + 20;
-
-      if (marsMode && Math.random() < 0.3) {
-        enemies.push({
-          x: enemyX,
-          baseX: enemyX,
-          y: -40,
-          w: 28,
-          h: 28,
-          emoji: '📡',
-          pType: 'turret',
-          hp: 8,
-          speed: 0.6,
-          time: 0,
-          shootTimer: 0
-        });
-        return;
-      }
+      const enemyX = Math.random() * (CANVAS_WIDTH - 60) + 30;
 
       enemies.push({
-        x: enemyX,
+        x: pType === 'flank' ? (Math.random() < 0.5 ? -20 : CANVAS_WIDTH + 20) : enemyX,
         baseX: enemyX,
-        y: -40,
+        y: -30,
         w: 26,
         h: 26,
         emoji: ENEMY_EMOJIS[typeIdx],
         pType: pType,
-        hp: pType === 'rush' ? 2 : 1,
-        speed: pType === 'rush' ? 3.5 : 1.4,
-        vx: pType === 'diamond' ? 2.2 : 0,
+        hp: (pType === 'hover' || pType === 'minedrop') ? 4 : 2,
+        speed: pType === 'swoop' ? 3.8 : (pType === 'stealth' ? 1.2 : 1.6),
+        vx: pType === 'bounce' ? (Math.random() < 0.5 ? 2.5 : -2.5) : (pType === 'flank' ? (enemyX > CANVAS_WIDTH / 2 ? -2 : 2) : 0),
+        vy: pType === 'swoop' ? 3.5 : 1.5,
         time: 0,
-        shootTimer: 0
+        shootTimer: 0,
+        state: 0,
+        alpha: pType === 'stealth' ? 0.2 : 1.0,
+        radius: 60
       });
     }
 
     function spawnBoss() {
       bossSpawned = true;
+      playBossIntroSound();
       const bossLevel = level;
       const hpVal = 20 * bossLevel;
       boss = {
@@ -727,8 +802,9 @@
             bullets.push({ x: player.x, y: player.y - 12, vx: 0, vy: -9, type: 'NORMAL', power: 1 * atkMult });
             bullets.push({ x: player.x, y: player.y - 12, vx: 2, vy: -9, type: 'NORMAL', power: 1 * atkMult });
           } else if (currentWeapon.type === 'DRONE') {
-            bullets.push({ x: player.x - 18, y: player.y, vx: 0, vy: -8, type: 'DRONE_SHOT', power: 1.2 * atkMult });
-            bullets.push({ x: player.x + 18, y: player.y, vx: 0, vy: -8, type: 'DRONE_SHOT', power: 1.2 * atkMult });
+            // 좌우 정밀 대칭 드론 사격 좌표 (완벽 균형 오프셋 +-22)
+            bullets.push({ x: player.x - 22, y: player.y, vx: -1.5, vy: -7, type: 'DRONE_SHOT', power: 1.2 * atkMult });
+            bullets.push({ x: player.x + 22, y: player.y, vx: 1.5, vy: -7, type: 'DRONE_SHOT', power: 1.2 * atkMult });
           } else if (currentWeapon.type === 'BLACKHOLE') {
             bullets.push({ x: player.x, y: player.y - 12, vx: 0, vy: -5, type: 'BLACKHOLE', power: 0.5 * atkMult });
           }
@@ -748,12 +824,25 @@
       });
 
       bullets.forEach((b, bIdx) => {
+        // 유도 드론 탄환의 꺾임 속도(곡률) 2배 조절 알고리즘
         if (b.type === 'DRONE_SHOT') {
           let target = boss || (enemies.length > 0 ? enemies[0] : null);
           if (target) {
-            const angle = Math.atan2(target.y - b.y, target.x - b.x);
-            b.vx += Math.cos(angle) * 0.6;
-            b.vy += Math.sin(angle) * 0.6;
+            const targetAngle = Math.atan2(target.y - b.y, target.x - b.x);
+            let currentAngle = Math.atan2(b.vy, b.vx);
+            let diff = targetAngle - currentAngle;
+
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+
+            // 기존 0.12 대비 2배 향상된 0.25 조향 각속도 적용
+            const maxTurn = 0.25;
+            const turn = Math.max(-maxTurn, Math.min(maxTurn, diff));
+            currentAngle += turn;
+
+            const speed = 7.5;
+            b.vx = Math.cos(currentAngle) * speed;
+            b.vy = Math.sin(currentAngle) * speed;
           }
         }
 
@@ -825,7 +914,7 @@
       });
 
       enemySpawnTimer++;
-      if (enemySpawnTimer > Math.max(20, 50 - level * 3) && !boss && !bossSpawned) {
+      if (enemySpawnTimer > Math.max(18, 45 - level * 2) && !boss && !bossSpawned) {
         spawnEnemy();
         enemySpawnTimer = 0;
       }
@@ -834,48 +923,94 @@
         spawnBoss();
       }
 
+      // 10종 잡몹 이동 알고리즘 개편
       enemies.forEach((e, eIdx) => {
-        e.time += 0.05;
+        e.time += 0.04;
 
-        if (e.pType === 'turret') {
+        if (e.pType === 'sine') {
+          // 1. 사인 파동
           e.y += e.speed;
-          e.shootTimer++;
-          if (e.shootTimer > 16 && e.y > 20 && e.y < CANVAS_HEIGHT - 50) {
-            e.shootTimer = 0;
-            const angle = Math.atan2(player.y - e.y, player.x - e.x);
-            enemyBullets.push({
-              x: e.x, y: e.y + 10,
-              vx: Math.cos(angle) * 3.8, vy: Math.sin(angle) * 3.8,
-              radius: 4.0
-            });
+          e.x = e.baseX + Math.sin(e.time * 2.5) * 45;
+        } else if (e.pType === 'swoop') {
+          // 2. 급강하 유턴
+          if (e.y < 220 && e.state === 0) {
+            e.y += e.speed;
+          } else {
+            e.state = 1;
+            e.y -= e.speed * 0.7;
+            e.x += Math.cos(e.time * 3.0) * 3;
           }
-        } else if (e.pType === 'sine') {
-          e.y += e.speed;
-          e.x = e.baseX + Math.sin(e.time * 2.0) * 42;
-        } else if (e.pType === 'rush') {
-          e.y += e.speed;
-        } else if (e.pType === 'track') {
+        } else if (e.pType === 'spiral') {
+          // 3. 나선 소용돌이
+          e.radius = Math.max(10, e.radius - 0.3);
+          e.y += e.speed * 0.8;
+          e.x = e.baseX + Math.cos(e.time * 3.5) * e.radius;
+        } else if (e.pType === 'zigzag') {
+          // 4. 지그재그 스텝
           e.y += e.speed * 0.9;
-          if (e.x < player.x) e.x += 1.1;
-          else e.x -= 1.1;
-        } else if (e.pType === 'diamond') {
+          if (Math.floor(e.time * 2) % 2 === 0) e.x += 2.8;
+          else e.x -= 2.8;
+        } else if (e.pType === 'flank') {
+          // 5. 양측 교차 포위
           e.x += e.vx;
           e.y += e.speed * 0.9;
-          if (e.x < 15 || e.x > CANVAS_WIDTH - 15) e.vx *= -1;
-        } else if (e.pType === 'loop') {
-          if (e.time > 2.0 && e.time < 4.5) {
-            e.y -= e.speed * 0.6;
-            e.x += Math.cos(e.time * 3.0) * 2.5;
+        } else if (e.pType === 'hover') {
+          // 6. 호버링 저격
+          if (e.y < 120) {
+            e.y += e.speed;
           } else {
-            e.y += e.speed * 1.2;
+            e.shootTimer++;
+            if (e.shootTimer === 30) {
+              const angle = Math.atan2(player.y - e.y, player.x - e.x);
+              enemyBullets.push({
+                x: e.x, y: e.y + 10,
+                vx: Math.cos(angle) * 4.5, vy: Math.sin(angle) * 4.5,
+                radius: 4.5
+              });
+            } else if (e.shootTimer > 80) {
+              e.y += e.speed * 1.8;
+            }
+          }
+        } else if (e.pType === 'bounce') {
+          // 7. 핑퐁 반사
+          e.x += e.vx;
+          e.y += e.speed * 0.8;
+          if (e.x < 15 || e.x > CANVAS_WIDTH - 15) e.vx *= -1;
+        } else if (e.pType === 'stealth') {
+          // 8. 투명 은신 기습
+          e.y += e.speed;
+          if (e.y > 180) {
+            e.alpha = Math.min(1.0, e.alpha + 0.08);
+            e.speed = 4.2;
+          }
+        } else if (e.pType === 'split') {
+          // 9. 분열 돌진
+          e.y += e.speed;
+          if (e.y > 160 && e.state === 0) {
+            e.state = 1;
+            enemies.push({
+              x: e.x + 10, baseX: e.x + 10, y: e.y, w: e.w, h: e.h,
+              emoji: e.emoji, pType: 'sine', hp: 1, speed: 2, vx: 0, vy: 2, time: 0, shootTimer: 0, state: 1, alpha: 1
+            });
+            e.pType = 'sine';
+            e.hp = 1;
+          }
+        } else if (e.pType === 'minedrop') {
+          // 10. 기뢰 도망자
+          e.y += e.speed * 0.7;
+          e.shootTimer++;
+          if (e.shootTimer > 90) {
+            e.shootTimer = 0;
+            enemyBullets.push({ x: e.x, y: e.y, vx: 0, vy: 0, radius: 6.0 });
           }
         }
 
-        if (e.pType !== 'turret') {
+        // 일반 난사 탄환
+        if (e.pType !== 'hover' && e.pType !== 'minedrop') {
           e.shootTimer++;
-          if (e.shootTimer > 60 && e.y > 20 && e.y < CANVAS_HEIGHT - 100) {
+          if (e.shootTimer > 80 && e.y > 20 && e.y < CANVAS_HEIGHT - 100) {
             e.shootTimer = 0;
-            if (Math.random() < 0.45) {
+            if (Math.random() < 0.35) {
               const angle = Math.atan2(player.y - e.y, player.x - e.x);
               enemyBullets.push({
                 x: e.x, y: e.y + 10,
@@ -916,7 +1051,7 @@
         if (e.y > CANVAS_HEIGHT + 40) enemies.splice(eIdx, 1);
       });
 
-      // 규칙적인 보스 탄막 패턴 제어 로직
+      // 보스 규칙적인 탄막 제어
       if (boss) {
         if (boss.y < boss.targetY) {
           boss.y += 1.2;
@@ -934,8 +1069,7 @@
             boss.attackMode = (boss.attackMode + 1) % 4;
           }
 
-          // 패턴 0: 회전 나선 탄막 (Spiral Wave)
-          if (boss.attackMode === 0) {
+          if (boss.attackMode === 0) { // 회전 나선 탄막
             if (boss.shootTimer >= 6) {
               boss.shootTimer = 0;
               boss.spiralAngle += 0.22;
@@ -950,9 +1084,7 @@
                 });
               }
             }
-          }
-          // 패턴 1: 리드미컬 동심원 파동 (Ring Pulse)
-          else if (boss.attackMode === 1) {
+          } else if (boss.attackMode === 1) { // 동심원 파동
             if (boss.shootTimer >= 45) {
               boss.shootTimer = 0;
               const count = 16;
@@ -967,9 +1099,7 @@
                 });
               }
             }
-          }
-          // 패턴 2: 정밀 추적 5갈래 부채꼴 (Targeted Spread)
-          else if (boss.attackMode === 2) {
+          } else if (boss.attackMode === 2) { // 정밀 추적 5갈래
             if (boss.shootTimer >= 28) {
               boss.shootTimer = 0;
               const targetAngle = Math.atan2(player.y - boss.y, player.x - boss.x);
@@ -984,9 +1114,7 @@
                 });
               }
             }
-          }
-          // 패턴 3: 좌우 교차 핑퐁탄 (Cross Wave)
-          else if (boss.attackMode === 3) {
+          } else if (boss.attackMode === 3) { // 좌우 교차 핑퐁탄
             if (boss.shootTimer >= 10) {
               boss.shootTimer = 0;
               const step = (Math.floor(boss.modeTimer / 10) % 8);
@@ -1117,6 +1245,7 @@
       setTimeout(() => {
         moonMode = true;
         initCraters();
+        startBGM(); // 달 전용 BGM 전환
         fadeScreen.style.opacity = '0';
         setTimeout(() => {
           fadeScreen.style.display = 'none';
@@ -1136,6 +1265,7 @@
         marsMode = true;
         moonMode = false;
         initCraters();
+        startBGM(); // 화성 전용 BGM 전환
         fadeScreen.style.opacity = '0';
         setTimeout(() => {
           fadeScreen.style.display = 'none';
@@ -1322,10 +1452,13 @@
         ctx.stroke();
       }
 
+      // 좌우 완벽 대칭 드론 렌더링 (좌 -22, 우 +22)
       if (currentWeapon.type === 'DRONE') {
         ctx.font = '14px sans-serif';
-        ctx.fillText('🛰️', -20, 0);
-        ctx.fillText('🛰️', 20, 0);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🛰️', -22, 0);
+        ctx.fillText('🛰️', 22, 0);
       }
 
       ctx.shadowColor = '#00ffcc';
@@ -1343,7 +1476,7 @@
         ctx.shadowColor = '#00ffff';
         ctx.shadowBlur = 4;
         if (b.type === 'NORMAL' || b.type === 'DRONE_SHOT') {
-          ctx.fillStyle = '#00ffff';
+          ctx.fillStyle = b.type === 'DRONE_SHOT' ? '#00ffaa' : '#00ffff';
           ctx.fillRect(b.x - 2, b.y - 8, 4, 10);
         } else if (b.type === 'MISSILE') {
           ctx.font = '16px sans-serif';
@@ -1379,10 +1512,13 @@
       ctx.restore();
 
       enemies.forEach(e => {
+        ctx.save();
+        ctx.globalAlpha = e.alpha !== undefined ? e.alpha : 1.0;
         ctx.font = '24px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(e.emoji, e.x, e.y);
+        ctx.restore();
       });
 
       if (boss) {
@@ -1488,6 +1624,7 @@
       buildings = [];
       boss = null;
       resetPlayer();
+      startBGM();
       gameState = 'PLAYING';
 
       document.getElementById('start-screen').style.display = 'none';
