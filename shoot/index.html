@@ -234,6 +234,8 @@
       color: #00ffcc;
       font-size: 15px;
       font-weight: bold;
+      text-align: center;
+      padding: 20px;
     }
   </style>
 </head>
@@ -263,6 +265,12 @@
       <h1 id="game-over-title">💥 GAME OVER</h1>
       <p id="game-over-desc">함선이 파괴되었습니다.</p>
       <button onclick="startGame()">🔄 다시 출격</button>
+    </div>
+
+    <div id="victory-screen" class="overlay-screen" style="display: none;">
+      <h1 style="color:#00ffcc;">🎉 인류 승리 (VICTORY)</h1>
+      <p id="victory-desc">외계인 본진 하이브 마인드를 완전 파괴했습니다!</p>
+      <button onclick="startGame()">🚀 인류의 영웅으로 재출격</button>
     </div>
 
     <div id="weaponModal" class="modal">
@@ -336,20 +344,29 @@
     let bgmTimer = null;
     let bgmStep = 0;
 
-    // 스테이지별 다채로운 음계 시퀀스
     const earthBgmNotes = [
       261.63, 329.63, 392.00, 523.25, 392.00, 329.63, 261.63, 392.00,
       293.66, 349.23, 440.00, 587.33, 440.00, 349.23, 293.66, 440.00
     ];
-    // 달 (신스웨이브/앰비언트 - 몽환적 서정 음계)
     const moonBgmNotes = [
       220.00, 261.63, 329.63, 440.00, 329.63, 261.63, 196.00, 246.94,
       293.66, 392.00, 293.66, 246.94, 174.61, 220.00, 261.63, 349.23
     ];
-    // 화성 (인더스트리얼 테크노 - 다크하고 빠름)
     const marsBgmNotes = [
       110.00, 110.00, 220.00, 110.00, 130.81, 110.00, 146.83, 110.00,
       110.00, 110.00, 246.94, 110.00, 130.81, 110.00, 123.47, 98.00
+    ];
+    const jupiterBgmNotes = [
+      130.81, 164.81, 196.00, 261.63, 329.63, 392.00, 329.63, 261.63,
+      146.83, 174.61, 220.00, 293.66, 349.23, 440.00, 349.23, 293.66
+    ];
+    const saturnBgmNotes = [
+      98.00, 123.47, 146.83, 196.00, 146.83, 123.47, 87.31, 110.00,
+      130.81, 174.61, 130.81, 110.00, 65.41, 87.31, 98.00, 130.81
+    ];
+    const alienBgmNotes = [
+      130.81, 155.56, 185.00, 220.00, 185.00, 155.56, 130.81, 246.94,
+      220.00, 185.00, 155.56, 123.47, 130.81, 185.00, 220.00, 293.66
     ];
 
     function initAudio() {
@@ -366,8 +383,11 @@
       bgmStep = 0;
 
       let intervalTime = 125;
-      if (marsMode) intervalTime = 90; // 화성: 긴박하고 빠른 템포
-      else if (moonMode) intervalTime = 160; // 달: 몽환적 앰비언트 템포
+      if (alienHomeMode) intervalTime = 80;
+      else if (saturnMode) intervalTime = 100;
+      else if (jupiterMode) intervalTime = 110;
+      else if (marsMode) intervalTime = 90;
+      else if (moonMode) intervalTime = 160;
 
       bgmTimer = setInterval(() => {
         if (!audioCtx || gameState !== 'PLAYING') return;
@@ -379,7 +399,19 @@
         let waveType = 'sawtooth';
         let volume = 0.015;
 
-        if (marsMode) {
+        if (alienHomeMode) {
+          notes = alienBgmNotes;
+          waveType = 'sawtooth';
+          volume = 0.035;
+        } else if (saturnMode) {
+          notes = saturnBgmNotes;
+          waveType = 'triangle';
+          volume = 0.03;
+        } else if (jupiterMode) {
+          notes = jupiterBgmNotes;
+          waveType = 'square';
+          volume = 0.02;
+        } else if (marsMode) {
           notes = marsBgmNotes;
           waveType = 'sawtooth';
           volume = 0.025;
@@ -409,8 +441,20 @@
       if (!audioCtx) return;
       const now = audioCtx.currentTime;
 
-      if (marsMode) {
-        // 화성 보스: 경보 사이렌 + 묵직한 레이저 폭발음
+      if (alienHomeMode || saturnMode || jupiterMode) {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(200, now);
+        osc.frequency.linearRampToValueAtTime(1400, now + 0.6);
+        osc.frequency.linearRampToValueAtTime(80, now + 1.2);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.linearRampToValueAtTime(0, now + 1.2);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 1.2);
+      } else if (marsMode) {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         osc.type = 'sawtooth';
@@ -424,7 +468,6 @@
         osc.start(now);
         osc.stop(now + 0.6);
       } else if (moonMode) {
-        // 달 보스: 신비로운 공명 울림
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         osc.type = 'sine';
@@ -437,7 +480,6 @@
         osc.start(now);
         osc.stop(now + 0.8);
       } else {
-        // 지구 보스: 클래식 워닝 서번트
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         osc.type = 'square';
@@ -521,8 +563,8 @@
     const introLines = [
       "서기 2026년...",
       "지구 방위대 최후의 함선 '미니지호'...",
-      "외계 연합군의 대규모 침공으로 전 지구가 위기에 처했다.",
-      "적 보스를 격파하고 무기를 탈취하여 달과 화성 기지로 전진하라!",
+      "외계 연합군의 대규모 침공으로 태양계 전체가 위기에 처했다.",
+      "달, 화성, 목성, 토성 기지를 넘어 외계 본진 모체를 궤멸시켜라!",
       "스페이스바를 눌러 즉시 출격하라!"
     ];
     const introText = introLines.join("\n");
@@ -546,8 +588,14 @@
     let level = 1;
     let enemiesKilled = 0;
     let bossSpawned = false;
+
+    // 스테이지 진행 모드
     let moonMode = false;
     let marsMode = false;
+    let jupiterMode = false;
+    let saturnMode = false;
+    let alienHomeMode = false;
+
     let tempDmgBoost = 1.0;
     let flashEffect = 0;
     const keys = {};
@@ -607,7 +655,7 @@
     const craterList = [];
     function initCraters() {
       craterList.length = 0;
-      for (let i = 0; i < 8; i++) {
+      for (let i = 0; i < 10; i++) {
         craterList.push({
           x: Math.random() * CANVAS_WIDTH,
           y: Math.random() * CANVAS_HEIGHT,
@@ -629,18 +677,9 @@
     let buildingSpawnTimer = 0;
 
     const ENEMY_EMOJIS = ['🛸', '👾', '👽', '🤖', '🛸', '🛰️', '🛩️', '👻', '👾', '💣'];
-    // 10가지 다채로운 AI 패턴
     const AI_PATTERNS = [
-      'sine',     // 1. 사인 파동
-      'swoop',    // 2. 급강하 유턴
-      'spiral',   // 3. 나선 소용돌이
-      'zigzag',   // 4. 지그재그 스텝
-      'flank',    // 5. 양측 교차 포위
-      'hover',    // 6. 호버링 저격
-      'bounce',   // 7. 핑퐁 반사
-      'stealth',  // 8. 투명 은신 기습
-      'split',    // 9. 분열 돌진
-      'minedrop'  // 10. 기뢰 도망자
+      'sine', 'swoop', 'spiral', 'zigzag', 'flank',
+      'hover', 'bounce', 'stealth', 'split', 'minedrop'
     ];
 
     function spawnEnemy() {
@@ -673,14 +712,22 @@
       bossSpawned = true;
       playBossIntroSound();
       const bossLevel = level;
-      const hpVal = 20 * bossLevel;
+      const hpVal = 22 * bossLevel;
+
+      let bossEmoji = '🛸';
+      if (alienHomeMode) bossEmoji = '👁️';   // 외계 본진: 하이브 마인드 모체
+      else if (saturnMode) bossEmoji = '👑';  // 토성: 얼음고리 절대자
+      else if (jupiterMode) bossEmoji = '⚡'; // 목성: 대적점 뇌운 사령관
+      else if (marsMode) bossEmoji = '🤖';    // 화성: 제논 파괴 메카
+      else if (moonMode) bossEmoji = '👽';    // 달: 에일리언 크루저
+
       boss = {
         x: CANVAS_WIDTH / 2,
         y: -60,
-        targetY: 50,
-        w: 60,
-        h: 60,
-        emoji: marsMode ? '🔴' : (level >= 10 ? '🪐' : '🛸'),
+        targetY: 65,
+        w: 64,
+        h: 64,
+        emoji: bossEmoji,
         hp: hpVal,
         maxHp: hpVal,
         vx: 1.8,
@@ -706,10 +753,25 @@
         enemyBullets = [];
         level++;
 
-        if (level > 30 && !marsMode) {
+        // 외계 본진 최종 승리 조건
+        if (alienHomeMode) {
+          gameState = 'VICTORY';
+          document.getElementById('victory-screen').style.display = 'flex';
+          document.getElementById('victory-desc').innerText = `최종 점수: ${score} | 획득 포인트: ${shopPoints}P\n외계 하이브 마인드를 물리치고 태양계를 구했습니다!`;
+          return;
+        }
+
+        // 스테이지 전환 체인 (달 -> 화성 -> 목성 -> 토성 -> 웜홀(외계인 본진))
+        if (level > 70 && saturnMode) {
+          triggerWormholeTransition();
+        } else if (level > 50 && !jupiterMode && !saturnMode && !alienHomeMode) {
+          triggerJupiterTransition();
+        } else if (level > 30 && !marsMode && !jupiterMode && !saturnMode && !alienHomeMode) {
           triggerMarsTransition();
-        } else if (level > 10 && !moonMode && !marsMode) {
+        } else if (level > 10 && !moonMode && !marsMode && !jupiterMode && !saturnMode && !alienHomeMode) {
           triggerMoonTransition();
+        } else if (level > 70 && !saturnMode && !alienHomeMode) {
+          triggerSaturnTransition();
         } else {
           openShop();
         }
@@ -722,7 +784,7 @@
         y: -50,
         w: 42,
         h: 42,
-        emoji: '🏬',
+        emoji: alienHomeMode ? '🧬' : (saturnMode ? '💎' : (jupiterMode ? '⚡' : '🏬')),
         hp: 40,
         maxHp: 40,
         speed: 0.8
@@ -749,7 +811,7 @@
         }
       });
 
-      if (moonMode || marsMode) {
+      if (moonMode || marsMode || jupiterMode || saturnMode || alienHomeMode) {
         craterList.forEach(c => {
           c.y += c.speed;
           if (c.y > CANVAS_HEIGHT + c.radius) {
@@ -802,7 +864,6 @@
             bullets.push({ x: player.x, y: player.y - 12, vx: 0, vy: -9, type: 'NORMAL', power: 1 * atkMult });
             bullets.push({ x: player.x, y: player.y - 12, vx: 2, vy: -9, type: 'NORMAL', power: 1 * atkMult });
           } else if (currentWeapon.type === 'DRONE') {
-            // 좌우 정밀 대칭 드론 사격 좌표 (완벽 균형 오프셋 +-22)
             bullets.push({ x: player.x - 22, y: player.y, vx: -1.5, vy: -7, type: 'DRONE_SHOT', power: 1.2 * atkMult });
             bullets.push({ x: player.x + 22, y: player.y, vx: 1.5, vy: -7, type: 'DRONE_SHOT', power: 1.2 * atkMult });
           } else if (currentWeapon.type === 'BLACKHOLE') {
@@ -824,7 +885,6 @@
       });
 
       bullets.forEach((b, bIdx) => {
-        // 유도 드론 탄환의 꺾임 속도(곡률) 2배 조절 알고리즘
         if (b.type === 'DRONE_SHOT') {
           let target = boss || (enemies.length > 0 ? enemies[0] : null);
           if (target) {
@@ -835,7 +895,6 @@
             while (diff < -Math.PI) diff += Math.PI * 2;
             while (diff > Math.PI) diff -= Math.PI * 2;
 
-            // 기존 0.12 대비 2배 향상된 0.25 조향 각속도 적용
             const maxTurn = 0.25;
             const turn = Math.max(-maxTurn, Math.min(maxTurn, diff));
             currentAngle += turn;
@@ -908,7 +967,7 @@
           return;
         }
 
-        if (eb.y > CANVAS_HEIGHT + 10 || eb.x < -10 || eb.x > CANVAS_WIDTH + 10 || eb.y < -20) {
+        if (eb.y > CANVAS_HEIGHT + 10 || eb.x < -10 || eb.x > CANVAS_WIDTH + 10 || eb.y < 42) {
           enemyBullets.splice(index, 1);
         }
       });
@@ -923,16 +982,13 @@
         spawnBoss();
       }
 
-      // 10종 잡몹 이동 알고리즘 개편
       enemies.forEach((e, eIdx) => {
         e.time += 0.04;
 
         if (e.pType === 'sine') {
-          // 1. 사인 파동
           e.y += e.speed;
           e.x = e.baseX + Math.sin(e.time * 2.5) * 45;
         } else if (e.pType === 'swoop') {
-          // 2. 급강하 유턴
           if (e.y < 220 && e.state === 0) {
             e.y += e.speed;
           } else {
@@ -941,21 +997,17 @@
             e.x += Math.cos(e.time * 3.0) * 3;
           }
         } else if (e.pType === 'spiral') {
-          // 3. 나선 소용돌이
           e.radius = Math.max(10, e.radius - 0.3);
           e.y += e.speed * 0.8;
           e.x = e.baseX + Math.cos(e.time * 3.5) * e.radius;
         } else if (e.pType === 'zigzag') {
-          // 4. 지그재그 스텝
           e.y += e.speed * 0.9;
           if (Math.floor(e.time * 2) % 2 === 0) e.x += 2.8;
           else e.x -= 2.8;
         } else if (e.pType === 'flank') {
-          // 5. 양측 교차 포위
           e.x += e.vx;
           e.y += e.speed * 0.9;
         } else if (e.pType === 'hover') {
-          // 6. 호버링 저격
           if (e.y < 120) {
             e.y += e.speed;
           } else {
@@ -972,19 +1024,16 @@
             }
           }
         } else if (e.pType === 'bounce') {
-          // 7. 핑퐁 반사
           e.x += e.vx;
           e.y += e.speed * 0.8;
           if (e.x < 15 || e.x > CANVAS_WIDTH - 15) e.vx *= -1;
         } else if (e.pType === 'stealth') {
-          // 8. 투명 은신 기습
           e.y += e.speed;
           if (e.y > 180) {
             e.alpha = Math.min(1.0, e.alpha + 0.08);
             e.speed = 4.2;
           }
         } else if (e.pType === 'split') {
-          // 9. 분열 돌진
           e.y += e.speed;
           if (e.y > 160 && e.state === 0) {
             e.state = 1;
@@ -996,7 +1045,6 @@
             e.hp = 1;
           }
         } else if (e.pType === 'minedrop') {
-          // 10. 기뢰 도망자
           e.y += e.speed * 0.7;
           e.shootTimer++;
           if (e.shootTimer > 90) {
@@ -1005,10 +1053,9 @@
           }
         }
 
-        // 일반 난사 탄환
         if (e.pType !== 'hover' && e.pType !== 'minedrop') {
           e.shootTimer++;
-          if (e.shootTimer > 80 && e.y > 20 && e.y < CANVAS_HEIGHT - 100) {
+          if (e.shootTimer > 80 && e.y > 45 && e.y < CANVAS_HEIGHT - 100) {
             e.shootTimer = 0;
             if (Math.random() < 0.35) {
               const angle = Math.atan2(player.y - e.y, player.x - e.x);
@@ -1051,7 +1098,6 @@
         if (e.y > CANVAS_HEIGHT + 40) enemies.splice(eIdx, 1);
       });
 
-      // 보스 규칙적인 탄막 제어
       if (boss) {
         if (boss.y < boss.targetY) {
           boss.y += 1.2;
@@ -1062,14 +1108,13 @@
           boss.modeTimer++;
           boss.shootTimer++;
 
-          // 240 프레임(약 4초)마다 고유 공격 패턴 전환
           if (boss.modeTimer > 240) {
             boss.modeTimer = 0;
             boss.shootTimer = 0;
             boss.attackMode = (boss.attackMode + 1) % 4;
           }
 
-          if (boss.attackMode === 0) { // 회전 나선 탄막
+          if (boss.attackMode === 0) {
             if (boss.shootTimer >= 6) {
               boss.shootTimer = 0;
               boss.spiralAngle += 0.22;
@@ -1084,7 +1129,7 @@
                 });
               }
             }
-          } else if (boss.attackMode === 1) { // 동심원 파동
+          } else if (boss.attackMode === 1) {
             if (boss.shootTimer >= 45) {
               boss.shootTimer = 0;
               const count = 16;
@@ -1099,7 +1144,7 @@
                 });
               }
             }
-          } else if (boss.attackMode === 2) { // 정밀 추적 5갈래
+          } else if (boss.attackMode === 2) {
             if (boss.shootTimer >= 28) {
               boss.shootTimer = 0;
               const targetAngle = Math.atan2(player.y - boss.y, player.x - boss.x);
@@ -1114,7 +1159,7 @@
                 });
               }
             }
-          } else if (boss.attackMode === 3) { // 좌우 교차 핑퐁탄
+          } else if (boss.attackMode === 3) {
             if (boss.shootTimer >= 10) {
               boss.shootTimer = 0;
               const step = (Math.floor(boss.modeTimer / 10) % 8);
@@ -1150,7 +1195,7 @@
         });
       }
 
-      if (moonMode || marsMode) {
+      if (moonMode || marsMode || jupiterMode || saturnMode || alienHomeMode) {
         buildingSpawnTimer++;
         if (buildingSpawnTimer > 180 && buildings.length < 2) {
           spawnBuilding();
@@ -1170,17 +1215,13 @@
                 createExplosion(bldg.x, bldg.y, 35);
                 playSound('explosion');
 
-                if (marsMode) {
-                  const rand = Math.random();
-                  if (rand < 0.15) {
-                    items.push({ x: bldg.x, y: bldg.y, w: 22, h: 22, speed: 1.2, type: 'SUPER_CAPSULE', label: '[S]' });
-                  } else if (rand < 0.575) {
-                    items.push({ x: bldg.x, y: bldg.y, w: 22, h: 22, speed: 1.2, type: 'DMG_BOOST', label: '[D]' });
-                  } else {
-                    items.push({ x: bldg.x, y: bldg.y, w: 22, h: 22, speed: 1.2, type: 'SHIELD_REPAIR', label: '[R]' });
-                  }
-                } else {
+                const rand = Math.random();
+                if (rand < 0.2) {
                   items.push({ x: bldg.x, y: bldg.y, w: 22, h: 22, speed: 1.2, type: 'SUPER_CAPSULE', label: '[S]' });
+                } else if (rand < 0.6) {
+                  items.push({ x: bldg.x, y: bldg.y, w: 22, h: 22, speed: 1.2, type: 'DMG_BOOST', label: '[D]' });
+                } else {
+                  items.push({ x: bldg.x, y: bldg.y, w: 22, h: 22, speed: 1.2, type: 'SHIELD_REPAIR', label: '[R]' });
                 }
 
                 buildings.splice(bIdx, 1);
@@ -1245,11 +1286,9 @@
       setTimeout(() => {
         moonMode = true;
         initCraters();
-        startBGM(); // 달 전용 BGM 전환
+        startBGM();
         fadeScreen.style.opacity = '0';
-        setTimeout(() => {
-          fadeScreen.style.display = 'none';
-        }, 500);
+        setTimeout(() => { fadeScreen.style.display = 'none'; }, 500);
         openShop();
       }, 700);
     }
@@ -1265,13 +1304,71 @@
         marsMode = true;
         moonMode = false;
         initCraters();
-        startBGM(); // 화성 전용 BGM 전환
+        startBGM();
         fadeScreen.style.opacity = '0';
-        setTimeout(() => {
-          fadeScreen.style.display = 'none';
-        }, 500);
+        setTimeout(() => { fadeScreen.style.display = 'none'; }, 500);
         openShop();
       }, 700);
+    }
+
+    function triggerJupiterTransition() {
+      gameState = 'TRANSITION';
+      const fadeScreen = document.getElementById('fade-screen');
+      fadeScreen.innerText = '⚡ 목성 가스 폭풍 궤도 진입 완료!';
+      fadeScreen.style.display = 'flex';
+      fadeScreen.style.opacity = '1';
+
+      setTimeout(() => {
+        jupiterMode = true;
+        marsMode = false;
+        moonMode = false;
+        initCraters();
+        startBGM();
+        fadeScreen.style.opacity = '0';
+        setTimeout(() => { fadeScreen.style.display = 'none'; }, 500);
+        openShop();
+      }, 700);
+    }
+
+    function triggerSaturnTransition() {
+      gameState = 'TRANSITION';
+      const fadeScreen = document.getElementById('fade-screen');
+      fadeScreen.innerText = '🪐 토성 얼음 고리 요새 진입 완료!';
+      fadeScreen.style.display = 'flex';
+      fadeScreen.style.opacity = '1';
+
+      setTimeout(() => {
+        saturnMode = true;
+        jupiterMode = false;
+        marsMode = false;
+        moonMode = false;
+        initCraters();
+        startBGM();
+        fadeScreen.style.opacity = '0';
+        setTimeout(() => { fadeScreen.style.display = 'none'; }, 500);
+        openShop();
+      }, 700);
+    }
+
+    function triggerWormholeTransition() {
+      gameState = 'TRANSITION';
+      const fadeScreen = document.getElementById('fade-screen');
+      fadeScreen.innerText = '🌀 시공간 웜홀 돌입!!\n외계인 본진 하이브 심층부 침투 중...';
+      fadeScreen.style.display = 'flex';
+      fadeScreen.style.opacity = '1';
+
+      setTimeout(() => {
+        alienHomeMode = true;
+        saturnMode = false;
+        jupiterMode = false;
+        marsMode = false;
+        moonMode = false;
+        initCraters();
+        startBGM();
+        fadeScreen.style.opacity = '0';
+        setTimeout(() => { fadeScreen.style.display = 'none'; }, 500);
+        openShop();
+      }, 1000);
     }
 
     function triggerGachaModal() {
@@ -1393,22 +1490,34 @@
       ctx.save();
       ctx.globalAlpha = 1.0;
 
-      if (marsMode) {
-        ctx.fillStyle = '#220b08';
+      if (alienHomeMode) {
+        ctx.fillStyle = '#0a1d0f'; // 외계인 본진: 기묘한 딥 그린 생체 암흑
+      } else if (saturnMode) {
+        ctx.fillStyle = '#130026'; // 토성: 깊은 보랏빛 우주
+      } else if (jupiterMode) {
+        ctx.fillStyle = '#2b1b04'; // 목성: 황금 가스 대기
+      } else if (marsMode) {
+        ctx.fillStyle = '#220b08'; // 화성: 붉은 대기
       } else if (moonMode) {
-        ctx.fillStyle = '#1a1c20';
+        ctx.fillStyle = '#1a1c20'; // 달: 회색 암석 표면
       } else {
-        ctx.fillStyle = '#05070a';
+        ctx.fillStyle = '#05070a'; // 지구/기본
       }
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-      if (!moonMode && !marsMode) {
+      if (!moonMode && !marsMode && !jupiterMode && !saturnMode && !alienHomeMode) {
         stars.forEach(s => {
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(s.x, s.y, s.size, s.size);
         });
       } else {
-        ctx.fillStyle = marsMode ? 'rgba(230, 100, 70, 0.25)' : 'rgba(180, 180, 200, 0.2)';
+        let craterColor = 'rgba(180, 180, 200, 0.2)';
+        if (alienHomeMode) craterColor = 'rgba(0, 255, 120, 0.2)';
+        else if (saturnMode) craterColor = 'rgba(190, 140, 255, 0.25)';
+        else if (jupiterMode) craterColor = 'rgba(255, 200, 80, 0.2)';
+        else if (marsMode) craterColor = 'rgba(230, 100, 70, 0.25)';
+
+        ctx.fillStyle = craterColor;
         craterList.forEach(c => {
           ctx.beginPath();
           ctx.arc(c.x, c.y, c.radius, 0, Math.PI * 2);
@@ -1452,7 +1561,6 @@
         ctx.stroke();
       }
 
-      // 좌우 완벽 대칭 드론 렌더링 (좌 -22, 우 +22)
       if (currentWeapon.type === 'DRONE') {
         ctx.font = '14px sans-serif';
         ctx.textAlign = 'center';
@@ -1522,10 +1630,26 @@
       });
 
       if (boss) {
+        ctx.save();
+        if (alienHomeMode) {
+          ctx.shadowColor = '#00ff88';
+          ctx.shadowBlur = 18;
+        } else if (marsMode) {
+          ctx.shadowColor = '#ff3300';
+          ctx.shadowBlur = 12;
+        } else if (jupiterMode) {
+          ctx.shadowColor = '#ffcc00';
+          ctx.shadowBlur = 12;
+        } else if (saturnMode) {
+          ctx.shadowColor = '#aa00ff';
+          ctx.shadowBlur = 15;
+        }
+
         ctx.font = '54px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(boss.emoji, boss.x, boss.y);
+        ctx.restore();
 
         document.getElementById('boss-bar-container').style.display = 'block';
         document.getElementById('boss-bar').style.width = Math.max(0, (boss.hp / boss.maxHp * 100)) + '%';
@@ -1615,6 +1739,9 @@
       bossSpawned = false;
       moonMode = false;
       marsMode = false;
+      jupiterMode = false;
+      saturnMode = false;
+      alienHomeMode = false;
       enemies = [];
       bullets = [];
       enemyBullets = [];
@@ -1629,6 +1756,7 @@
 
       document.getElementById('start-screen').style.display = 'none';
       document.getElementById('game-over-screen').style.display = 'none';
+      document.getElementById('victory-screen').style.display = 'none';
       document.getElementById('weaponModal').style.display = 'none';
       document.getElementById('shopModal').style.display = 'none';
       document.getElementById('fade-screen').style.display = 'none';
@@ -1640,7 +1768,4 @@
     };
   </script>
 </body>
-  <div style="margin: 15px auto; text-align: center; clear: both; position: relative; z-index: 9999;">
-        <button onclick="location.href='../'" style="font-weight: bold; cursor: pointer; padding: 10px 20px; font-size: 0.95rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: 0.2s;">🏠 오락실 메인으로 돌아가기</button>
-    </div>
 </html>
