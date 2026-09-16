@@ -4,6 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>미니지 - 지구 방위대 최후의 함선 '미니지호'</title>
+
+  <!-- 📌 스크립트 시작 즉시 브라우저 로컬스토리지 테마 메모리 강제 인지 엔진 -->
+  <script>
+    (() => {
+      const savedTheme = localStorage.getItem('minig-theme');
+      if (savedTheme && savedTheme !== 'white' && savedTheme !== 'light') {
+        document.documentElement.setAttribute('data-theme', savedTheme);
+      } else if (savedTheme === 'light' || savedTheme === 'white') {
+        document.documentElement.removeAttribute('data-theme');
+      }
+    })();
+  </script>
+
   <style>
     /* 📌 메인 오락실 테마 실시간 가변 연동 CSS 규격 */
     :root {
@@ -336,20 +349,33 @@
     // 실시간 테마 가변 연동 로직
     // ==========================================
     const themes = ['dark', 'beige', 'light'];
-    let currentThemeIdx = 0;
+    const savedTheme = localStorage.getItem('minig-theme');
+    let currentThemeIdx = savedTheme === 'beige' ? 1 : (savedTheme === 'light' || savedTheme === 'white' ? 2 : 0);
+
+    function applyTheme(theme, persist = true) {
+      if (theme === 'light') {
+        document.documentElement.removeAttribute('data-theme');
+      } else {
+        document.documentElement.setAttribute('data-theme', theme);
+      }
+
+      if (persist) {
+        localStorage.setItem('minig-theme', theme);
+      }
+
+      const button = document.getElementById('btn-theme-toggle');
+      if (button) {
+        button.innerText = `🎨 ${theme.toUpperCase()}`;
+      }
+    }
 
     function cycleTheme() {
       currentThemeIdx = (currentThemeIdx + 1) % themes.length;
-      const newTheme = themes[currentThemeIdx];
-      
-      if (newTheme === 'light') {
-        document.documentElement.removeAttribute('data-theme');
-      } else {
-        document.documentElement.setAttribute('data-theme', newTheme);
-      }
-      
-      document.getElementById('btn-theme-toggle').innerText = `🎨 ${newTheme.toUpperCase()}`;
+      applyTheme(themes[currentThemeIdx]);
     }
+
+    // 초기 테마 상태를 버튼 표시와 동기화
+    applyTheme(themes[currentThemeIdx], false);
 
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
