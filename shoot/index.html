@@ -18,21 +18,54 @@
   </script>
 
   <style>
-    /* 📌 메인 오락실 테마 실시간 가변 연동 CSS 규격 */
+    /* 📌 미니지 메인 오락실과 동일한 테마 규격 */
     :root {
-        --bg: #f8f9fa; --text: #333;
-        --canvas-bg: #151b22; --border: #e9ecef;
-        --btn-bg: #fff;
+        --bg-color: #f8f9fa;
+        --text-color: #333;
+        --card-bg: #fff;
+        --card-border: #e9ecef;
+        --title-color: #222;
+        --sub-color: #666;
+        --accent-color: #ff6b6b;
+
+        /* 게임 전용 확장 변수 */
+        --canvas-bg: #151b22;
+        --border: var(--card-border);
+        --btn-bg: var(--card-bg);
+        --bg: var(--bg-color);
+        --text: var(--text-color);
     }
-    [data-theme="dark"] {
-        --bg: #0d1117; --text: #c9d1d9;
-        --canvas-bg: #151b22; --border: #30363d;
-        --btn-bg: #21262d;
-    }
+
     [data-theme="beige"] {
-        --bg: #f5ebe0; --text: #4e3d30;
-        --canvas-bg: #1e1b18; --border: #ddcbbb;
-        --btn-bg: #eddfd0;
+        --bg-color: #f5ebe0;
+        --text-color: #4e3d30;
+        --card-bg: #eddfd0;
+        --card-border: #ddcbbb;
+        --title-color: #3d2f23;
+        --sub-color: #7a6552;
+        --accent-color: #d4a373;
+
+        --canvas-bg: #1e1b18;
+        --border: var(--card-border);
+        --btn-bg: var(--card-bg);
+        --bg: var(--bg-color);
+        --text: var(--text-color);
+    }
+
+    [data-theme="dark"] {
+        --bg-color: #0d1117;
+        --text-color: #c9d1d9;
+        --card-bg: #161b22;
+        --card-border: #30363d;
+        --title-color: #58a6ff;
+        --sub-color: #8b949e;
+        --accent-color: #58a6ff;
+
+        --canvas-bg: #151b22;
+        --border: var(--card-border);
+        --btn-bg: var(--card-bg);
+        --bg: var(--bg-color);
+        --text: var(--text-color);
     }
 
     /* 🎨 위 변수를 적용한 무결성 자동 도색 디자인 */
@@ -348,24 +381,36 @@
     // ==========================================
     // 실시간 테마 가변 연동 로직
     // ==========================================
-    const themes = ['dark', 'beige', 'light'];
+    const themes = ['white', 'beige', 'dark'];
     const savedTheme = localStorage.getItem('minig-theme');
-    let currentThemeIdx = savedTheme === 'beige' ? 1 : (savedTheme === 'light' || savedTheme === 'white' ? 2 : 0);
+    const normalizedTheme = savedTheme === 'light' ? 'white' : savedTheme;
+    let currentThemeIdx = themes.includes(normalizedTheme) ? themes.indexOf(normalizedTheme) : 0;
 
     function applyTheme(theme, persist = true) {
-      if (theme === 'light') {
+      // 메인 미니지 오락실과 동일하게 white는 기본(:root) 테마로 사용
+      const normalized = theme === 'light' ? 'white' : theme;
+      const safeTheme = themes.includes(normalized) ? normalized : 'white';
+
+      if (safeTheme === 'white') {
         document.documentElement.removeAttribute('data-theme');
       } else {
-        document.documentElement.setAttribute('data-theme', theme);
+        document.documentElement.setAttribute('data-theme', safeTheme);
       }
 
       if (persist) {
-        localStorage.setItem('minig-theme', theme);
+        localStorage.setItem('minig-theme', safeTheme);
       }
+
+      currentThemeIdx = themes.indexOf(safeTheme);
 
       const button = document.getElementById('btn-theme-toggle');
       if (button) {
-        button.innerText = `🎨 ${theme.toUpperCase()}`;
+        const labels = {
+          white: '⚪ WHITE',
+          beige: '🟤 BEIGE',
+          dark: '⚫ DARK'
+        };
+        button.innerText = labels[safeTheme];
       }
     }
 
