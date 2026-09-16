@@ -9,10 +9,14 @@
   <script>
     (() => {
       const savedTheme = localStorage.getItem('minig-theme');
-      if (savedTheme && savedTheme !== 'white' && savedTheme !== 'light') {
-        document.documentElement.setAttribute('data-theme', savedTheme);
-      } else if (savedTheme === 'light' || savedTheme === 'white') {
+      const theme = savedTheme === 'light' ? 'white' : savedTheme;
+      if (theme === 'beige' || theme === 'dark') {
+        document.documentElement.setAttribute('data-theme', theme);
+      } else {
         document.documentElement.removeAttribute('data-theme');
+        if (savedTheme && savedTheme !== 'white') {
+          localStorage.setItem('minig-theme', 'white');
+        }
       }
     })();
   </script>
@@ -29,7 +33,7 @@
         --accent-color: #ff6b6b;
 
         /* 게임 전용 확장 변수 */
-        --canvas-bg: #151b22;
+        --canvas-bg: #e9eef3;
         --border: var(--card-border);
         --btn-bg: var(--card-bg);
         --bg: var(--bg-color);
@@ -45,7 +49,7 @@
         --sub-color: #7a6552;
         --accent-color: #d4a373;
 
-        --canvas-bg: #1e1b18;
+        --canvas-bg: #ded0c1;
         --border: var(--card-border);
         --btn-bg: var(--card-bg);
         --bg: var(--bg-color);
@@ -422,6 +426,19 @@
     // 초기 테마 상태를 버튼 표시와 동기화
     applyTheme(themes[currentThemeIdx], false);
 
+    // 메인 오락실과의 테마 동기화
+    window.addEventListener('storage', (event) => {
+      if (event.key !== 'minig-theme') return;
+      const next = event.newValue === 'light' ? 'white' : event.newValue;
+      applyTheme(themes.includes(next) ? next : 'white', false);
+    });
+
+    window.addEventListener('pageshow', () => {
+      const latest = localStorage.getItem('minig-theme');
+      const next = latest === 'light' ? 'white' : latest;
+      applyTheme(themes.includes(next) ? next : 'white', false);
+    });
+
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     const CANVAS_WIDTH = 360;
@@ -789,7 +806,7 @@
         time: 0,
         shootTimer: 0,
         state: 0,
-        alpha: pType === 'stealth' ? 0.2 : 1.0,
+        alpha: 1.0,
         radius: 60
       });
     }
@@ -940,7 +957,7 @@
           } else if (currentWeapon.type === 'MISSILE') {
             bullets.push({ x: player.x, y: player.y - 12, vx: 0, vy: -7, type: 'MISSILE', power: 2 * atkMult });
           } else if (currentWeapon.type === 'MINE') {
-            bullets.push({ x: player.x, y: player.y + player.h / 2 + 5, vx: 0, vy: 0.3, type: 'MINE', power: 4 * atkMult });
+            bullets.push({ x: player.x, y: player.y - 10, vx: 0, vy: 0, type: 'MINE', power: 4 * atkMult, armRadius: 38 });
           } else if (currentWeapon.type === 'LASER') {
             bullets.push({ x: player.x, y: player.y - 12, vx: 0, vy: -14, type: 'LASER', power: 1.5 * atkMult });
           } else if (currentWeapon.type === 'SPREAD') {
@@ -1039,6 +1056,26 @@
         eb.x += eb.vx;
         eb.y += eb.vy;
 
+        if (eb.type === 'PROX_MINE') {
+          // 폭탄은 더 이상 떨어지거나 이동하지 않고, 플레이어 접근 시 범위 폭발
+          const dist = Math.hypot(eb.x - player.x, eb.y - player.y);
+          if (dist < eb.armedRadius && !eb.triggered) {
+            eb.triggered = true;
+            createExplosion(eb.x, eb.y, 30);
+            playSound('explosion');
+            if (!player.superMode) {
+              player.hp -= eb.damage || 2;
+              flashEffect = 5;
+              if (player.hp <= 0) {
+                player.hp = 0;
+                gameState = 'GAMEOVER';
+              }
+            }
+            enemyBullets.splice(index, 1);
+          }
+          return;
+        }
+
         if (Math.hypot(eb.x - player.x, eb.y - player.y) < eb.radius + player.w / 3.0) {
           if (!player.superMode) {
             player.hp -= 1;
@@ -1114,9 +1151,10 @@
           e.y += e.speed * 0.8;
           if (e.x < 15 || e.x > CANVAS_WIDTH - 15) e.vx *= -1;
         } else if (e.pType === 'stealth') {
+          // 가독성을 위해 스텔스 적도 항상 완전 불투명하게 표시
+          e.alpha = 1.0;
           e.y += e.speed;
           if (e.y > 180) {
-            e.alpha = Math.min(1.0, e.alpha + 0.08);
             e.speed = 4.2;
           }
         } else if (e.pType === 'split') {
@@ -1135,7 +1173,7 @@
           e.shootTimer++;
           if (e.shootTimer > 90) {
             e.shootTimer = 0;
-            enemyBullets.push({ x: e.x, y: e.y, vx: 0, vy: 0, radius: 6.0 });
+            enemyBullets.push({ x: e.x, y: e.y, vx: 0, vy: 0, radius: 9.0, type: 'PROX_MINE', armedRadius: 48, damage: 2, triggered: false });
           }
         }
 
@@ -1160,9 +1198,16 @@
               triggerMissileExplosion(b.x, b.y, b.power);
               bullets.splice(bIdx, 1);
             } else if (b.type === 'MINE') {
-              createExplosion(b.x, b.y, 25);
+              createExplosion(b.x, b.y, 30);
               playSound('explosion');
-              e.hp -= b.power;
+              enemies.forEach(other => {
+                if (Math.hypot(other.x - b.x, other.y - b.y) < (b.armRadius || 38)) {
+                  other.hp -= b.power;
+                }
+              });
+              if (boss && Math.hypot(boss.x - b.x, boss.y - b.y) < (b.armRadius || 38) + boss.w / 2) {
+                boss.hp -= b.power * 1.5;
+              }
               bullets.splice(bIdx, 1);
             } else {
               e.hp -= b.power;
@@ -1702,9 +1747,23 @@
       ctx.globalAlpha = 1.0;
       ctx.fillStyle = '#ff0055';
       enemyBullets.forEach(eb => {
-        ctx.beginPath();
-        ctx.arc(eb.x, eb.y, eb.radius, 0, Math.PI * 2);
-        ctx.fill();
+        if (eb.type === 'PROX_MINE') {
+          ctx.fillStyle = '#ff8800';
+          ctx.shadowColor = '#ff3300';
+          ctx.shadowBlur = 8;
+          ctx.beginPath();
+          ctx.arc(eb.x, eb.y, eb.radius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(255,140,0,0.35)';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(eb.x, eb.y, eb.armedRadius, 0, Math.PI * 2);
+          ctx.stroke();
+        } else {
+          ctx.beginPath();
+          ctx.arc(eb.x, eb.y, eb.radius, 0, Math.PI * 2);
+          ctx.fill();
+        }
       });
       ctx.restore();
 
@@ -1857,7 +1916,4 @@
     };
   </script>
 </body>
-  <div style="margin: 15px auto; text-align: center; clear: both; position: relative; z-index: 9999;">
-        <button onclick="location.href='../'" style="font-weight: bold; cursor: pointer; padding: 10px 20px; font-size: 0.95rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: 0.2s;">🏠 오락실 메인으로 돌아가기</button>
-    </div>
 </html>
