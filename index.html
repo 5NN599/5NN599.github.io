@@ -8,7 +8,7 @@
     >
 
     <title>
-        미니지 - 무료 미니게임 오락실 | 레트로 게임 모음
+        미니지
     </title>
 
     <meta
@@ -503,6 +503,184 @@
             opacity: 0.7;
         }
 
+
+        /* 의견 보내기 */
+        .feedback-section {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding-top: 24px;
+            border-top: 1px solid var(--card-border);
+        }
+
+        .feedback-button {
+            border: 1px solid var(--card-border);
+            background: var(--card-bg);
+            color: var(--text-color);
+            padding: 10px 20px;
+            border-radius: 999px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 700;
+            transition: 0.2s ease;
+        }
+
+        .feedback-button:hover {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+            transform: translateY(-1px);
+        }
+
+        .feedback-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.55);
+        }
+
+        .feedback-modal.open {
+            display: flex;
+        }
+
+        .feedback-modal-content {
+            width: min(520px, 100%);
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+            padding: 24px;
+            background: var(--card-bg);
+            color: var(--text-color);
+            border: 1px solid var(--card-border);
+            border-radius: 18px;
+            box-shadow: 0 18px 50px rgba(0, 0, 0, 0.22);
+            text-align: left;
+        }
+
+        .feedback-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .feedback-modal-header h2 {
+            margin: 0;
+            color: var(--title-color);
+            font-size: 1.3rem;
+        }
+
+        .feedback-close {
+            width: 34px;
+            height: 34px;
+            padding: 0;
+            margin: 0;
+            border: 1px solid var(--card-border);
+            background: var(--card-bg);
+            color: var(--text-color);
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 700;
+        }
+
+        .feedback-close:hover {
+            border-color: var(--accent-color);
+        }
+
+        .feedback-form {
+            display: grid;
+            gap: 12px;
+        }
+
+        .feedback-form label {
+            display: grid;
+            gap: 6px;
+            color: var(--title-color);
+            font-size: 0.86rem;
+            font-weight: 700;
+        }
+
+        .feedback-form select,
+        .feedback-form textarea {
+            width: 100%;
+            border: 1px solid var(--card-border);
+            background: var(--filter-bg);
+            color: var(--text-color);
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        .feedback-form select:focus,
+        .feedback-form textarea:focus {
+            border-color: var(--accent-color);
+        }
+
+        .feedback-form textarea {
+            min-height: 150px;
+            resize: vertical;
+            line-height: 1.5;
+        }
+
+        .feedback-info {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            color: var(--sub-color);
+            font-size: 0.76rem;
+        }
+
+        .feedback-notice {
+            margin: 0;
+            color: var(--sub-color);
+            font-size: 0.76rem;
+            line-height: 1.5;
+        }
+
+        .feedback-submit {
+            margin: 0;
+            border: 1px solid var(--accent-color);
+            background: var(--accent-color);
+            color: #fff;
+            padding: 11px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 800;
+        }
+
+        .feedback-submit:hover {
+            filter: brightness(0.96);
+        }
+
+        .feedback-submit:disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+
+        .feedback-status {
+            min-height: 20px;
+            margin: 0;
+            color: var(--sub-color);
+            text-align: center;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+
+        @media (max-width: 460px) {
+            .feedback-modal {
+                padding: 12px;
+            }
+
+            .feedback-modal-content {
+                padding: 18px;
+            }
+        }
+
         @media (max-width: 700px) {
             body {
                 padding: 75px 12px 35px;
@@ -941,6 +1119,17 @@
         </main>
     </section>
 
+
+    <section class="feedback-section" aria-label="미니지 의견 보내기">
+        <button
+            type="button"
+            class="feedback-button"
+            id="feedback-open"
+        >
+            💬 의견 보내기
+        </button>
+    </section>
+
     <footer>
         <p>
             미니지는 브라우저에서 바로 즐길 수 있는
@@ -951,6 +1140,102 @@
             © 미니지 All Rights Reserved.
         </p>
     </footer>
+
+
+    <div
+        class="feedback-modal"
+        id="feedback-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="feedback-title"
+    >
+        <div class="feedback-modal-content">
+            <div class="feedback-modal-header">
+                <h2 id="feedback-title">
+                    💬 미니지에 의견 보내기
+                </h2>
+
+                <button
+                    type="button"
+                    class="feedback-close"
+                    id="feedback-close"
+                    aria-label="닫기"
+                >
+                    ✕
+                </button>
+            </div>
+
+            <form
+                class="feedback-form"
+                id="feedback-form"
+            >
+                <label for="feedback-category">
+                    의견 종류
+                    <select
+                        id="feedback-category"
+                        name="category"
+                        required
+                    >
+                        <option value="게임 오류">
+                            게임 오류
+                        </option>
+                        <option value="게임 의견">
+                            게임 의견
+                        </option>
+                        <option value="새로운 게임 아이디어">
+                            새로운 게임 아이디어
+                        </option>
+                        <option value="사이트 의견">
+                            사이트 의견
+                        </option>
+                        <option value="기타">
+                            기타
+                        </option>
+                    </select>
+                </label>
+
+                <label for="feedback-message">
+                    의견 내용
+                    <textarea
+                        id="feedback-message"
+                        name="message"
+                        maxlength="2000"
+                        placeholder="게임 오류나 불편한 점, 새로운 게임 아이디어 등을 적어주세요."
+                        required
+                    ></textarea>
+                </label>
+
+                <div class="feedback-info">
+                    <span>최대 2000자</span>
+                    <span id="feedback-count">0 / 2000</span>
+                </div>
+
+                <input
+                    type="hidden"
+                    name="source"
+                    value="mini-g.kro.kr"
+                >
+
+                <p class="feedback-notice">
+                    개인정보(이름, 전화번호, 주소 등)는 입력하지 말아주세요.
+                </p>
+
+                <button
+                    type="submit"
+                    class="feedback-submit"
+                    id="feedback-submit"
+                >
+                    의견 보내기
+                </button>
+
+                <p
+                    class="feedback-status"
+                    id="feedback-status"
+                    aria-live="polite"
+                ></p>
+            </form>
+        </div>
+    </div>
 
     <script>
         function setTheme(theme) {
@@ -1026,6 +1311,163 @@
                 }
             );
         });
+
+
+        /* 의견 보내기 */
+        const feedbackOpen =
+            document.getElementById('feedback-open');
+
+        const feedbackModal =
+            document.getElementById('feedback-modal');
+
+        const feedbackClose =
+            document.getElementById('feedback-close');
+
+        const feedbackForm =
+            document.getElementById('feedback-form');
+
+        const feedbackMessage =
+            document.getElementById('feedback-message');
+
+        const feedbackCount =
+            document.getElementById('feedback-count');
+
+        const feedbackStatus =
+            document.getElementById('feedback-status');
+
+        const feedbackSubmit =
+            document.getElementById('feedback-submit');
+
+        /*
+         * Formspree 연결 주소입니다.
+         * 아래 YOUR_FORM_ID를 실제 Formspree ID로 바꾸세요.
+         * 예: https://formspree.io/f/xxxxxxxx
+         */
+        const FORM_ENDPOINT =
+            'https://formspree.io/f/mjykveqr';
+
+        function updateFeedbackCount() {
+            feedbackCount.textContent =
+                feedbackMessage.value.length +
+                ' / 2000';
+        }
+
+        function openFeedbackModal() {
+            feedbackModal.classList.add('open');
+            feedbackStatus.textContent = '';
+            document.body.style.overflow = 'hidden';
+
+            setTimeout(function() {
+                feedbackMessage.focus();
+            }, 0);
+        }
+
+        function closeFeedbackModal() {
+            feedbackModal.classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        feedbackOpen.addEventListener(
+            'click',
+            openFeedbackModal
+        );
+
+        feedbackClose.addEventListener(
+            'click',
+            closeFeedbackModal
+        );
+
+        feedbackMessage.addEventListener(
+            'input',
+            updateFeedbackCount
+        );
+
+        feedbackModal.addEventListener(
+            'click',
+            function(event) {
+                if (
+                    event.target === feedbackModal
+                ) {
+                    closeFeedbackModal();
+                }
+            }
+        );
+
+        document.addEventListener(
+            'keydown',
+            function(event) {
+                if (
+                    event.key === 'Escape' &&
+                    feedbackModal.classList.contains('open')
+                ) {
+                    closeFeedbackModal();
+                }
+            }
+        );
+
+        feedbackForm.addEventListener(
+            'submit',
+            async function(event) {
+                event.preventDefault();
+
+                if (
+                    FORM_ENDPOINT.includes(
+                        'YOUR_FORM_ID'
+                    )
+                ) {
+                    feedbackStatus.textContent =
+                        'Formspree 연결 주소를 설정해주세요.';
+                    return;
+                }
+
+                feedbackSubmit.disabled = true;
+                feedbackStatus.textContent =
+                    '의견을 보내는 중...';
+
+                try {
+                    const response =
+                        await fetch(
+                            FORM_ENDPOINT,
+                            {
+                                method: 'POST',
+                                body:
+                                    new FormData(
+                                        feedbackForm
+                                    ),
+                                headers: {
+                                    Accept:
+                                        'application/json'
+                                }
+                            }
+                        );
+
+                    if (!response.ok) {
+                        throw new Error(
+                            '전송 실패'
+                        );
+                    }
+
+                    feedbackStatus.textContent =
+                        '의견이 전송되었습니다. 감사합니다!';
+
+                    feedbackForm.reset();
+                    updateFeedbackCount();
+
+                    setTimeout(
+                        closeFeedbackModal,
+                        1200
+                    );
+                } catch (error) {
+                    feedbackStatus.textContent =
+                        '전송에 실패했습니다. 잠시 후 다시 시도해주세요.';
+                } finally {
+                    feedbackSubmit.disabled = false;
+                }
+            }
+        );
+
+        updateFeedbackCount();
+
     </script>
 
 </body>
