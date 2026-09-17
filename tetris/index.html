@@ -2,81 +2,351 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>미니지 - 테트리스</title>
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>미니지 - 레트로 테트리스</title>
+
+    <meta
+        name="description"
+        content="미니지에서 즐기는 무료 레트로 테트리스.
+        블록을 회전하고 줄을 완성해 최고 점수에 도전해보세요."
+    >
+
+    <link rel="canonical"
+        href="https://mini-g.kro.kr/tetris/">
+
+    <link
+        rel="icon"
+        type="image/png"
+        href="../favicon.png"
+    >
+
+    <!-- 공통 테마 -->
+    <link
+        rel="stylesheet"
+        href="/theme.css"
+    >
+
     <style>
         :root {
-            --bg: #f8f9fa; --text: #333;
-            --canvas-bg: #05070a; --border: #e9ecef;
-            --btn-bg: #fff;
+            --canvas-bg: #05070a;
+            --btn-bg: var(--card-bg);
         }
+
+        [data-theme="cream"] {
+            --canvas-bg: #14100c;
+        }
+
         [data-theme="dark"] {
-            --bg: #0d1117; --text: #c9d1d9;
-            --canvas-bg: #020305; --border: #30363d;
-            --btn-bg: #21262d;
+            --canvas-bg: #020305;
         }
-        [data-theme="beige"] {
-            --bg: #f5ebe0; --text: #4e3d30;
-            --canvas-bg: #14100c; --border: #ddcbbb;
-            --btn-bg: #eddfd0;
-        }
+
         body {
-            background-color: var(--bg) !important;
-            color: var(--text) !important;
-            text-align: center; font-family: sans-serif;
-            padding-top: 15px; margin: 0; transition: 0.3s;
+            background-color: var(--bg-color) !important;
+            color: var(--text-color) !important;
+
+            text-align: center;
+            font-family: sans-serif;
+
+            padding-top: 15px;
+            margin: 0;
+
+            transition:
+                background-color 0.3s ease,
+                color 0.3s ease;
         }
+
+        h1 {
+            color: var(--title-color);
+        }
+
         canvas {
             background-color: var(--canvas-bg);
-            display: block; margin: 10px auto;
-            border: 4px solid var(--border); border-radius: 12px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+
+            display: block;
+            margin: 10px auto;
+
+            border: 4px solid var(--card-border);
+            border-radius: 12px;
+
+            box-shadow:
+                0 8px 24px rgba(0, 0, 0, 0.3);
         }
+
         button {
             background-color: var(--btn-bg) !important;
-            color: var(--text) !important;
-            border: 1px solid var(--border) !important;
-            padding: 8px 16px; font-size: 0.95rem;
-            border-radius: 8px; cursor: pointer; margin: 4px;
+            color: var(--text-color) !important;
+
+            border: 1px solid var(--card-border) !important;
+
+            padding: 8px 16px;
+            font-size: 0.95rem;
+
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 4px;
+
             font-weight: bold;
+
+            transition:
+                background-color 0.2s ease,
+                border-color 0.2s ease,
+                color 0.2s ease;
         }
+
+        button:hover {
+            border-color: var(--accent-color) !important;
+        }
+
         #score-board {
-            font-size: 1.25rem; font-weight: bold;
-            color: #fcc419; margin-bottom: 4px;
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: #fcc419;
+            margin-bottom: 4px;
+        }
+
+        .game-info {
+            color: var(--sub-color);
+            font-size: 0.9rem;
+            margin-top: 8px;
+            line-height: 1.6;
         }
     </style>
 </head>
+
 <body>
+
     <h1>🧱 레트로 테트리스</h1>
-    <div id="score-board">🏆 Score: 0 | 🟥 Next: ?</div>
-    <canvas id="tetrisCanvas" width="240" height="400"></canvas>
-    <div>
-        <button onclick="location.href='../'">🏠 오락실 메인</button>
+
+    <div id="score-board">
+        🏆 Score: 0 | 🟥 Next: ?
     </div>
+
+    <canvas
+        id="tetrisCanvas"
+        width="240"
+        height="400"
+    ></canvas>
+
+    <div>
+        <button onclick="location.href='../'">
+            🏠 오락실 메인
+        </button>
+    </div>
+
+    <div class="game-info">
+        방향키 또는 WASD로 블록을 움직이세요.<br>
+        ↑ / W : 회전 · ↓ / S : 빠르게 내리기
+    </div>
+
     <script>
-        const savedTheme = localStorage.getItem('minig-theme');
-        if (savedTheme && savedTheme !== 'white') {
-            document.documentElement.setAttribute('data-theme', savedTheme);
+        /*
+         * 공통 테마 적용
+         *
+         * index.html에서 선택한
+         * white / cream / dark 설정을
+         * 이 페이지에서도 그대로 사용합니다.
+         *
+         * 기존에 beige가 저장되어 있다면
+         * 자동으로 cream으로 변환합니다.
+         */
+        (function () {
+            let savedTheme =
+                localStorage.getItem("minig-theme");
+
+            if (savedTheme === "beige") {
+                savedTheme = "cream";
+
+                localStorage.setItem(
+                    "minig-theme",
+                    "cream"
+                );
+            }
+
+            if (
+                savedTheme &&
+                savedTheme !== "white"
+            ) {
+                document.documentElement
+                    .setAttribute(
+                        "data-theme",
+                        savedTheme
+                    );
+            }
+        })();
+
+
+        // 🎵 사운드 신디사이저 엔진
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx =
+                    new (
+                        window.AudioContext ||
+                        window.webkitAudioContext
+                    )();
+            }
         }
 
-        // 🎵 사운드 신디사이저 엔진 탑재
-        let audioCtx = null;
-        function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
         function playSound(type) {
             initAudio();
+
             try {
-                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-                osc.connect(gain); gain.connect(audioCtx.destination); const now = audioCtx.currentTime;
-                if (type === 'move') { osc.type = 'sine'; osc.frequency.setValueAtTime(300, now); gain.gain.setValueAtTime(0.01, now); gain.gain.linearRampToValueAtTime(0, now + 0.03); osc.start(now); osc.stop(now + 0.03); }
-                else if (type === 'rotate') { osc.type = 'triangle'; osc.frequency.setValueAtTime(450, now); osc.frequency.exponentialRampToValueAtTime(600, now + 0.05); gain.gain.setValueAtTime(0.015, now); gain.gain.linearRampToValueAtTime(0, now + 0.05); osc.start(now); osc.stop(now + 0.05); }
-                else if (type === 'clear') { osc.type = 'square'; osc.frequency.setValueAtTime(523, now); osc.frequency.setValueAtTime(659, now + 0.06); osc.frequency.setValueAtTime(783, now + 0.12); gain.gain.setValueAtTime(0.03, now); gain.gain.linearRampToValueAtTime(0, now + 0.2); osc.start(now); osc.stop(now + 0.2); }
-                else if (type === 'over') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, now); osc.frequency.linearRampToValueAtTime(40, now + 0.4); gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0, now + 0.4); osc.start(now); osc.stop(now + 0.4); }
+                const osc =
+                    audioCtx.createOscillator();
+
+                const gain =
+                    audioCtx.createGain();
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                const now =
+                    audioCtx.currentTime;
+
+                if (type === 'move') {
+                    osc.type = 'sine';
+
+                    osc.frequency.setValueAtTime(
+                        300,
+                        now
+                    );
+
+                    gain.gain.setValueAtTime(
+                        0.01,
+                        now
+                    );
+
+                    gain.gain
+                        .linearRampToValueAtTime(
+                            0,
+                            now + 0.03
+                        );
+
+                    osc.start(now);
+                    osc.stop(now + 0.03);
+
+                } else if (type === 'rotate') {
+                    osc.type = 'triangle';
+
+                    osc.frequency.setValueAtTime(
+                        450,
+                        now
+                    );
+
+                    osc.frequency
+                        .exponentialRampToValueAtTime(
+                            600,
+                            now + 0.05
+                        );
+
+                    gain.gain.setValueAtTime(
+                        0.015,
+                        now
+                    );
+
+                    gain.gain
+                        .linearRampToValueAtTime(
+                            0,
+                            now + 0.05
+                        );
+
+                    osc.start(now);
+                    osc.stop(now + 0.05);
+
+                } else if (type === 'clear') {
+                    osc.type = 'square';
+
+                    osc.frequency.setValueAtTime(
+                        523,
+                        now
+                    );
+
+                    osc.frequency.setValueAtTime(
+                        659,
+                        now + 0.06
+                    );
+
+                    osc.frequency.setValueAtTime(
+                        783,
+                        now + 0.12
+                    );
+
+                    gain.gain.setValueAtTime(
+                        0.03,
+                        now
+                    );
+
+                    gain.gain
+                        .linearRampToValueAtTime(
+                            0,
+                            now + 0.2
+                        );
+
+                    osc.start(now);
+                    osc.stop(now + 0.2);
+
+                } else if (type === 'over') {
+                    osc.type = 'sawtooth';
+
+                    osc.frequency.setValueAtTime(
+                        150,
+                        now
+                    );
+
+                    osc.frequency
+                        .linearRampToValueAtTime(
+                            40,
+                            now + 0.4
+                        );
+
+                    gain.gain.setValueAtTime(
+                        0.1,
+                        now
+                    );
+
+                    gain.gain
+                        .linearRampToValueAtTime(
+                            0,
+                            now + 0.4
+                        );
+
+                    osc.start(now);
+                    osc.stop(now + 0.4);
+                }
+
             } catch (e) {}
         }
 
-        const canvas = document.getElementById('tetrisCanvas'); const ctx = canvas.getContext('2d');
-        const ROW = 20, COL = 12, BLOCK_SIZE = 20;
-        let board = Array.from({ length: ROW }, () => Array(COL).fill(0));
-        let score = 0, isGameOver = false, dropCounter = 0, lastTime = 0, gameId = null;
+
+        const canvas =
+            document.getElementById(
+                'tetrisCanvas'
+            );
+
+        const ctx =
+            canvas.getContext('2d');
+
+        const ROW = 20;
+        const COL = 12;
+        const BLOCK_SIZE = 20;
+
+        let board =
+            Array.from(
+                { length: ROW },
+                () => Array(COL).fill(0)
+            );
+
+        let score = 0;
+        let isGameOver = false;
+        let dropCounter = 0;
+        let lastTime = 0;
+        let gameId = null;
+
 
         const SHAPES = [
             [],
@@ -88,78 +358,433 @@
             [[0,6,6],[6,6,0]],
             [[7,7],[7,7]]
         ];
-        const EMOJIS = ["⬛", "🟦", "🟪", "🟧", "🟫", "🟥", "🟩", "🟨"];
-        let playerPiece = { matrix: null, x: 0, y: 0, id: 0 };
-        let nextPieceId = Math.floor(Math.random() * 7) + 1;
+
+
+        const EMOJIS = [
+            "⬛",
+            "🟦",
+            "🟪",
+            "🟧",
+            "🟫",
+            "🟥",
+            "🟩",
+            "🟨"
+        ];
+
+
+        let playerPiece = {
+            matrix: null,
+            x: 0,
+            y: 0,
+            id: 0
+        };
+
+
+        let nextPieceId =
+            Math.floor(
+                Math.random() * 7
+            ) + 1;
+
 
         function createPiece() {
-            let id = nextPieceId; nextPieceId = Math.floor(Math.random() * 7) + 1;
-            playerPiece.matrix = SHAPES[id]; playerPiece.id = id; playerPiece.y = 0;
-            playerPiece.x = Math.floor((COL - playerPiece.matrix[0].length) / 2);
-            document.getElementById('score-board').innerText = `🏆 Score: ${score} | 🟥 Next: ${EMOJIS[nextPieceId]}`;
-            if (collide()) { isGameOver = true; playSound('over'); alert(`💥 GAME OVER!\n최종 점수: ${score}점`); restart(); }
+            let id = nextPieceId;
+
+            nextPieceId =
+                Math.floor(
+                    Math.random() * 7
+                ) + 1;
+
+            playerPiece.matrix =
+                SHAPES[id];
+
+            playerPiece.id = id;
+
+            playerPiece.y = 0;
+
+            playerPiece.x =
+                Math.floor(
+                    (
+                        COL -
+                        playerPiece.matrix[0].length
+                    ) / 2
+                );
+
+            document.getElementById(
+                'score-board'
+            ).innerText =
+                `🏆 Score: ${score} | 🟥 Next: ${
+                    EMOJIS[nextPieceId]
+                }`;
+
+            if (collide()) {
+                isGameOver = true;
+
+                playSound('over');
+
+                alert(
+                    `💥 GAME OVER!\n최종 점수: ${score}점`
+                );
+
+                restart();
+            }
         }
+
+
         function collide() {
-            const m = playerPiece.matrix;
-            for (let r = 0; r < m.length; r++) {
-                for (let c = 0; c < m[r].length; c++) {
+            const m =
+                playerPiece.matrix;
+
+            for (
+                let r = 0;
+                r < m.length;
+                r++
+            ) {
+                for (
+                    let c = 0;
+                    c < m[r].length;
+                    c++
+                ) {
                     if (m[r][c] !== 0) {
-                        let boardX = playerPiece.x + c; let boardY = playerPiece.y + r;
-                        if (boardX < 0 || boardX >= COL || boardY >= ROW) return true;
-                        if (boardY >= 0 && board[boardY][boardX] !== 0) return true;
+
+                        let boardX =
+                            playerPiece.x + c;
+
+                        let boardY =
+                            playerPiece.y + r;
+
+                        if (
+                            boardX < 0 ||
+                            boardX >= COL ||
+                            boardY >= ROW
+                        ) {
+                            return true;
+                        }
+
+                        if (
+                            boardY >= 0 &&
+                            board[boardY][boardX] !== 0
+                        ) {
+                            return true;
+                        }
                     }
                 }
             }
+
             return false;
         }
+
+
         function merge() {
-            playerPiece.matrix.forEach((row, r) => {
-                row.forEach((value, c) => { if (value !== 0 && playerPiece.y + r >= 0) board[playerPiece.y + r][playerPiece.x + c] = playerPiece.id; });
-            });
+            playerPiece.matrix.forEach(
+                (row, r) => {
+                    row.forEach(
+                        (value, c) => {
+                            if (
+                                value !== 0 &&
+                                playerPiece.y + r >= 0
+                            ) {
+                                board[
+                                    playerPiece.y + r
+                                ][
+                                    playerPiece.x + c
+                                ] =
+                                    playerPiece.id;
+                            }
+                        }
+                    );
+                }
+            );
         }
+
+
         function rotate() {
-            const m = playerPiece.matrix; const n = Array.from({ length: m[0].length }, () => Array(m.length).fill(0));
-            for (let r = 0; r < m.length; r++) { for (let c = 0; c < m[r].length; c++) n[c][m.length - 1 - r] = m[r][c]; }
-            const oldMatrix = playerPiece.matrix; playerPiece.matrix = n;
-            if (collide()) { playerPiece.matrix = oldMatrix; } else { playSound('rotate'); }
+            const m =
+                playerPiece.matrix;
+
+            const n =
+                Array.from(
+                    {
+                        length: m[0].length
+                    },
+                    () =>
+                        Array(
+                            m.length
+                        ).fill(0)
+                );
+
+            for (
+                let r = 0;
+                r < m.length;
+                r++
+            ) {
+                for (
+                    let c = 0;
+                    c < m[r].length;
+                    c++
+                ) {
+                    n[c][
+                        m.length - 1 - r
+                    ] =
+                        m[r][c];
+                }
+            }
+
+            const oldMatrix =
+                playerPiece.matrix;
+
+            playerPiece.matrix = n;
+
+            if (collide()) {
+                playerPiece.matrix =
+                    oldMatrix;
+            } else {
+                playSound('rotate');
+            }
         }
+
+
         function clearLines() {
             let linesCleared = 0;
-            for (let r = ROW - 1; r >= 0; r--) {
-                if (board[r].every(val => val !== 0)) { board.splice(r, 1); board.unshift(Array(COL).fill(0)); linesCleared++; r++; }
+
+            for (
+                let r = ROW - 1;
+                r >= 0;
+                r--
+            ) {
+                if (
+                    board[r].every(
+                        val => val !== 0
+                    )
+                ) {
+                    board.splice(r, 1);
+
+                    board.unshift(
+                        Array(COL).fill(0)
+                    );
+
+                    linesCleared++;
+
+                    r++;
+                }
             }
-            if (linesCleared > 0) { score += linesCleared * 100; playSound('clear'); document.getElementById('score-board').innerText = `🏆 Score: ${score} | 🟥 Next: ${EMOJIS[nextPieceId]}`; }
+
+            if (linesCleared > 0) {
+                score +=
+                    linesCleared * 100;
+
+                playSound('clear');
+
+                document.getElementById(
+                    'score-board'
+                ).innerText =
+                    `🏆 Score: ${score} | 🟥 Next: ${
+                        EMOJIS[nextPieceId]
+                    }`;
+            }
         }
+
+
         function playerDrop() {
             playerPiece.y++;
-            if (collide()) { playerPiece.y--; merge(); clearLines(); createPiece(); } else { playSound('move'); }
+
+            if (collide()) {
+                playerPiece.y--;
+
+                merge();
+                clearLines();
+                createPiece();
+            } else {
+                playSound('move');
+            }
+
             dropCounter = 0;
         }
+
+
         function draw() {
-            ctx.fillStyle = '#05070a'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-            board.forEach((row, r) => { row.forEach((value, c) => { ctx.font = "18px sans-serif"; ctx.fillText(EMOJIS[value], c * BLOCK_SIZE, (r + 1) * BLOCK_SIZE); }); });
+
+            /*
+             * 게임 영역은 기존처럼
+             * 어두운 배경을 유지합니다.
+             */
+            ctx.fillStyle =
+                getComputedStyle(
+                    document.documentElement
+                )
+                .getPropertyValue(
+                    '--canvas-bg'
+                )
+                .trim() || '#05070a';
+
+            ctx.fillRect(
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
+
+
+            board.forEach(
+                (row, r) => {
+                    row.forEach(
+                        (value, c) => {
+
+                            ctx.font =
+                                "18px sans-serif";
+
+                            ctx.fillText(
+                                EMOJIS[value],
+                                c * BLOCK_SIZE,
+                                (r + 1) *
+                                    BLOCK_SIZE
+                            );
+                        }
+                    );
+                }
+            );
+
+
             if (playerPiece.matrix) {
-                playerPiece.matrix.forEach((row, r) => {
-                    row.forEach((value, c) => { if (value !== 0) { ctx.font = "18px sans-serif"; ctx.fillText(EMOJIS[playerPiece.id], (playerPiece.x + c) * BLOCK_SIZE, (playerPiece.y + r + 1) * BLOCK_SIZE); } });
-                });
+                playerPiece.matrix.forEach(
+                    (row, r) => {
+                        row.forEach(
+                            (value, c) => {
+
+                                if (
+                                    value !== 0
+                                ) {
+                                    ctx.font =
+                                        "18px sans-serif";
+
+                                    ctx.fillText(
+                                        EMOJIS[
+                                            playerPiece.id
+                                        ],
+                                        (
+                                            playerPiece.x +
+                                            c
+                                        ) *
+                                            BLOCK_SIZE,
+                                        (
+                                            playerPiece.y +
+                                            r +
+                                            1
+                                        ) *
+                                            BLOCK_SIZE
+                                    );
+                                }
+                            }
+                        );
+                    }
+                );
             }
         }
+
+
         function update(time = 0) {
-            if (isGameOver) return; const deltaTime = time - lastTime; lastTime = time; dropCounter += deltaTime;
-            if (dropCounter > 800) { playerDrop(); } draw(); gameId = requestAnimationFrame(update);
+
+            if (isGameOver) {
+                return;
+            }
+
+            const deltaTime =
+                time - lastTime;
+
+            lastTime = time;
+
+            dropCounter += deltaTime;
+
+            if (dropCounter > 800) {
+                playerDrop();
+            }
+
+            draw();
+
+            gameId =
+                requestAnimationFrame(
+                    update
+                );
         }
-        document.addEventListener('keydown', e => {
-            if (isGameOver) return;
-            if (e.key === 'ArrowLeft' || e.key === 'a') { playerPiece.x--; if(collide()) playerPiece.x++; else playSound('move'); }
-            if (e.key === 'ArrowRight' || e.key === 'd') { playerPiece.x++; if(collide()) playerPiece.x--; else playSound('move'); }
-            if (e.key === 'ArrowDown' || e.key === 's') { playerDrop(); }
-            if (e.key === 'ArrowUp' || e.key === 'w') { rotate(); }
-        });
+
+
+        document.addEventListener(
+            'keydown',
+            e => {
+
+                if (isGameOver) {
+                    return;
+                }
+
+                if (
+                    e.key === 'ArrowLeft' ||
+                    e.key === 'a'
+                ) {
+                    playerPiece.x--;
+
+                    if (collide()) {
+                        playerPiece.x++;
+                    } else {
+                        playSound('move');
+                    }
+                }
+
+
+                if (
+                    e.key === 'ArrowRight' ||
+                    e.key === 'd'
+                ) {
+                    playerPiece.x++;
+
+                    if (collide()) {
+                        playerPiece.x--;
+                    } else {
+                        playSound('move');
+                    }
+                }
+
+
+                if (
+                    e.key === 'ArrowDown' ||
+                    e.key === 's'
+                ) {
+                    playerDrop();
+                }
+
+
+                if (
+                    e.key === 'ArrowUp' ||
+                    e.key === 'w'
+                ) {
+                    rotate();
+                }
+            }
+        );
+
+
         function restart() {
-            board = Array.from({ length: ROW }, () => Array(COL).fill(0)); score = 0; isGameOver = false; dropCounter = 0;
-            if (gameId) cancelAnimationFrame(gameId); createPiece(); update();
+            board =
+                Array.from(
+                    { length: ROW },
+                    () => Array(COL).fill(0)
+                );
+
+            score = 0;
+            isGameOver = false;
+            dropCounter = 0;
+
+            if (gameId) {
+                cancelAnimationFrame(
+                    gameId
+                );
+            }
+
+            createPiece();
+            update();
         }
+
+
         restart();
     </script>
+
 </body>
 </html>
