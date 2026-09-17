@@ -119,59 +119,54 @@
       touch-action: none;
     }
 
-    /* 📱 모바일 터치 조작 (조이스틱 + 발사 버튼) */
+    /* 📱 모바일 터치 조작: 캔버스 위에 겹치지 않고 그 아래에 별도 줄로 배치 */
     #touch-layer {
-      position: absolute;
-      left: 0;
-      bottom: 0;
-      width: 100%;
-      height: 190px;
-      z-index: 15;
-      pointer-events: none;
       display: none;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 14px 18px;
+      align-items: center;
+      justify-content: space-between;
+      background-color: var(--btn-bg);
+      border-top: 2px solid var(--border);
     }
     #game-container.touch-on #touch-layer {
-      display: block;
+      display: flex;
     }
     #stick-base {
-      position: absolute;
-      left: 16px;
-      bottom: 18px;
-      width: 104px;
-      height: 104px;
+      position: relative;
+      width: 92px;
+      height: 92px;
       border-radius: 50%;
       background: rgba(120, 140, 180, 0.16);
       border: 2px solid rgba(180, 200, 230, 0.35);
-      pointer-events: auto;
       touch-action: none;
+      flex-shrink: 0;
     }
     #stick-knob {
       position: absolute;
       left: 50%;
       top: 50%;
-      width: 46px;
-      height: 46px;
-      margin: -23px 0 0 -23px;
+      width: 40px;
+      height: 40px;
+      margin: -20px 0 0 -20px;
       border-radius: 50%;
       background: rgba(0, 255, 204, 0.35);
       border: 2px solid rgba(0, 255, 204, 0.7);
       pointer-events: none;
     }
     #fire-btn {
-      position: absolute;
-      right: 16px;
-      bottom: 26px;
-      width: 84px;
-      height: 84px;
+      width: 72px;
+      height: 72px;
       margin: 0;
       border-radius: 50%;
-      font-size: 24px;
+      font-size: 22px;
       background: rgba(255, 0, 85, 0.22) !important;
       border: 2px solid rgba(255, 90, 130, 0.7) !important;
       color: #fff !important;
-      pointer-events: auto;
       touch-action: none;
       transition: none;
+      flex-shrink: 0;
     }
     #fire-btn.pressed {
       background: rgba(255, 0, 85, 0.5) !important;
@@ -343,13 +338,207 @@
       z-index: 40;
       transition: opacity 0.5s ease-in-out;
       display: none;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
-      color: #00ffcc;
-      font-size: 15px;
-      font-weight: bold;
+      gap: 10px;
+      overflow: hidden;
       text-align: center;
       padding: 20px;
+      --warp-color: #00ffcc;
+    }
+    /* 워프 스피드 느낌의 방사형 줄무늬 배경 */
+    #fade-warp {
+      position: absolute;
+      inset: -30%;
+      background-image: repeating-conic-gradient(
+        from 0deg,
+        var(--warp-color) 0deg 1deg,
+        transparent 1deg 8deg
+      );
+      opacity: 0.3;
+      filter: blur(1px);
+      animation: warpSpin 1.1s linear infinite;
+    }
+    @keyframes warpSpin {
+      from { transform: rotate(0deg) scale(1); }
+      to   { transform: rotate(360deg) scale(1.2); }
+    }
+    #fade-planet {
+      position: relative;
+      font-size: 60px;
+      line-height: 1;
+      filter: drop-shadow(0 0 16px var(--warp-color));
+      animation: planetZoom 1s cubic-bezier(.2,.8,.2,1) both;
+    }
+    @keyframes planetZoom {
+      0%   { transform: scale(0.1) rotate(-25deg); opacity: 0; }
+      55%  { opacity: 1; }
+      100% { transform: scale(1) rotate(0deg); opacity: 1; }
+    }
+    #fade-text {
+      position: relative;
+      color: var(--warp-color);
+      font-size: 13px;
+      font-weight: bold;
+      white-space: pre-wrap;
+      line-height: 1.5;
+      opacity: 0;
+      animation: fadeTextIn 0.6s ease-out 0.55s both;
+    }
+    @keyframes fadeTextIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ☠ 최종 보스 등장 연출 */
+    #boss-intro {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 38;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+      pointer-events: none;
+      background: radial-gradient(circle at 50% 35%, rgba(0,70,30,0.55), rgba(0,0,0,0.92));
+    }
+    #boss-intro.on { display: flex; }
+    #boss-intro .bi-eye {
+      font-size: 84px;
+      filter: drop-shadow(0 0 26px #00ff88);
+      animation: biEye 2.4s ease-out both;
+    }
+    @keyframes biEye {
+      0%   { transform: scale(0.2); opacity: 0; }
+      30%  { transform: scale(1.15); opacity: 1; }
+      45%  { transform: scale(1); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    #boss-intro .bi-name {
+      color: #00ff88;
+      font-size: 24px;
+      font-weight: 900;
+      letter-spacing: 4px;
+      text-shadow: 0 0 14px #00ff88;
+      animation: biName 0.7s ease-out 0.5s both;
+    }
+    @keyframes biName {
+      from { opacity: 0; letter-spacing: 22px; filter: blur(6px); }
+      to   { opacity: 1; letter-spacing: 4px; filter: blur(0); }
+    }
+    #boss-intro .bi-sub {
+      color: #cfffe6;
+      font-size: 11px;
+      letter-spacing: 2px;
+      animation: fadeTextIn 0.6s ease-out 1.1s both;
+    }
+    #boss-intro .bi-bar {
+      width: 72%;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, #00ff88, transparent);
+      animation: biBar 1.6s ease-out 0.8s both;
+    }
+    @keyframes biBar {
+      from { transform: scaleX(0); opacity: 0; }
+      to   { transform: scaleX(1); opacity: 1; }
+    }
+
+    /* 보스 패턴 예고 문구 */
+    #boss-callout {
+      position: absolute;
+      top: 46%;
+      left: 0;
+      width: 100%;
+      text-align: center;
+      z-index: 14;
+      color: #ffdd55;
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      text-shadow: 0 0 10px rgba(0,0,0,0.9), 0 0 16px #ff7700;
+      pointer-events: none;
+      opacity: 0;
+    }
+    #boss-callout.show {
+      animation: calloutPop 1.4s ease-out both;
+    }
+    @keyframes calloutPop {
+      0%   { opacity: 0; transform: scale(0.7); }
+      15%  { opacity: 1; transform: scale(1.06); }
+      75%  { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(1); }
+    }
+
+    /* 🎉 최종 승리 연출 */
+    #victory-screen {
+      overflow: hidden;
+    }
+    #victory-screen .vc-rays {
+      position: absolute;
+      inset: -40%;
+      background-image: repeating-conic-gradient(
+        from 0deg, rgba(0,255,204,0.16) 0deg 2deg, transparent 2deg 12deg);
+      animation: warpSpin 9s linear infinite;
+      pointer-events: none;
+    }
+    #victory-screen .vc-inner {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+    }
+    #vc-title {
+      font-size: 26px;
+      font-weight: 900;
+      letter-spacing: 3px;
+      color: #00ffcc;
+      text-shadow: 0 0 18px #00ffcc, 0 0 40px rgba(0,255,204,0.5);
+      animation: vcTitle 1s cubic-bezier(.2,.9,.2,1) both;
+    }
+    @keyframes vcTitle {
+      0%   { opacity: 0; transform: scale(2.4) rotate(-6deg); filter: blur(10px); }
+      100% { opacity: 1; transform: scale(1) rotate(0); filter: blur(0); }
+    }
+    #vc-rank {
+      font-size: 62px;
+      font-weight: 900;
+      line-height: 1;
+      color: #ffd93d;
+      text-shadow: 0 0 22px #ffb700, 0 0 50px rgba(255,183,0,0.6);
+      animation: vcRank 0.8s cubic-bezier(.2,.9,.2,1) 0.7s both;
+    }
+    @keyframes vcRank {
+      0%   { opacity: 0; transform: scale(3) rotate(14deg); }
+      70%  { transform: scale(0.9); }
+      100% { opacity: 1; transform: scale(1) rotate(0); }
+    }
+    #vc-rank-label {
+      font-size: 10px;
+      letter-spacing: 3px;
+      opacity: 0.8;
+      animation: fadeTextIn 0.5s ease-out 1.2s both;
+    }
+    #vc-stats {
+      font-size: 11px;
+      line-height: 1.7;
+      font-family: monospace;
+      animation: fadeTextIn 0.6s ease-out 1.4s both;
+    }
+    #vc-stats b { color: #ffd93d; }
+    #vc-msg {
+      font-size: 11px;
+      opacity: 0.9;
+      max-width: 90%;
+      line-height: 1.6;
+      animation: fadeTextIn 0.6s ease-out 1.8s both;
+    }
+    #victory-screen button {
+      animation: fadeTextIn 0.6s ease-out 2.2s both;
     }
   </style>
 </head>
@@ -384,10 +573,25 @@
     </div>
 
     <div id="victory-screen" class="overlay-screen" style="display: none;">
-      <h1 style="color:#00ffcc;">🎉 인류 승리 (VICTORY)</h1>
-      <p id="victory-desc">외계인 본진 하이브 마인드를 완전 파괴했습니다!</p>
-      <button onclick="startGame()">🚀 인류의 영웅으로 재출격</button>
+      <div class="vc-rays"></div>
+      <div class="vc-inner">
+        <div id="vc-title">MISSION COMPLETE</div>
+        <div id="vc-rank">S</div>
+        <div id="vc-rank-label">FINAL RANK</div>
+        <div id="vc-stats"></div>
+        <div id="vc-msg"></div>
+        <button onclick="startGame()">🚀 인류의 영웅으로 재출격</button>
+      </div>
     </div>
+
+    <div id="boss-intro">
+      <div class="bi-eye">👁️</div>
+      <div class="bi-name">HIVE MIND</div>
+      <div class="bi-bar"></div>
+      <div class="bi-sub">외계 본진 모체 — 하이브 마인드</div>
+    </div>
+
+    <div id="boss-callout"></div>
 
     <div id="weaponModal" class="modal">
       <div class="modal-content">
@@ -440,7 +644,11 @@
       </div>
     </div>
 
-    <div id="fade-screen">🌕 진입 중...</div>
+    <div id="fade-screen">
+      <div id="fade-warp"></div>
+      <div id="fade-planet">🌕</div>
+      <div id="fade-text">진입 중...</div>
+    </div>
 
     <canvas id="gameCanvas" width="360" height="500"></canvas>
 
@@ -493,33 +701,216 @@
     const SPACE_BG = '#0b1020';
 
     let audioCtx = null;
-    let bgmTimer = null;
-    let bgmStep = 0;
 
-    const earthBgmNotes = [
-      261.63, 329.63, 392.00, 523.25, 392.00, 329.63, 261.63, 392.00,
-      293.66, 349.23, 440.00, 587.33, 440.00, 349.23, 293.66, 440.00
-    ];
-    const moonBgmNotes = [
-      220.00, 261.63, 329.63, 440.00, 329.63, 261.63, 196.00, 246.94,
-      293.66, 392.00, 293.66, 246.94, 174.61, 220.00, 261.63, 349.23
-    ];
-    const marsBgmNotes = [
-      110.00, 110.00, 220.00, 110.00, 130.81, 110.00, 146.83, 110.00,
-      110.00, 110.00, 246.94, 110.00, 130.81, 110.00, 123.47, 98.00
-    ];
-    const jupiterBgmNotes = [
-      130.81, 164.81, 196.00, 261.63, 329.63, 392.00, 329.63, 261.63,
-      146.83, 174.61, 220.00, 293.66, 349.23, 440.00, 349.23, 293.66
-    ];
-    const saturnBgmNotes = [
-      98.00, 123.47, 146.83, 196.00, 146.83, 123.47, 87.31, 110.00,
-      130.81, 174.61, 130.81, 110.00, 65.41, 87.31, 98.00, 130.81
-    ];
-    const alienBgmNotes = [
-      130.81, 155.56, 185.00, 220.00, 185.00, 155.56, 130.81, 246.94,
-      220.00, 185.00, 155.56, 123.47, 130.81, 185.00, 220.00, 293.66
-    ];
+    // ==========================================
+    // 🎵 음악 엔진 (리드 멜로디 + 베이스 + 아르페지오 + 드럼, look-ahead 스케줄러)
+    // 리드는 살짝 디튠한 두 오실레이터를 겹쳐 두껍게 울리고("슈퍼소우" 느낌),
+    // 화음 톤을 16분음표로 계속 굴리는 아르페지오 레이어가 곡을 계속 밀어붙이며,
+    // 4마디마다 크래시로 임팩트를 준다.
+    // ==========================================
+    function triad(root, minor) {
+      const third = root * Math.pow(2, (minor ? 3 : 4) / 12);
+      const fifth = root * Math.pow(2, 7 / 12);
+      return [root, third, fifth];
+    }
+
+    const MUSIC = {
+      earth: { // 지구 최후 방위선 - 명작 슈팅게임들처럼 절박한 상황에서도 웅장하고 영웅적인 팡파르
+        bpm: 132, leadWave: 'sawtooth', bassWave: 'triangle', arpWave: 'square',
+        leadVol: 0.058, bassVol: 0.06, arpVol: 0.022,
+        subBass: true,     // 저음을 한 옥타브 더 깔아 무게감을 더한다
+        grandAccent: true, // 4마디마다 큰 화음 스탭으로 웅장한 포인트를 준다
+        // I - V - vi - IV (C - G - Am - F) : 대다수 명작 슈팅게임 메인 테마가 즐겨 쓰는 영웅적 진행
+        chords: [{ root: 130.81, minor: false }, { root: 196.00, minor: false }, { root: 220.00, minor: true }, { root: 174.61, minor: false }],
+        // 코드 구성음만으로 쌓은 상승-하강 팡파르 모티프
+        lead: [
+          392.00, null, 523.25, 659.25, null, 587.33, 392.00, 493.88,
+          523.25, null, 440.00, 659.25, 440.00, null, 349.23, null
+        ]
+      },
+      moon: { // 달 표면 - 고요하고 신비로운 분위기 (일부러 다른 스테이지보다 차분하게 유지)
+        bpm: 96, leadWave: 'sine', bassWave: 'sine', arpWave: 'sine',
+        leadVol: 0.045, bassVol: 0.035, arpVol: 0.014,
+        // Am - F - C - Em
+        chords: [{ root: 220.00, minor: true }, { root: 174.61, minor: false }, { root: 261.63, minor: false }, { root: 164.81, minor: true }],
+        lead: [
+          440.00, null, 523.25, null, null, 349.23, 440.00, null,
+          523.25, null, 659.25, null, null, 392.00, 329.63, null
+        ]
+      },
+      mars: { // 화성 - 공격적이고 불안한 프리지안 진행
+        bpm: 158, leadWave: 'sawtooth', bassWave: 'sawtooth', arpWave: 'square',
+        leadVol: 0.05, bassVol: 0.055, arpVol: 0.024,
+        // Em - F - G - Em (프리지안 케이던스)
+        chords: [{ root: 164.81, minor: true }, { root: 174.61, minor: false }, { root: 196.00, minor: false }, { root: 164.81, minor: true }],
+        lead: [
+          329.63, 349.23, 392.00, null, 493.88, 392.00, 349.23, null,
+          329.63, 587.33, 493.88, null, 392.00, 349.23, 329.63, null
+        ]
+      },
+      jupiter: { // 목성 - 웅장하고 밝은 팡파르 느낌
+        bpm: 120, leadWave: 'square', bassWave: 'triangle', arpWave: 'triangle',
+        leadVol: 0.048, bassVol: 0.05, arpVol: 0.022,
+        // F - C - Dm - Bb
+        chords: [{ root: 174.61, minor: false }, { root: 261.63, minor: false }, { root: 146.83, minor: true }, { root: 233.08, minor: false }],
+        lead: [
+          349.23, 440.00, 523.25, null, 523.25, 659.25, 392.00, null,
+          293.66, 349.23, 440.00, null, 466.16, 587.33, 698.46, null
+        ]
+      },
+      saturn: { // 토성 - 우아하고 서늘한 고리 요새
+        bpm: 106, leadWave: 'triangle', bassWave: 'sine', arpWave: 'sine',
+        leadVol: 0.048, bassVol: 0.04, arpVol: 0.02,
+        // Dm - Am - Bb - C
+        chords: [{ root: 146.83, minor: true }, { root: 220.00, minor: true }, { root: 233.08, minor: false }, { root: 261.63, minor: false }],
+        lead: [
+          293.66, 349.23, 440.00, null, 329.63, 440.00, 523.25, null,
+          466.16, 587.33, 698.46, null, 523.25, 659.25, 392.00, null
+        ]
+      },
+      alien: { // 외계 본진 - 이질적이고 긴박한 최종전
+        bpm: 150, leadWave: 'sawtooth', bassWave: 'square', arpWave: 'square',
+        leadVol: 0.055, bassVol: 0.06, arpVol: 0.026,
+        // C - F#m - Bb - Em (트라이톤 위주의 낯선 진행)
+        chords: [{ root: 130.81, minor: false }, { root: 185.00, minor: true }, { root: 233.08, minor: false }, { root: 164.81, minor: true }],
+        lead: [
+          261.63, 369.99, 440.00, null, 466.16, 587.33, 739.99, null,
+          329.63, 415.30, 523.25, null, 261.63, 369.99, 261.63, null
+        ]
+      }
+    };
+
+    function currentStageKey() {
+      if (alienHomeMode) return 'alien';
+      if (saturnMode) return 'saturn';
+      if (jupiterMode) return 'jupiter';
+      if (marsMode) return 'mars';
+      if (moonMode) return 'moon';
+      return 'earth';
+    }
+
+    let musicStepIndex = 0;
+    let musicBarCount = 0;
+    let musicNextNoteTime = 0;
+    let musicTimerId = null;
+    const MUSIC_LOOKAHEAD_MS = 25;
+    const MUSIC_SCHEDULE_AHEAD = 0.12;
+
+    function playTone(freqHz, time, dur, waveType, vol) {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = waveType;
+      osc.frequency.setValueAtTime(freqHz, time);
+      gain.gain.setValueAtTime(0, time);
+      gain.gain.linearRampToValueAtTime(vol, time + 0.008);
+      gain.gain.exponentialRampToValueAtTime(0.0001, time + dur);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(time);
+      osc.stop(time + dur + 0.02);
+    }
+
+    // 리드용: 아주 살짝 디튠한 오실레이터 두 개를 겹쳐서 두께만 더해준다 (너무 벌리면 소리가 울렁거려 어지럽게 들림)
+    function playToneThick(freqHz, time, dur, waveType, vol) {
+      playTone(freqHz * 0.998, time, dur, waveType, vol * 0.6);
+      playTone(freqHz * 1.002, time, dur, waveType, vol * 0.6);
+    }
+
+    function playKick(time) {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(150, time);
+      osc.frequency.exponentialRampToValueAtTime(42, time + 0.1);
+      gain.gain.setValueAtTime(0.22, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.12);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(time);
+      osc.stop(time + 0.12);
+    }
+
+    function playNoiseHit(time, dur, freqCut, vol) {
+      const bufferSize = Math.floor(audioCtx.sampleRate * dur);
+      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+      const noise = audioCtx.createBufferSource();
+      noise.buffer = buffer;
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'highpass';
+      filter.frequency.value = freqCut;
+      const gain = audioCtx.createGain();
+      gain.gain.setValueAtTime(vol, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + dur);
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(audioCtx.destination);
+      noise.start(time);
+    }
+
+    function scheduleMusicStep(step, bar, time) {
+      const cfg = MUSIC[currentStageKey()];
+      const secondsPerStep = 60 / cfg.bpm / 4;
+      const s = step;
+      const chordIdx = Math.floor(s / 4) % cfg.chords.length;
+      const chord = cfg.chords[chordIdx];
+      const [root, third, fifth] = triad(chord.root, chord.minor);
+
+      // 리드 멜로디 (디튠 이중 오실레이터로 두껍게)
+      const note = cfg.lead[s];
+      if (note) playToneThick(note, time, secondsPerStep * 0.92, cfg.leadWave, cfg.leadVol);
+
+      // 베이스: 박마다 화음 루트를 길게 끌어준다 (subBass 옵션 시 한 옥타브 아래도 함께 깔아 웅장하게)
+      if (s % 4 === 0) {
+        playTone(root, time, secondsPerStep * 3.8, cfg.bassWave, cfg.bassVol);
+        if (cfg.subBass) {
+          playTone(root / 2, time, secondsPerStep * 3.8, 'sine', cfg.bassVol * 0.55);
+        }
+      }
+
+      // 아르페지오 펄스: 리드가 쉬는 8분음표 자리만 채워서 화음을 은은하게 보강한다
+      // (예전처럼 매 16분음표마다 계속 울리니 소리가 겹겹이 쌓여 어지럽게 들렸다)
+      if (s % 2 === 0 && note == null) {
+        const arpTones = [root * 2, fifth * 2, third * 2, fifth * 2];
+        playTone(arpTones[(s / 2) % 4], time, secondsPerStep * 1.4, cfg.arpWave, cfg.arpVol);
+      }
+
+      // 드럼
+      if (s === 0 || s === 8) playKick(time);
+      if (s === 4 || s === 12) playNoiseHit(time, 0.08, 1200, 0.14);
+      if (s === 2 || s === 6 || s === 10 || s === 14) playNoiseHit(time, 0.03, 6000, 0.05);
+
+      // 4마디마다 크래시 + 킥으로 임팩트를 준다
+      if (s === 0 && bar % 4 === 0) {
+        playNoiseHit(time, 0.35, 800, 0.16);
+        playKick(time);
+        // grandAccent: 화음 전체를 한 번에 크게 울려 웅장한 포인트를 만든다 ("브라스 스탭" 느낌)
+        if (cfg.grandAccent) {
+          const stabDur = secondsPerStep * 3.2;
+          [root, third, fifth, root * 2].forEach(f => playTone(f, time, stabDur, cfg.leadWave, 0.05));
+        }
+      }
+    }
+
+    function musicScheduler() {
+      if (!audioCtx) return;
+      // 상점/가챠 등으로 한참 멈춰있다 돌아왔을 때 밀린 노트가 한꺼번에 몰리지 않도록 보정
+      if (musicNextNoteTime < audioCtx.currentTime) musicNextNoteTime = audioCtx.currentTime;
+
+      while (musicNextNoteTime < audioCtx.currentTime + MUSIC_SCHEDULE_AHEAD) {
+        if (gameState === 'PLAYING') {
+          scheduleMusicStep(musicStepIndex, musicBarCount, musicNextNoteTime);
+        }
+        const cfg = MUSIC[currentStageKey()];
+        musicNextNoteTime += 60 / cfg.bpm / 4;
+        musicStepIndex++;
+        if (musicStepIndex >= 16) {
+          musicStepIndex = 0;
+          musicBarCount++;
+        }
+      }
+    }
 
     function initAudio() {
       if (!audioCtx) {
@@ -531,62 +922,12 @@
     }
 
     function startBGM() {
-      if (bgmTimer) clearInterval(bgmTimer);
-      bgmStep = 0;
-
-      let intervalTime = 125;
-      if (alienHomeMode) intervalTime = 80;
-      else if (saturnMode) intervalTime = 100;
-      else if (jupiterMode) intervalTime = 110;
-      else if (marsMode) intervalTime = 90;
-      else if (moonMode) intervalTime = 160;
-
-      bgmTimer = setInterval(() => {
-        if (!audioCtx || gameState !== 'PLAYING') return;
-        const now = audioCtx.currentTime;
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-
-        let notes = earthBgmNotes;
-        let waveType = 'sawtooth';
-        let volume = 0.015;
-
-        if (alienHomeMode) {
-          notes = alienBgmNotes;
-          waveType = 'sawtooth';
-          volume = 0.035;
-        } else if (saturnMode) {
-          notes = saturnBgmNotes;
-          waveType = 'triangle';
-          volume = 0.03;
-        } else if (jupiterMode) {
-          notes = jupiterBgmNotes;
-          waveType = 'square';
-          volume = 0.02;
-        } else if (marsMode) {
-          notes = marsBgmNotes;
-          waveType = 'sawtooth';
-          volume = 0.025;
-        } else if (moonMode) {
-          notes = moonBgmNotes;
-          waveType = 'sine';
-          volume = 0.02;
-        }
-
-        osc.type = waveType;
-        const freq = notes[bgmStep % notes.length];
-        osc.frequency.setValueAtTime(freq, now);
-
-        gain.gain.setValueAtTime(volume, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + (intervalTime / 1000) * 0.9);
-
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start(now);
-        osc.stop(now + (intervalTime / 1000) * 0.9);
-
-        bgmStep++;
-      }, intervalTime);
+      if (!audioCtx) return;
+      musicStepIndex = 0;
+      musicBarCount = 0;
+      musicNextNoteTime = audioCtx.currentTime + 0.05;
+      if (musicTimerId) clearInterval(musicTimerId);
+      musicTimerId = setInterval(musicScheduler, MUSIC_LOOKAHEAD_MS);
     }
 
     function playBossIntroSound() {
@@ -749,6 +1090,7 @@
 
     let tempDmgBoost = 1.0;
     let flashEffect = 0;
+    let shakeIntensity = 0;
     let keys = {};
 
     // 📱 터치 조작 상태 (-1.0 ~ 1.0 정규화 벡터)
@@ -893,20 +1235,86 @@
       });
     }
 
+    // 보스 공격 패턴 풀. 일반 보스는 여기서 스테이지에 맞게 골라 쓰고,
+    // 최종 보스는 아래 FINAL_PATTERNS의 고유 패턴을 추가로 사용한다.
+    const BOSS_PATTERNS = [
+      'spiral',      // 회전 나선탄
+      'ring',        // 전방위 링 버스트
+      'aimed',       // 조준 산탄
+      'sweep',       // 좌우 대칭 스윕
+      'wall',        // 틈이 하나 있는 탄막 벽
+      'homing',      // 유도탄
+      'charge',      // 돌진
+      'cross',       // 회전하는 십자탄
+      'rain',        // 무작위 탄우
+      'summon'       // 잡몹 소환
+    ];
+    // 최종 보스 전용 패턴
+    const FINAL_PATTERNS = [
+      'eyebeam',     // 예고 후 발사되는 거대 안광 빔
+      'gravity',     // 중력장으로 플레이어를 끌어당김
+      'hivewave',    // 하이브 지원군 대량 소환
+      'doublespiral' // 정/역방향 이중 나선
+    ];
+
+    // 스테이지별로 쓸 수 있는 패턴 (진행할수록 늘어남)
+    function getStagePatterns() {
+      if (alienHomeMode) return BOSS_PATTERNS.concat(FINAL_PATTERNS);
+      if (saturnMode) return ['spiral', 'ring', 'aimed', 'sweep', 'wall', 'homing', 'charge', 'cross', 'rain', 'summon'];
+      if (jupiterMode) return ['spiral', 'ring', 'aimed', 'sweep', 'wall', 'homing', 'cross', 'rain'];
+      if (marsMode) return ['spiral', 'ring', 'aimed', 'sweep', 'wall', 'charge', 'rain'];
+      if (moonMode) return ['spiral', 'ring', 'aimed', 'sweep', 'homing'];
+      return ['spiral', 'ring', 'aimed', 'sweep'];
+    }
+
     function spawnBoss() {
       bossSpawned = true;
       playBossIntroSound();
       const bossLevel = level;
-      const hpVal = 22 * bossLevel;
 
+      // 최종 보스는 완전히 다른 규격
+      if (alienHomeMode) {
+        // 최종 보스 체력. 너무 길어지거나 짧아지면 이 두 값만 조절하면 된다.
+        const finalHp = 3800 + bossLevel * 25;
+        boss = {
+          isFinal: true,
+          name: '하이브 마인드',
+          x: CANVAS_WIDTH / 2,
+          y: -100,
+          targetY: 95,
+          w: 110,
+          h: 110,
+          emoji: '👁️',
+          hp: finalHp,
+          maxHp: finalHp,
+          vx: 1.1,
+          shootTimer: 0,
+          attackMode: 'ring',
+          modeTimer: 0,
+          spiralAngle: 0,
+          phase: 1,
+          invulnTimer: 120,     // 등장 연출 동안 무적
+          intro: true,
+          introTimer: 0,
+          beam: null,
+          summonTimer: 0,
+          pulse: 0,
+          enrage: 1.0,
+          patternQueue: []
+        };
+        startFinalBossIntro();
+        return;
+      }
+
+      const hpVal = 22 * bossLevel;
       let bossEmoji = '🛸';
-      if (alienHomeMode) bossEmoji = '👁️';
-      else if (saturnMode) bossEmoji = '👑';
+      if (saturnMode) bossEmoji = '👑';
       else if (jupiterMode) bossEmoji = '⚡';
       else if (marsMode) bossEmoji = '🤖';
       else if (moonMode) bossEmoji = '👽';
 
       boss = {
+        isFinal: false,
         x: CANVAS_WIDTH / 2,
         y: -60,
         targetY: 65,
@@ -917,14 +1325,366 @@
         maxHp: hpVal,
         vx: 1.8,
         shootTimer: 0,
-        attackMode: 0,
+        attackMode: 'spiral',
         modeTimer: 0,
-        spiralAngle: 0
+        spiralAngle: 0,
+        phase: 1,
+        invulnTimer: 0,
+        intro: false,
+        beam: null,
+        summonTimer: 0,
+        pulse: 0,
+        enrage: 1.0,
+        patterns: getStagePatterns(),
+        patternIdx: 0
       };
+      // 등장할 때마다 패턴 순서를 섞어서 매번 다르게 느껴지도록
+      boss.patterns = boss.patterns.sort(() => Math.random() - 0.5);
+      boss.attackMode = boss.patterns[0];
+    }
+
+    function nextBossPattern() {
+      if (!boss) return;
+
+      if (boss.isFinal) {
+        // 최종 보스는 페이즈별 패턴 풀에서 뽑되, 고유 패턴 비중을 높게
+        const pools = {
+          1: ['ring', 'aimed', 'spiral', 'eyebeam', 'hivewave', 'wall'],
+          2: ['doublespiral', 'eyebeam', 'gravity', 'aimed', 'cross', 'hivewave', 'rain', 'charge'],
+          3: ['eyebeam', 'doublespiral', 'gravity', 'hivewave', 'rain', 'wall', 'cross', 'charge', 'homing']
+        };
+        const pool = pools[boss.phase] || pools[3];
+        if (boss.patternQueue.length === 0) {
+          boss.patternQueue = pool.slice().sort(() => Math.random() - 0.5);
+        }
+        boss.attackMode = boss.patternQueue.pop();
+      } else {
+        boss.patternIdx = (boss.patternIdx + 1) % boss.patterns.length;
+        boss.attackMode = boss.patterns[boss.patternIdx];
+      }
+
+      boss.modeTimer = 0;
+      boss.shootTimer = 0;
+      boss.beam = null;
+      // 돌진 패턴이 중간에 끊겼을 때 다음 번에 이상한 상태로 시작하지 않도록 초기화
+      boss.chargeState = null;
+      boss.chargeTimer = 0;
+    }
+
+
+    // ==========================================
+    // 보스 공격 패턴 구현
+    // ==========================================
+    function bossShot(angle, speed, radius, extra) {
+      const b = {
+        x: boss.x,
+        y: boss.y + boss.h * 0.3,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        radius: radius
+      };
+      if (extra) Object.assign(b, extra);
+      enemyBullets.push(b);
+    }
+
+    function spawnSupportWave(count, pattern) {
+      for (let i = 0; i < count; i++) {
+        const px = (CANVAS_WIDTH / (count + 1)) * (i + 1);
+        enemies.push({
+          x: px, baseX: px, y: -30 - i * 22,
+          w: 26, h: 26,
+          emoji: alienHomeMode ? '👾' : '🛸',
+          pType: pattern || 'sine',
+          hp: alienHomeMode ? 4 : 2,
+          speed: 1.8, vx: 0, vy: 1.5,
+          time: 0, shootTimer: 0, state: 0, alpha: 1.0, radius: 60,
+          isSupport: true
+        });
+      }
+      playSound('powerup');
+    }
+
+    function runBossPattern() {
+      const E = boss.enrage; // 최종 보스 페이즈가 오를수록 전체적으로 빨라짐
+      const mode = boss.attackMode;
+
+      if (mode === 'spiral') {
+        if (boss.shootTimer >= Math.max(3, Math.round(6 / E))) {
+          boss.shootTimer = 0;
+          boss.spiralAngle += 0.22;
+          const arms = boss.isFinal ? 5 : 3;
+          for (let i = 0; i < arms; i++) {
+            bossShot(boss.spiralAngle + (Math.PI * 2 / arms) * i, 3.2 * E, 3.5);
+          }
+        }
+
+      } else if (mode === 'doublespiral') {
+        // 정방향 + 역방향 나선이 교차하며 촘촘한 격자를 만든다
+        if (boss.shootTimer >= Math.max(3, Math.round(5 / E))) {
+          boss.shootTimer = 0;
+          boss.spiralAngle += 0.19;
+          const arms = 4;
+          for (let i = 0; i < arms; i++) {
+            bossShot(boss.spiralAngle + (Math.PI * 2 / arms) * i, 3.0 * E, 3.5, { color: '#ff44aa' });
+            bossShot(-boss.spiralAngle + (Math.PI * 2 / arms) * i, 3.0 * E, 3.5, { color: '#44ffee' });
+          }
+        }
+
+      } else if (mode === 'ring') {
+        if (boss.shootTimer >= Math.max(24, Math.round(45 / E))) {
+          boss.shootTimer = 0;
+          const count = boss.isFinal ? 24 : 16;
+          const offset = (Math.floor(boss.modeTimer / 45) % 2 === 0) ? 0 : (Math.PI / count);
+          for (let i = 0; i < count; i++) {
+            bossShot(offset + (Math.PI * 2 / count) * i, 2.8 * E, 4.0);
+          }
+        }
+
+      } else if (mode === 'aimed') {
+        if (boss.shootTimer >= Math.max(16, Math.round(28 / E))) {
+          boss.shootTimer = 0;
+          const targetAngle = Math.atan2(player.y - boss.y, player.x - boss.x);
+          const n = boss.isFinal ? 3 : 2;
+          for (let i = -n; i <= n; i++) {
+            bossShot(targetAngle + i * 0.18, 3.8 * E, 3.5);
+          }
+        }
+
+      } else if (mode === 'sweep') {
+        if (boss.shootTimer >= Math.max(5, Math.round(10 / E))) {
+          boss.shootTimer = 0;
+          const step = (Math.floor(boss.modeTimer / 10) % 8);
+          const angle = (Math.PI * 0.2) + (step * 0.08 * Math.PI);
+          bossShot(angle, 3.4 * E, 3.5);
+          bossShot(Math.PI - angle, 3.4 * E, 3.5);
+        }
+
+      } else if (mode === 'wall') {
+        // 한 곳만 뚫린 탄막 벽. 그 틈으로 빠져나가야 한다.
+        if (boss.shootTimer >= Math.max(38, Math.round(70 / E))) {
+          boss.shootTimer = 0;
+          const slots = 11;
+          const gap = Math.floor(Math.random() * slots);
+          const gap2 = boss.isFinal ? -1 : gap; // 최종 보스는 틈이 하나뿐
+          for (let i = 0; i < slots; i++) {
+            if (i === gap || i === gap2) continue;
+            enemyBullets.push({
+              x: (CANVAS_WIDTH / slots) * (i + 0.5),
+              y: boss.y + 30,
+              vx: 0, vy: 2.4 * E,
+              radius: 5.0, color: '#ff9900'
+            });
+          }
+          playSound('shoot');
+        }
+
+      } else if (mode === 'homing') {
+        if (boss.shootTimer >= Math.max(30, Math.round(55 / E))) {
+          boss.shootTimer = 0;
+          const n = boss.isFinal ? 4 : 2;
+          for (let i = 0; i < n; i++) {
+            const a = Math.PI / 2 + (i - (n - 1) / 2) * 0.5;
+            bossShot(a, 1.8, 5.0, { homing: 180, turn: 0.035, color: '#ff55ff' });
+          }
+          playSound('shoot');
+        }
+
+      } else if (mode === 'charge') {
+        // 예고 후 플레이어를 향해 돌진했다가 제자리로 복귀
+        if (!boss.chargeState) boss.chargeState = 'aim';
+
+        if (boss.chargeState === 'aim') {
+          boss.chargeTimer = (boss.chargeTimer || 0) + 1;
+          boss.x += (player.x - boss.x) * 0.04;
+          if (boss.chargeTimer > 45) {
+            boss.chargeState = 'dash';
+            boss.chargeTimer = 0;
+            playSound('nuke');
+          }
+        } else if (boss.chargeState === 'dash') {
+          boss.y += 9 * E;
+          if (boss.y > CANVAS_HEIGHT - 60) {
+            boss.chargeState = 'back';
+            // 착지 충격파
+            for (let i = 0; i < 14; i++) {
+              bossShot((Math.PI * 2 / 14) * i, 3.0 * E, 4.0, { color: '#ffcc00' });
+            }
+            createExplosion(boss.x, boss.y, 40);
+            playSound('explosion');
+            flashEffect = 8;
+          }
+        } else if (boss.chargeState === 'back') {
+          boss.y -= 3.5;
+          if (boss.y <= boss.targetY) {
+            boss.y = boss.targetY;
+            boss.chargeState = 'aim';
+            boss.chargeTimer = 0;
+          }
+        }
+
+      } else if (mode === 'cross') {
+        // 천천히 회전하는 십자 탄막
+        if (boss.shootTimer >= Math.max(6, Math.round(11 / E))) {
+          boss.shootTimer = 0;
+          boss.spiralAngle += 0.06;
+          for (let i = 0; i < 4; i++) {
+            const a = boss.spiralAngle + (Math.PI / 2) * i;
+            bossShot(a, 3.6 * E, 4.0, { color: '#66ddff' });
+            bossShot(a + 0.12, 3.6 * E, 3.0, { color: '#66ddff' });
+            bossShot(a - 0.12, 3.6 * E, 3.0, { color: '#66ddff' });
+          }
+        }
+
+      } else if (mode === 'rain') {
+        // 화면 위쪽 전역에서 쏟아지는 탄우
+        if (boss.shootTimer >= Math.max(3, Math.round(7 / E))) {
+          boss.shootTimer = 0;
+          const drops = boss.isFinal ? 3 : 2;
+          for (let i = 0; i < drops; i++) {
+            enemyBullets.push({
+              x: Math.random() * CANVAS_WIDTH,
+              y: -8,
+              vx: (Math.random() - 0.5) * 1.2,
+              vy: (2.6 + Math.random() * 1.6) * E,
+              radius: 3.5, color: '#aa88ff'
+            });
+          }
+        }
+
+      } else if (mode === 'summon') {
+        if (boss.modeTimer === 30 || boss.modeTimer === 130) {
+          spawnSupportWave(3, 'sine');
+        }
+        if (boss.shootTimer >= 40) {
+          boss.shootTimer = 0;
+          const targetAngle = Math.atan2(player.y - boss.y, player.x - boss.x);
+          bossShot(targetAngle, 3.2 * E, 3.5);
+        }
+
+      } else if (mode === 'hivewave') {
+        // 최종 보스 고유: 지원군을 계속 토해낸다
+        if (boss.modeTimer === 20) {
+          spawnSupportWave(4, 'sine');
+          showBossCallout('하이브 소환: 지원군 전개');
+        }
+        if (boss.modeTimer === 90) spawnSupportWave(4, 'zigzag');
+        if (boss.modeTimer === 160) spawnSupportWave(boss.phase >= 3 ? 5 : 3, 'swoop');
+        if (boss.shootTimer >= 50) {
+          boss.shootTimer = 0;
+          for (let i = 0; i < 8; i++) {
+            bossShot((Math.PI * 2 / 8) * i + boss.modeTimer * 0.02, 2.2 * E, 3.5, { color: '#66ff99' });
+          }
+        }
+
+      } else if (mode === 'eyebeam') {
+        // 최종 보스 고유: 예고선이 플레이어를 따라오다가 고정되고, 거대한 빔이 발사됨
+        if (!boss.beam) {
+          boss.beam = { state: 'charge', t: 0, x: boss.x, width: 54 };
+          showBossCallout('안광 집속 — 회피하라!');
+        }
+        const beam = boss.beam;
+        beam.t++;
+
+        if (beam.state === 'charge') {
+          // 예고 중에는 플레이어를 서서히 따라감
+          beam.x += (player.x - beam.x) * 0.045;
+          if (beam.t > (boss.phase >= 3 ? 55 : 75)) {
+            beam.state = 'fire';
+            beam.t = 0;
+            playSound('nuke');
+            flashEffect = 10;
+          }
+        } else if (beam.state === 'fire') {
+          // 발사 중: 빔 폭 안에 있으면 지속 피해
+          if (Math.abs(player.x - beam.x) < beam.width / 2 && player.y > boss.y) {
+            damagePlayer(2);
+          }
+          if (beam.t % 4 === 0) createExplosion(beam.x + (Math.random() - 0.5) * 40, Math.random() * CANVAS_HEIGHT, 16);
+          if (beam.t > 70) {
+            beam.state = 'done';
+            beam.t = 0;
+          }
+        } else if (beam.state === 'done') {
+          if (beam.t > 30) {
+            boss.beam = null;
+            // 페이즈 3에서는 빔을 연속으로 쏜다
+            if (boss.phase < 3) nextBossPattern();
+          }
+        }
+
+      } else if (mode === 'gravity') {
+        // 최종 보스 고유: 중력장이 플레이어를 보스 쪽으로 끌어당기는 동안 탄막이 깔린다
+        if (boss.modeTimer === 1) showBossCallout('중력장 전개 — 끌려간다!');
+        const dx = boss.x - player.x;
+        const dy = boss.y - player.y;
+        const dist = Math.max(30, Math.hypot(dx, dy));
+        const pull = 1.5 * E;
+        player.x += (dx / dist) * pull;
+        player.y += (dy / dist) * pull;
+
+        if (boss.shootTimer >= Math.max(8, Math.round(14 / E))) {
+          boss.shootTimer = 0;
+          // 바깥쪽에서 안쪽으로 조여드는 링
+          const count = 12;
+          const off = boss.modeTimer * 0.03;
+          for (let i = 0; i < count; i++) {
+            const a = off + (Math.PI * 2 / count) * i;
+            enemyBullets.push({
+              x: boss.x + Math.cos(a) * 160,
+              y: boss.y + Math.sin(a) * 160,
+              vx: -Math.cos(a) * 1.6 * E,
+              vy: -Math.sin(a) * 1.6 * E,
+              radius: 4.0, color: '#cc66ff'
+            });
+          }
+        }
+      }
+    }
+
+    // 최종 보스 페이즈 전환 처리
+    function updateFinalBossPhase() {
+      if (!boss || !boss.isFinal) return;
+      const ratio = boss.hp / boss.maxHp;
+      let target = 1;
+      if (ratio <= 0.33) target = 3;
+      else if (ratio <= 0.66) target = 2;
+
+      if (target > boss.phase) {
+        boss.phase = target;
+        boss.enrage = 1.0 + (boss.phase - 1) * 0.3;
+        boss.invulnTimer = 90;
+        boss.vx = 1.1 + (boss.phase - 1) * 0.5;
+        enemyBullets = [];
+        boss.beam = null;
+        flashEffect = 20;
+        playPhaseRoar();
+        spawnSupportWave(boss.phase + 2, 'sine');
+        showBossCallout(
+          boss.phase === 2
+            ? '⚠ 각성 — 하이브 마인드 2단계'
+            : '☠ 최종 격노 — 하이브 마인드 3단계',
+          2200
+        );
+        nextBossPattern();
+      }
+    }
+
+    // 보스 피해 처리 일원화: 등장 연출/페이즈 전환 중에는 무적, 최종 보스는 페이즈 판정 포함
+    function damageBoss(amount) {
+      if (!boss) return;
+      if (boss.intro || boss.invulnTimer > 0) return;
+      boss.hp -= amount;
+      if (boss.isFinal) updateFinalBossPhase();
     }
 
     function checkBossDefeat() {
       if (boss && boss.hp <= 0) {
+        // 최종 보스는 전용 격파 연출로 넘어간다
+        if (boss.isFinal) {
+          startFinalVictorySequence();
+          return;
+        }
+
         createExplosion(boss.x, boss.y, 50);
         playSound('explosion');
         score += 3000;
@@ -937,15 +1697,6 @@
         boss = null;
         enemyBullets = [];
         level++;
-
-        if (alienHomeMode) {
-          gameState = 'VICTORY';
-          stopLoop();
-          resetInput();
-          document.getElementById('victory-screen').style.display = 'flex';
-          document.getElementById('victory-desc').innerText = `최종 점수: ${score} | 획득 포인트: ${shopPoints}P\n외계 하이브 마인드를 물리치고 태양계를 구했습니다!`;
-          return;
-        }
 
         // 🔧 [수정] 스테이지 진행 순서 재정렬
         // 지구(1~10) → 달(11~30) → 화성(31~50) → 목성(51~70) → 토성(71~90) → 외계 본진(91~)
@@ -1036,7 +1787,7 @@
           enemies = [];
           enemyBullets = [];
           if (boss) {
-            boss.hp -= 35 * atkMult;
+            damageBoss(35 * atkMult);
             createExplosion(boss.x, boss.y, 40);
             checkBossDefeat();
           }
@@ -1151,7 +1902,7 @@
 
         if (boss && !exp.hitBoss && Math.hypot(boss.x - exp.x, boss.y - exp.y) < exp.radius + boss.w / 2) {
           exp.hitBoss = true;
-          boss.hp -= exp.power * 2.5;
+          damageBoss(exp.power * 2.5);
           createExplosion(boss.x, boss.y, 20);
           checkBossDefeat();
         }
@@ -1163,29 +1914,24 @@
 
       for (let index = enemyBullets.length - 1; index >= 0; index--) {
         const eb = enemyBullets[index];
+
+        // 유도탄: 제한 시간 동안만 플레이어를 추적하고 이후엔 직진
+        if (eb.homing && eb.homing > 0) {
+          eb.homing--;
+          const cur = Math.atan2(eb.vy, eb.vx);
+          const want = Math.atan2(player.y - eb.y, player.x - eb.x);
+          let diff = want - cur;
+          while (diff < -Math.PI) diff += Math.PI * 2;
+          while (diff > Math.PI) diff -= Math.PI * 2;
+          const turn = Math.max(-eb.turn, Math.min(eb.turn, diff));
+          const na = cur + turn;
+          const sp = Math.hypot(eb.vx, eb.vy) + 0.012;
+          eb.vx = Math.cos(na) * sp;
+          eb.vy = Math.sin(na) * sp;
+        }
+
         eb.x += eb.vx;
         eb.y += eb.vy;
-
-        if (eb.type === 'PROX_MINE') {
-          // 폭탄은 이동하지 않고, 플레이어 접근 시 범위 폭발
-          // 🔧 [수정] 수명 추가 (화면에 영구 누적되는 문제 해결)
-          eb.life--;
-          if (eb.life <= 0) {
-            createExplosion(eb.x, eb.y, 18);
-            enemyBullets.splice(index, 1);
-            continue;
-          }
-
-          const dist = Math.hypot(eb.x - player.x, eb.y - player.y);
-          if (dist < eb.armedRadius && !eb.triggered) {
-            eb.triggered = true;
-            createExplosion(eb.x, eb.y, 30);
-            playSound('explosion');
-            damagePlayer(eb.damage || 2);
-            enemyBullets.splice(index, 1);
-          }
-          continue;
-        }
 
         if (Math.hypot(eb.x - player.x, eb.y - player.y) < eb.radius + player.w / 3.0) {
           damagePlayer(1);
@@ -1204,7 +1950,8 @@
         enemySpawnTimer = 0;
       }
 
-      if (enemiesKilled >= 15 && !bossSpawned && !boss && gameState === 'PLAYING') {
+      const killsNeeded = alienHomeMode ? 10 : 15;
+      if (enemiesKilled >= killsNeeded && !bossSpawned && !boss && gameState === 'PLAYING') {
         spawnBoss();
       }
 
@@ -1273,11 +2020,30 @@
             e.hp = 1;
           }
         } else if (e.pType === 'minedrop') {
-          e.y += e.speed * 0.7;
-          e.shootTimer++;
-          if (e.shootTimer > 90) {
-            e.shootTimer = 0;
-            enemyBullets.push({ x: e.x, y: e.y, vx: 0, vy: 0, radius: 9.0, type: 'PROX_MINE', armedRadius: 48, damage: 2, triggered: false, life: 480 });
+          // 폭탄 적: 스스로가 곧 폭탄이다. 일정 높이까지 내려와 자리를 잡으면
+          // 신관에 불이 붙고(깜빡임), 다 타면 자기 자신이 터진다.
+          if (!e.armed) {
+            e.y += e.speed * 0.7;
+            // 예전엔 화면 위쪽(y>90)에서 바로 멈춰버려 플레이어 위치까지 못 내려오고
+            // 터지는 바람에 사실상 위협이 안 됐다. 플레이어가 주로 있는 구역까지 내려오게 한다.
+            if (e.y > 300) {
+              e.armed = true;
+              e.fuse = 70;
+            }
+          } else {
+            e.fuse--;
+            e.y += Math.sin(e.time * 6) * 0.4; // 거의 제자리에서 미세하게 흔들림
+            const blinkSpeed = Math.max(2, Math.floor(e.fuse / 5));
+            e.alpha = (Math.floor(e.fuse / blinkSpeed) % 2 === 0) ? 1.0 : 0.4;
+
+            if (e.fuse <= 0) {
+              const dist = Math.hypot(e.x - player.x, e.y - player.y);
+              createExplosion(e.x, e.y, 34);
+              playSound('explosion');
+              if (dist < 60) damagePlayer(2);
+              enemies.splice(eIdx, 1);
+              continue;
+            }
           }
         }
 
@@ -1312,7 +2078,7 @@
                 }
               });
               if (boss && Math.hypot(boss.x - b.x, boss.y - b.y) < (b.armRadius || 38) + boss.w / 2) {
-                boss.hp -= b.power * 1.5;
+                damageBoss(b.power * 1.5);
                 checkBossDefeat();
               }
               bullets.splice(bIdx, 1);
@@ -1355,85 +2121,37 @@
       }
 
       if (boss) {
-        if (boss.y < boss.targetY) {
+        boss.pulse++;
+        if (boss.invulnTimer > 0) boss.invulnTimer--;
+
+        if (boss.intro) {
+          // 최종 보스 등장 연출 중에는 공격하지 않고 천천히 내려온다
+          boss.introTimer++;
+          if (boss.y < boss.targetY) boss.y += 0.9;
+          if (boss.introTimer > 150) {
+            boss.intro = false;
+            boss.invulnTimer = 0;
+            nextBossPattern();
+          }
+        } else if (boss.y < boss.targetY) {
           boss.y += 1.2;
         } else {
-          boss.x += boss.vx;
-          if (boss.x < boss.w / 2 + 15 || boss.x > CANVAS_WIDTH - boss.w / 2 - 15) boss.vx *= -1;
+          // 돌진 패턴 중에는 자동 좌우 이동을 멈춘다
+          if (boss.attackMode !== 'charge') {
+            boss.x += boss.vx * boss.enrage;
+            if (boss.x < boss.w / 2 + 15 || boss.x > CANVAS_WIDTH - boss.w / 2 - 15) boss.vx *= -1;
+            if (boss.y > boss.targetY + 1) boss.y -= 1.5;
+          }
 
           boss.modeTimer++;
           boss.shootTimer++;
 
-          if (boss.modeTimer > 240) {
-            boss.modeTimer = 0;
-            boss.shootTimer = 0;
-            boss.attackMode = (boss.attackMode + 1) % 4;
+          const patternDuration = boss.isFinal ? 210 : 240;
+          if (boss.modeTimer > patternDuration) {
+            nextBossPattern();
           }
 
-          if (boss.attackMode === 0) {
-            if (boss.shootTimer >= 6) {
-              boss.shootTimer = 0;
-              boss.spiralAngle += 0.22;
-              const arms = 3;
-              for (let i = 0; i < arms; i++) {
-                const angle = boss.spiralAngle + (Math.PI * 2 / arms) * i;
-                enemyBullets.push({
-                  x: boss.x, y: boss.y + 20,
-                  vx: Math.cos(angle) * 3.2,
-                  vy: Math.sin(angle) * 3.2,
-                  radius: 3.5
-                });
-              }
-            }
-          } else if (boss.attackMode === 1) {
-            if (boss.shootTimer >= 45) {
-              boss.shootTimer = 0;
-              const count = 16;
-              const offset = (Math.floor(boss.modeTimer / 45) % 2 === 0) ? 0 : (Math.PI / count);
-              for (let i = 0; i < count; i++) {
-                const angle = offset + (Math.PI * 2 / count) * i;
-                enemyBullets.push({
-                  x: boss.x, y: boss.y + 20,
-                  vx: Math.cos(angle) * 2.8,
-                  vy: Math.sin(angle) * 2.8,
-                  radius: 4.0
-                });
-              }
-            }
-          } else if (boss.attackMode === 2) {
-            if (boss.shootTimer >= 28) {
-              boss.shootTimer = 0;
-              const targetAngle = Math.atan2(player.y - boss.y, player.x - boss.x);
-              const spread = 0.18;
-              for (let i = -2; i <= 2; i++) {
-                const angle = targetAngle + i * spread;
-                enemyBullets.push({
-                  x: boss.x, y: boss.y + 20,
-                  vx: Math.cos(angle) * 3.8,
-                  vy: Math.sin(angle) * 3.8,
-                  radius: 3.5
-                });
-              }
-            }
-          } else if (boss.attackMode === 3) {
-            if (boss.shootTimer >= 10) {
-              boss.shootTimer = 0;
-              const step = (Math.floor(boss.modeTimer / 10) % 8);
-              const angle = (Math.PI * 0.2) + (step * 0.08 * Math.PI);
-              enemyBullets.push({
-                x: boss.x, y: boss.y + 20,
-                vx: Math.cos(angle) * 3.4,
-                vy: Math.sin(angle) * 3.4,
-                radius: 3.5
-              });
-              enemyBullets.push({
-                x: boss.x, y: boss.y + 20,
-                vx: Math.cos(Math.PI - angle) * 3.4,
-                vy: Math.sin(Math.PI - angle) * 3.4,
-                radius: 3.5
-              });
-            }
-          }
+          runBossPattern();
         }
 
         // 🔧 [추가] 보스 본체 충돌 판정
@@ -1458,7 +2176,7 @@
             } else {
               // 관통 레이저는 잡몹 상대로는 지속 딜이라 강력한 대신,
               // 보스에게는 LASER_BOSS_MULT만큼만 들어가 밸런스를 맞춘다
-              boss.hp -= (b.type === 'LASER') ? b.power * LASER_BOSS_MULT : b.power;
+              damageBoss((b.type === 'LASER') ? b.power * LASER_BOSS_MULT : b.power);
               if (b.type !== 'LASER') {
                 bullets.splice(bIdx, 1);
               }
@@ -1563,105 +2281,294 @@
       });
     }
 
-    function triggerMoonTransition() {
+    function playWarpSound() {
+      if (!audioCtx) return;
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(55, now);
+      osc.frequency.exponentialRampToValueAtTime(950, now + 0.55);
+      osc.frequency.exponentialRampToValueAtTime(45, now + 1.1);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(0.13, now + 0.18);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.1);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 1.12);
+    }
+
+    // 행성 진입 연출: 워프 스트릭 배경 + 확대되는 행성 이모지 + 텍스트를 함께 보여주고,
+    // 끝나면 onArrive 콜백으로 실제 모드 전환을 수행한다.
+    function showPlanetTransition(emoji, text, color, durationMs, onArrive) {
       gameState = 'TRANSITION';
       resetInput();
+      playWarpSound();
+
       const fadeScreen = document.getElementById('fade-screen');
-      fadeScreen.innerText = '🌕 달 표면 기지 진입 완료!';
+      const fadePlanet = document.getElementById('fade-planet');
+      const fadeText = document.getElementById('fade-text');
+
+      fadeScreen.style.setProperty('--warp-color', color);
+      fadePlanet.textContent = emoji;
+      fadeText.textContent = text;
+
+      // 같은 엘리먼트를 재사용하므로 애니메이션을 처음부터 다시 재생하도록 강제 리셋
+      fadePlanet.style.animation = 'none';
+      fadeText.style.animation = 'none';
+      void fadePlanet.offsetWidth;
+      fadePlanet.style.animation = '';
+      fadeText.style.animation = '';
+
       fadeScreen.style.display = 'flex';
       fadeScreen.style.opacity = '1';
 
       setTimeout(() => {
-        moonMode = true;
+        onArrive();
         initCraters();
         startBGM();
         fadeScreen.style.opacity = '0';
         setTimeout(() => { fadeScreen.style.display = 'none'; }, 500);
         openShop();
-      }, 700);
+      }, durationMs);
+    }
+
+    function triggerMoonTransition() {
+      showPlanetTransition('🌕', '달 표면 기지 진입 완료!', '#9fc9ff', 1300, () => {
+        moonMode = true;
+      });
     }
 
     function triggerMarsTransition() {
-      gameState = 'TRANSITION';
-      resetInput();
-      const fadeScreen = document.getElementById('fade-screen');
-      fadeScreen.innerText = '🔴 화성 기지 대기권 진입 완료!';
-      fadeScreen.style.display = 'flex';
-      fadeScreen.style.opacity = '1';
-
-      setTimeout(() => {
+      showPlanetTransition('🔴', '화성 기지 대기권 진입 완료!', '#ff6a45', 1300, () => {
         marsMode = true;
         moonMode = false;
-        initCraters();
-        startBGM();
-        fadeScreen.style.opacity = '0';
-        setTimeout(() => { fadeScreen.style.display = 'none'; }, 500);
-        openShop();
-      }, 700);
+      });
     }
 
     function triggerJupiterTransition() {
-      gameState = 'TRANSITION';
-      resetInput();
-      const fadeScreen = document.getElementById('fade-screen');
-      fadeScreen.innerText = '⚡ 목성 가스 폭풍 궤도 진입 완료!';
-      fadeScreen.style.display = 'flex';
-      fadeScreen.style.opacity = '1';
-
-      setTimeout(() => {
+      showPlanetTransition('⚡', '목성 가스 폭풍 궤도 진입 완료!', '#ffcc55', 1300, () => {
         jupiterMode = true;
         marsMode = false;
         moonMode = false;
-        initCraters();
-        startBGM();
-        fadeScreen.style.opacity = '0';
-        setTimeout(() => { fadeScreen.style.display = 'none'; }, 500);
-        openShop();
-      }, 700);
+      });
     }
 
     function triggerSaturnTransition() {
-      gameState = 'TRANSITION';
-      resetInput();
-      const fadeScreen = document.getElementById('fade-screen');
-      fadeScreen.innerText = '🪐 토성 얼음 고리 요새 진입 완료!';
-      fadeScreen.style.display = 'flex';
-      fadeScreen.style.opacity = '1';
-
-      setTimeout(() => {
+      showPlanetTransition('🪐', '토성 얼음 고리 요새 진입 완료!', '#c79bff', 1300, () => {
         saturnMode = true;
         jupiterMode = false;
         marsMode = false;
         moonMode = false;
-        initCraters();
-        startBGM();
-        fadeScreen.style.opacity = '0';
-        setTimeout(() => { fadeScreen.style.display = 'none'; }, 500);
-        openShop();
-      }, 700);
+      });
     }
 
     function triggerWormholeTransition() {
-      gameState = 'TRANSITION';
-      resetInput();
-      const fadeScreen = document.getElementById('fade-screen');
-      fadeScreen.innerText = '🌀 시공간 웜홀 돌입!!\n외계인 본진 하이브 심층부 침투 중...';
-      fadeScreen.style.display = 'flex';
-      fadeScreen.style.opacity = '1';
-
-      setTimeout(() => {
+      showPlanetTransition('🌀', '시공간 웜홀 돌입!!\n외계인 본진 하이브 심층부 침투 중...', '#39ff9c', 1600, () => {
         alienHomeMode = true;
         saturnMode = false;
         jupiterMode = false;
         marsMode = false;
         moonMode = false;
-        initCraters();
-        startBGM();
-        fadeScreen.style.opacity = '0';
-        setTimeout(() => { fadeScreen.style.display = 'none'; }, 500);
-        openShop();
-      }, 1000);
+      });
     }
+
+
+    // ==========================================
+    // ☠ 최종 보스 연출 (등장 / 패턴 예고 / 페이즈 포효)
+    // ==========================================
+    let calloutTimer = null;
+    function showBossCallout(text, duration) {
+      const el = document.getElementById('boss-callout');
+      el.textContent = text;
+      el.classList.remove('show');
+      void el.offsetWidth; // 애니메이션 재시작
+      el.classList.add('show');
+      if (calloutTimer) clearTimeout(calloutTimer);
+      calloutTimer = setTimeout(() => el.classList.remove('show'), duration || 1400);
+    }
+
+    function startFinalBossIntro() {
+      const el = document.getElementById('boss-intro');
+      el.classList.add('on');
+      playFinalBossRoar();
+      setTimeout(() => el.classList.remove('on'), 2600);
+    }
+
+    function playFinalBossRoar() {
+      if (!audioCtx) return;
+      const now = audioCtx.currentTime;
+      // 낮게 깔리는 이중 포효
+      [0, 0.25].forEach((off, i) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(70 - i * 12, now + off);
+        osc.frequency.exponentialRampToValueAtTime(34, now + off + 1.6);
+        gain.gain.setValueAtTime(0.0001, now + off);
+        gain.gain.linearRampToValueAtTime(0.16, now + off + 0.15);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + off + 1.6);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now + off);
+        osc.stop(now + off + 1.7);
+      });
+      playNoiseHit(now + 0.05, 0.9, 200, 0.12);
+    }
+
+    function playPhaseRoar() {
+      if (!audioCtx) return;
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(110, now);
+      osc.frequency.exponentialRampToValueAtTime(880, now + 0.35);
+      osc.frequency.exponentialRampToValueAtTime(90, now + 0.9);
+      gain.gain.setValueAtTime(0.14, now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.9);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 0.95);
+      playNoiseHit(now, 0.5, 300, 0.14);
+    }
+
+    // ==========================================
+    // 🎉 최종 승리 시퀀스
+    // ==========================================
+    let victoryAnim = null;
+
+    function playVictoryFanfare() {
+      if (!audioCtx) return;
+      const t0 = audioCtx.currentTime + 0.1;
+      // C - E - G - C(옥타브) - G - C 상승 팡파르 + 화음 지속음
+      const melody = [
+        [523.25, 0.00, 0.18], [659.25, 0.18, 0.18], [783.99, 0.36, 0.18],
+        [1046.50, 0.54, 0.42], [783.99, 1.00, 0.18], [1046.50, 1.18, 0.22],
+        [1318.51, 1.42, 0.85]
+      ];
+      melody.forEach(([f, off, dur]) => {
+        playTone(f, t0 + off, dur, 'square', 0.07);
+        playTone(f / 2, t0 + off, dur, 'triangle', 0.05);
+      });
+      [261.63, 329.63, 392.00, 523.25].forEach(f => {
+        playTone(f, t0 + 1.42, 1.6, 'triangle', 0.045);
+      });
+      [0, 0.18, 0.36, 0.54, 1.0, 1.42].forEach(off => playKick(t0 + off));
+      playNoiseHit(t0 + 1.42, 0.7, 900, 0.1);
+    }
+
+    function startFinalVictorySequence() {
+      gameState = 'VICTORY_SEQ';
+      stopLoop();
+      resetInput();
+      if (musicTimerId) clearInterval(musicTimerId);
+
+      const deadBoss = boss;
+      boss = null;
+      bossSpawned = false;
+      enemyBullets = [];
+      bullets = [];
+      score += 50000;
+
+      document.getElementById('boss-bar-container').style.display = 'none';
+      showBossCallout('하이브 마인드 코어 붕괴!!', 2600);
+
+      let t = 0;
+      const cx = deadBoss.x;
+      const cy = deadBoss.y;
+
+      function victoryFrame() {
+        t++;
+
+        // 1단계(0~110): 보스가 연쇄 폭발하며 흔들린다
+        if (t < 110) {
+          if (t % 5 === 0) {
+            const ex = cx + (Math.random() - 0.5) * 110;
+            const ey = cy + (Math.random() - 0.5) * 110;
+            createExplosion(ex, ey, 26 + Math.random() * 20);
+            playSound('explosion');
+          }
+          shakeIntensity = 6;
+        }
+        // 2단계(110~150): 거대 폭발 + 화이트아웃
+        else if (t < 150) {
+          if (t === 110) {
+            playSound('nuke');
+            playFinalBossRoar();
+            for (let i = 0; i < 26; i++) {
+              createExplosion(
+                cx + (Math.random() - 0.5) * 220,
+                cy + (Math.random() - 0.5) * 220,
+                40 + Math.random() * 30
+              );
+            }
+          }
+          flashEffect = 12;
+          shakeIntensity = 10;
+        }
+        // 3단계(150~210): 잔해가 흩날리고 화면이 밝아진다
+        else if (t < 210) {
+          shakeIntensity = Math.max(0, 10 - (t - 150) * 0.2);
+          if (t % 8 === 0) {
+            createExplosion(Math.random() * CANVAS_WIDTH, Math.random() * CANVAS_HEIGHT, 20);
+          }
+          if (t === 150) playVictoryFanfare();
+        }
+
+        // 보스가 사라진 뒤에도 파티클 애니메이션은 계속 돌린다
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const p = particles[i];
+          p.x += p.vx; p.y += p.vy; p.size += 0.5; p.alpha -= 0.02;
+          if (p.alpha <= 0) particles.splice(i, 1);
+        }
+        for (let i = enemies.length - 1; i >= 0; i--) {
+          enemies[i].y += 2;
+          if (enemies[i].y > CANVAS_HEIGHT + 40) enemies.splice(i, 1);
+        }
+        if (flashEffect > 0) flashEffect--;
+
+        render();
+
+        if (t < 215) {
+          victoryAnim = requestAnimationFrame(victoryFrame);
+        } else {
+          shakeIntensity = 0;
+          showVictoryScreen();
+        }
+      }
+      victoryFrame();
+    }
+
+    function computeRank() {
+      // 점수 + 남은 실드 + 강화 수준을 합산해 등급 산출
+      let pts = score / 1000;
+      pts += (player.hp / player.maxHp) * 60;
+      pts += (shopUpgrades.atkLv + shopUpgrades.luckLv + shopUpgrades.shieldLv) * 2;
+      if (pts >= 190) return { rank: 'SSS', msg: '전설이 되었다. 하이브는 당신의 이름을 두려워할 것이다.' };
+      if (pts >= 160) return { rank: 'SS', msg: '완벽에 가까운 전투. 인류 역사에 기록될 비행이었다.' };
+      if (pts >= 130) return { rank: 'S', msg: '눈부신 승리. 미니지호는 전설의 함선이 되었다.' };
+      if (pts >= 100) return { rank: 'A', msg: '훌륭한 전과다. 태양계는 당신 덕분에 숨을 쉰다.' };
+      if (pts >= 70) return { rank: 'B', msg: '값진 승리. 상처투성이지만 끝내 돌아왔다.' };
+      return { rank: 'C', msg: '간신히 살아 돌아왔다. 그래도 이긴 건 이긴 거다.' };
+    }
+
+    function showVictoryScreen() {
+      gameState = 'VICTORY';
+      const result = computeRank();
+
+      document.getElementById('vc-rank').textContent = result.rank;
+      document.getElementById('vc-stats').innerHTML =
+        `최종 점수 <b>${score.toLocaleString()}</b><br>` +
+        `도달 레벨 <b>LV ${level}</b><br>` +
+        `잔존 실드 <b>${Math.ceil(player.hp)} / ${player.maxHp}</b><br>` +
+        `보유 포인트 <b>${shopPoints.toLocaleString()} P</b>`;
+      document.getElementById('vc-msg').textContent = result.msg;
+      document.getElementById('victory-screen').style.display = 'flex';
+    }
+
 
     function triggerGachaModal() {
       gameState = 'GACHA';
@@ -1795,6 +2702,14 @@
       ctx.save();
       ctx.globalAlpha = 1.0;
 
+      // 화면 흔들림 (보스 돌진, 최종 격파 연출 등)
+      if (shakeIntensity > 0) {
+        ctx.translate(
+          (Math.random() - 0.5) * shakeIntensity,
+          (Math.random() - 0.5) * shakeIntensity
+        );
+      }
+
       // 우주 화면은 테마와 무관하게 항상 고정 색상
       if (alienHomeMode) {
         ctx.fillStyle = '#0a1d0f';
@@ -1809,7 +2724,8 @@
       } else {
         ctx.fillStyle = SPACE_BG;
       }
-      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+      // 흔들림으로 가장자리가 비지 않도록 배경은 캔버스보다 조금 크게 칠한다
+      ctx.fillRect(-24, -24, CANVAS_WIDTH + 48, CANVAS_HEIGHT + 48);
 
       if (!moonMode && !marsMode && !jupiterMode && !saturnMode && !alienHomeMode) {
         ctx.fillStyle = '#ffffff';
@@ -1919,29 +2835,18 @@
       });
       ctx.restore();
 
-      // 🔧 [수정] 기뢰 그린 뒤 fillStyle/shadow가 남아 일반 탄까지 주황색으로 보이던 문제 해결
+      // 그리기 전에 fillStyle/shadow를 초기화해 앞서 그린 게 다음 탄에 번지지 않게 한다
       enemyBullets.forEach(eb => {
         ctx.save();
         ctx.globalAlpha = 1.0;
-        if (eb.type === 'PROX_MINE') {
-          ctx.fillStyle = '#ff8800';
-          ctx.shadowColor = '#ff3300';
-          ctx.shadowBlur = 8;
-          ctx.beginPath();
-          ctx.arc(eb.x, eb.y, eb.radius, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.shadowBlur = 0;
-          ctx.strokeStyle = 'rgba(255,140,0,0.35)';
-          ctx.lineWidth = 1.5;
-          ctx.beginPath();
-          ctx.arc(eb.x, eb.y, eb.armedRadius, 0, Math.PI * 2);
-          ctx.stroke();
-        } else {
-          ctx.fillStyle = '#ff0055';
-          ctx.beginPath();
-          ctx.arc(eb.x, eb.y, eb.radius, 0, Math.PI * 2);
-          ctx.fill();
+        ctx.fillStyle = eb.color || '#ff0055';
+        if (eb.color) {
+          ctx.shadowColor = eb.color;
+          ctx.shadowBlur = 6;
         }
+        ctx.beginPath();
+        ctx.arc(eb.x, eb.y, eb.radius, 0, Math.PI * 2);
+        ctx.fill();
         ctx.restore();
       });
 
@@ -1956,6 +2861,50 @@
       });
 
       if (boss) {
+        // 최종 보스 안광 빔 연출 (예고선 → 발사)
+        if (boss.beam) {
+          const beam = boss.beam;
+          ctx.save();
+          if (beam.state === 'charge') {
+            const prog = Math.min(1, beam.t / 70);
+            ctx.fillStyle = `rgba(255, 40, 40, ${0.12 + prog * 0.18})`;
+            ctx.fillRect(beam.x - beam.width / 2, boss.y, beam.width, CANVAS_HEIGHT);
+            ctx.strokeStyle = `rgba(255, 90, 90, ${0.5 + prog * 0.5})`;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(beam.x - beam.width / 2, boss.y, beam.width, CANVAS_HEIGHT);
+            // 집속 중인 코어
+            ctx.fillStyle = '#ff3355';
+            ctx.beginPath();
+            ctx.arc(beam.x, boss.y, 4 + prog * 12, 0, Math.PI * 2);
+            ctx.fill();
+          } else if (beam.state === 'fire') {
+            const flick = 0.75 + Math.random() * 0.25;
+            const grad = ctx.createLinearGradient(beam.x - beam.width / 2, 0, beam.x + beam.width / 2, 0);
+            grad.addColorStop(0, 'rgba(255,0,60,0.1)');
+            grad.addColorStop(0.5, `rgba(255,255,255,${flick})`);
+            grad.addColorStop(1, 'rgba(255,0,60,0.1)');
+            ctx.fillStyle = grad;
+            ctx.shadowColor = '#ff2255';
+            ctx.shadowBlur = 25;
+            ctx.fillRect(beam.x - beam.width / 2, boss.y, beam.width, CANVAS_HEIGHT);
+          }
+          ctx.restore();
+        }
+
+        // 중력장 시각 효과
+        if (boss.attackMode === 'gravity') {
+          ctx.save();
+          const r = 60 + Math.sin(boss.pulse * 0.08) * 18;
+          ctx.strokeStyle = 'rgba(204,102,255,0.45)';
+          ctx.lineWidth = 2;
+          for (let i = 1; i <= 3; i++) {
+            ctx.beginPath();
+            ctx.arc(boss.x, boss.y, r * i * 0.9, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
+
         ctx.save();
         if (alienHomeMode) {
           ctx.shadowColor = '#00ff88';
@@ -1971,14 +2920,45 @@
           ctx.shadowBlur = 15;
         }
 
-        ctx.font = '54px sans-serif';
+        if (boss.isFinal) {
+          // 최종 보스: 맥동하는 오라 + 페이즈별 색 + 무적 시 깜빡임
+          const phaseColor = boss.phase === 3 ? '#ff3366' : (boss.phase === 2 ? '#ffaa00' : '#00ff88');
+          const pulseR = boss.w * 0.65 + Math.sin(boss.pulse * 0.07) * 10;
+          ctx.save();
+          ctx.globalAlpha = 0.28;
+          ctx.fillStyle = phaseColor;
+          ctx.beginPath();
+          ctx.arc(boss.x, boss.y, pulseR, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+
+          ctx.shadowColor = phaseColor;
+          ctx.shadowBlur = 28;
+          if (boss.invulnTimer > 0 && Math.floor(boss.invulnTimer / 4) % 2 === 0) {
+            ctx.globalAlpha = 0.45;
+          }
+          ctx.font = '96px sans-serif';
+        } else {
+          ctx.font = '54px sans-serif';
+        }
+
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(boss.emoji, boss.x, boss.y);
         ctx.restore();
 
-        document.getElementById('boss-bar-container').style.display = 'block';
-        document.getElementById('boss-bar').style.width = Math.max(0, (boss.hp / boss.maxHp * 100)) + '%';
+        const barContainer = document.getElementById('boss-bar-container');
+        const bar = document.getElementById('boss-bar');
+        barContainer.style.display = 'block';
+        bar.style.width = Math.max(0, (boss.hp / boss.maxHp * 100)) + '%';
+        if (boss.isFinal) {
+          // 페이즈에 따라 체력바 색이 바뀐다
+          bar.style.background = boss.phase === 3 ? '#ff3366' : (boss.phase === 2 ? '#ffaa00' : '#00ff88');
+          barContainer.style.height = '12px';
+        } else {
+          bar.style.background = '#ff0055';
+          barContainer.style.height = '8px';
+        }
       } else {
         document.getElementById('boss-bar-container').style.display = 'none';
       }
@@ -2069,7 +3049,7 @@
       const isTouchDevice = window.matchMedia('(pointer: coarse)').matches || ('ontouchstart' in window);
       if (isTouchDevice) container.classList.add('touch-on');
 
-      const MAX_R = 38;
+      const MAX_R = 32;
       let stickId = null;
 
       function moveKnob(dx, dy) {
@@ -2172,7 +3152,7 @@
         const pad = 16;
         const availW = window.innerWidth - pad;
         const availH = window.innerHeight - pad;
-        const scale = Math.min(1.6, availW / naturalW, availH / naturalH);
+        const scale = Math.min(1, availW / naturalW, availH / naturalH);
 
         container.style.transform = `scale(${scale})`;
         wrap.style.width = (naturalW * scale) + 'px';
@@ -2199,6 +3179,11 @@
     function startGame() {
       initAudio();
       stopLoop();
+      if (victoryAnim !== null) { cancelAnimationFrame(victoryAnim); victoryAnim = null; }
+      shakeIntensity = 0;
+      flashEffect = 0;
+      document.getElementById('boss-intro').classList.remove('on');
+      document.getElementById('boss-callout').classList.remove('show');
       score = 0;
       level = 1;
       enemiesKilled = 0;
