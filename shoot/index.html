@@ -391,6 +391,91 @@
       to   { opacity: 1; transform: translateY(0); }
     }
 
+    /* ⚠ 최종전 직전 "시스템 해킹" 연출 - 너무 강력한 무기를 들고 최종보스를 트리비얼하게 깨는 것을 막는다 */
+    #hack-intro {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 39;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      pointer-events: none;
+      background: #050002;
+      overflow: hidden;
+    }
+    #hack-intro.on { display: flex; }
+    #hack-intro::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(0deg,
+        rgba(255,0,60,0.07) 0px, rgba(255,0,60,0.07) 2px,
+        transparent 2px, transparent 4px);
+      animation: hackFlicker 0.12s steps(2) infinite;
+    }
+    @keyframes hackFlicker {
+      0%   { opacity: 0.55; }
+      50%  { opacity: 1; }
+      100% { opacity: 0.7; }
+    }
+    #hack-intro .hk-warn {
+      position: relative;
+      font-size: 26px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      color: #ff2244;
+      text-shadow: 0 0 14px #ff2244;
+      animation: hkGlitch 0.35s steps(3) infinite;
+    }
+    @keyframes hkGlitch {
+      0%   { transform: translate(0,0); }
+      20%  { transform: translate(-3px,2px); }
+      40%  { transform: translate(3px,-2px); }
+      60%  { transform: translate(-2px,-2px); }
+      80%  { transform: translate(2px,2px); }
+      100% { transform: translate(0,0); }
+    }
+    #hack-intro .hk-sub {
+      position: relative;
+      font-size: 11px;
+      color: #ff99aa;
+      letter-spacing: 1px;
+      text-align: center;
+      max-width: 85%;
+      opacity: 0.95;
+    }
+    #hack-intro .hk-bar {
+      position: relative;
+      width: 68%;
+      height: 7px;
+      background: #260008;
+      border: 1px solid #ff2244;
+      overflow: hidden;
+    }
+    #hack-intro .hk-bar-fill {
+      position: absolute;
+      left: 0; top: 0;
+      height: 100%;
+      width: 0%;
+      background: #ff2244;
+      animation: hkFill 1.3s linear forwards;
+    }
+    @keyframes hkFill {
+      from { width: 0%; }
+      to   { width: 100%; }
+    }
+    #hack-intro .hk-final {
+      position: relative;
+      font-size: 12px;
+      font-weight: 700;
+      color: #ffee55;
+      opacity: 0;
+      animation: fadeTextIn 0.4s ease-out 0.85s both;
+    }
+
     /* ☠ 최종 보스 등장 연출 */
     #boss-intro {
       position: absolute;
@@ -584,6 +669,13 @@
       </div>
     </div>
 
+    <div id="hack-intro">
+      <div class="hk-warn">⚠ SYSTEM ERROR ⚠</div>
+      <div class="hk-sub">무기 제어 시스템에 알 수 없는 신호가 침투했습니다...</div>
+      <div class="hk-bar"><div class="hk-bar-fill"></div></div>
+      <div class="hk-final">무장 강제 초기화 — 기본 레이저로 전환됨</div>
+    </div>
+
     <div id="boss-intro">
       <div class="bi-eye">👁️</div>
       <div class="bi-name">HIVE MIND</div>
@@ -600,6 +692,7 @@
         <div id="gacha-roulette" style="font-size: 36px; margin: 8px 0;">🎰</div>
         <div id="gacha-result" style="font-size: 12px; font-weight: bold; min-height: 18px;"></div>
         <button id="gacha-claim-btn" style="display:none;" onclick="claimWeapon()">⚔️ 승인 및 장착</button>
+        <button id="gacha-decline-btn" style="display:none;" onclick="declineWeapon()">💰 거부하고 포인트 획득</button>
       </div>
     </div>
 
@@ -1178,7 +1271,11 @@
       { name: '3갈래 확산탄', emoji: '🔱', type: 'SPREAD' },
       { name: '유도 드론', emoji: '🛡️', type: 'DRONE' },
       { name: 'CNG 블랙홀', emoji: '🌀', type: 'BLACKHOLE' },
-      { name: '핵융합 폭탄', emoji: '💥', type: 'NUKE' }
+      { name: '핵융합 폭탄', emoji: '💥', type: 'NUKE' },
+      { name: '부메랑 커터', emoji: '🪃', type: 'BOOMERANG' },
+      { name: '체인 라이트닝', emoji: '🔗', type: 'CHAIN' },
+      { name: '궤도 플라즈마', emoji: '💠', type: 'ORBIT' },
+      { name: '레일건', emoji: '🎯', type: 'RAILGUN', fireRateMult: 2.4 }
     ];
     let currentWeapon = WEAPONS[0];
     let pendingGachaWeapon = null;
@@ -1262,6 +1359,7 @@
     let particles = [];
     let explosions = [];
     let buildings = [];
+    let railgunFlashes = []; // 레일건이 발사할 때 그려지는 순간 섬광 이펙트
     let boss = null;
     let enemySpawnTimer = 0;
     let buildingSpawnTimer = 0;
@@ -1272,10 +1370,23 @@
       'hover', 'bounce', 'stealth', 'split', 'minedrop'
     ];
 
+    // 화성부터는 자리를 잡고 계속 쏘는 고정 포대(터렛)가 등장한다
+    function turretsUnlocked() {
+      return marsMode || jupiterMode || saturnMode || alienHomeMode;
+    }
+
     function spawnEnemy() {
       if (boss || bossSpawned) return;
-      const typeIdx = Math.floor(Math.random() * 10);
-      const pType = AI_PATTERNS[typeIdx];
+
+      let pType, emoji;
+      if (turretsUnlocked() && Math.random() < 0.16) {
+        pType = 'turret';
+        emoji = '📡';
+      } else {
+        const typeIdx = Math.floor(Math.random() * 10);
+        pType = AI_PATTERNS[typeIdx];
+        emoji = ENEMY_EMOJIS[typeIdx];
+      }
       const enemyX = Math.random() * (CANVAS_WIDTH - 60) + 30;
 
       enemies.push({
@@ -1284,17 +1395,18 @@
         y: -30,
         w: 26,
         h: 26,
-        emoji: ENEMY_EMOJIS[typeIdx],
+        emoji: emoji,
         pType: pType,
-        hp: (pType === 'hover' || pType === 'minedrop') ? 4 : 2,
-        speed: pType === 'swoop' ? 3.8 : (pType === 'stealth' ? 1.2 : 1.6),
+        hp: (pType === 'hover' || pType === 'minedrop') ? 4 : (pType === 'turret' ? 6 : 2),
+        speed: pType === 'swoop' ? 3.8 : (pType === 'stealth' ? 1.2 : (pType === 'turret' ? 1.3 : 1.6)),
         vx: pType === 'bounce' ? (Math.random() < 0.5 ? 2.5 : -2.5) : (pType === 'flank' ? (enemyX > CANVAS_WIDTH / 2 ? -2 : 2) : 0),
         vy: pType === 'swoop' ? 3.5 : 1.5,
         time: 0,
         shootTimer: 0,
         state: 0,
         alpha: 1.0,
-        radius: 60
+        radius: 60,
+        settled: false
       });
     }
 
@@ -1317,7 +1429,9 @@
       'eyebeam',     // 예고 후 발사되는 거대 안광 빔
       'gravity',     // 중력장으로 플레이어를 끌어당김
       'hivewave',    // 하이브 지원군 대량 소환
-      'doublespiral' // 정/역방향 이중 나선
+      'doublespiral', // 정/역방향 이중 나선
+      'meteor',      // 상단 전역에서 떨어지는 대형 낙하탄 + 착탄 시 폭발
+      'overload'     // 페이즈 막바지에만 등장하는 전방위+조준 복합 융단폭격
     ];
 
     // 스테이지별로 쓸 수 있는 패턴 (진행할수록 늘어남)
@@ -1332,43 +1446,18 @@
 
     function spawnBoss() {
       bossSpawned = true;
-      playBossIntroSound();
       const bossLevel = level;
 
-      // 최종 보스는 완전히 다른 규격
+      // 최종 보스는 완전히 다른 규격이자, 등장 전에 "시스템 해킹" 연출이 먼저 재생된다
       if (alienHomeMode) {
-        // 최종 보스 체력. 너무 길어지거나 짧아지면 이 두 값만 조절하면 된다.
-        const finalHp = 3800 + bossLevel * 25;
-        boss = {
-          isFinal: true,
-          name: '하이브 마인드',
-          x: CANVAS_WIDTH / 2,
-          y: -100,
-          targetY: 95,
-          w: 110,
-          h: 110,
-          emoji: '👁️',
-          hp: finalHp,
-          maxHp: finalHp,
-          vx: 1.1,
-          shootTimer: 0,
-          attackMode: 'ring',
-          modeTimer: 0,
-          spiralAngle: 0,
-          phase: 1,
-          invulnTimer: 120,     // 등장 연출 동안 무적
-          intro: true,
-          introTimer: 0,
-          beam: null,
-          summonTimer: 0,
-          pulse: 0,
-          enrage: 1.0,
-          patternQueue: []
-        };
-        startFinalBossIntro();
+        playSystemHackSequence(() => {
+          createFinalBoss(bossLevel);
+          showHiveMindReveal();
+        });
         return;
       }
 
+      playBossIntroSound();
       const hpVal = 22 * bossLevel;
       let bossEmoji = '🛸';
       if (saturnMode) bossEmoji = '👑';
@@ -1406,15 +1495,47 @@
       boss.attackMode = boss.patterns[0];
     }
 
+    // 최종 보스 본체 생성 (해킹 연출이 끝난 뒤 호출된다)
+    function createFinalBoss(bossLevel) {
+      // 최종 보스 체력. "더더더" 늘려달라는 요청으로 대폭 상향(기존 대비 2배 이상).
+      const finalHp = 9500 + bossLevel * 70;
+      boss = {
+        isFinal: true,
+        name: '하이브 마인드',
+        x: CANVAS_WIDTH / 2,
+        y: -100,
+        targetY: 95,
+        w: 110,
+        h: 110,
+        emoji: '👁️',
+        hp: finalHp,
+        maxHp: finalHp,
+        vx: 1.1,
+        shootTimer: 0,
+        attackMode: 'ring',
+        modeTimer: 0,
+        spiralAngle: 0,
+        phase: 1,
+        invulnTimer: 120,     // 등장 연출 동안 무적
+        intro: true,
+        introTimer: 0,
+        beam: null,
+        summonTimer: 0,
+        pulse: 0,
+        enrage: 1.0,
+        patternQueue: []
+      };
+    }
+
     function nextBossPattern() {
       if (!boss) return;
 
       if (boss.isFinal) {
         // 최종 보스는 페이즈별 패턴 풀에서 뽑되, 고유 패턴 비중을 높게
         const pools = {
-          1: ['ring', 'aimed', 'spiral', 'eyebeam', 'hivewave', 'wall'],
-          2: ['doublespiral', 'eyebeam', 'gravity', 'aimed', 'cross', 'hivewave', 'rain', 'charge'],
-          3: ['eyebeam', 'doublespiral', 'gravity', 'hivewave', 'rain', 'wall', 'cross', 'charge', 'homing']
+          1: ['ring', 'aimed', 'spiral', 'eyebeam', 'hivewave', 'wall', 'meteor'],
+          2: ['doublespiral', 'eyebeam', 'gravity', 'aimed', 'cross', 'hivewave', 'rain', 'charge', 'meteor'],
+          3: ['eyebeam', 'doublespiral', 'gravity', 'hivewave', 'rain', 'wall', 'cross', 'charge', 'homing', 'meteor', 'overload', 'overload']
         };
         const pool = pools[boss.phase] || pools[3];
         if (boss.patternQueue.length === 0) {
@@ -1429,6 +1550,7 @@
       boss.modeTimer = 0;
       boss.shootTimer = 0;
       boss.beam = null;
+      boss.meteors = []; // 패턴이 바뀔 때 남아있던 낙하탄 예고를 정리한다
       // 돌진 패턴이 중간에 끊겼을 때 다음 번에 이상한 상태로 시작하지 않도록 초기화
       boss.chargeState = null;
       boss.chargeTimer = 0;
@@ -1675,6 +1797,55 @@
           }
         }
 
+      } else if (mode === 'meteor') {
+        // 최종 보스 고유: 화면 위 무작위 지점에 예고선이 뜬 뒤 큼직한 낙하탄이 떨어져 착탄 지점에서 터진다
+        if (boss.modeTimer === 1) showBossCallout('낙하탄 경보 — 착탄 지점을 피하라!');
+        if (!boss.meteors) boss.meteors = [];
+
+        if (boss.shootTimer >= Math.max(20, Math.round(38 / E))) {
+          boss.shootTimer = 0;
+          boss.meteors.push({
+            x: 20 + Math.random() * (CANVAS_WIDTH - 40),
+            warn: 42, // 예고 시간(프레임)
+            falling: false,
+            y: 0
+          });
+        }
+
+        for (let i = boss.meteors.length - 1; i >= 0; i--) {
+          const m = boss.meteors[i];
+          if (!m.falling) {
+            m.warn--;
+            if (m.warn <= 0) { m.falling = true; m.y = -10; }
+          } else {
+            m.y += 7 * E;
+            if (m.y >= CANVAS_HEIGHT - 40) {
+              createExplosion(m.x, CANVAS_HEIGHT - 40, 30);
+              playSound('explosion');
+              if (Math.hypot(m.x - player.x, (CANVAS_HEIGHT - 40) - player.y) < 42) damagePlayer(2);
+              // 착탄 파편이 사방으로 튄다
+              for (let k = 0; k < 6; k++) {
+                bossShot((Math.PI * 2 / 6) * k, 2.4, 3.0, { color: '#ff8833', x: m.x, y: CANVAS_HEIGHT - 40 });
+              }
+              boss.meteors.splice(i, 1);
+            }
+          }
+        }
+
+      } else if (mode === 'overload') {
+        // 최종 보스 고유: 페이즈 막바지에만 등장하는 전방위 + 조준 복합 융단폭격. 가장 밀도 높은 패턴.
+        if (boss.modeTimer === 1) showBossCallout('⚠ 오버로드 — 전 화력 개방!');
+        if (boss.shootTimer >= Math.max(10, Math.round(16 / E))) {
+          boss.shootTimer = 0;
+          const count = 10;
+          const off = boss.modeTimer * 0.05;
+          for (let i = 0; i < count; i++) {
+            bossShot(off + (Math.PI * 2 / count) * i, 2.6 * E, 3.5, { color: '#ff2255' });
+          }
+          const targetAngle = Math.atan2(player.y - boss.y, player.x - boss.x);
+          bossShot(targetAngle, 4.6 * E, 4.0, { color: '#ffee55' });
+        }
+
       } else if (mode === 'gravity') {
         // 최종 보스 고유: 중력장이 플레이어를 보스 쪽으로 끌어당기는 동안 탄막이 깔린다
         if (boss.modeTimer === 1) showBossCallout('중력장 전개 — 끌려간다!');
@@ -1838,7 +2009,8 @@
 
       const now = Date.now();
       const atkMult = (1 + (shopUpgrades.atkLv - 1) * 0.3) * (player.superMode ? 2.0 : 1.0) * tempDmgBoost;
-      const delay = player.superMode ? player.shootDelay * 0.5 : player.shootDelay;
+      // 레일건처럼 위력이 큰 대신 느리게 쏘는 무기를 위한 배율 (없으면 1배, 기존 무기는 영향 없음)
+      const delay = (player.superMode ? player.shootDelay * 0.5 : player.shootDelay) * (currentWeapon.fireRateMult || 1);
 
       if ((keys['Space'] || keys['KeyZ'] || touchFire) && now - player.lastShot > delay) {
         player.lastShot = now;
@@ -1877,6 +2049,46 @@
             bullets.push({ x: player.x + 22, y: player.y, vx: 1.5, vy: -3.5, speed: 3.5, type: 'DRONE_SHOT', power: 1.2 * atkMult });
           } else if (currentWeapon.type === 'BLACKHOLE') {
             bullets.push({ x: player.x, y: player.y - 12, vx: 0, vy: -5, type: 'BLACKHOLE', power: 0.5 * atkMult });
+          } else if (currentWeapon.type === 'BOOMERANG') {
+            // 위로 날아가다 일정 거리에서 방향을 꺾어 플레이어에게 돌아온다. 가는 길/오는 길 모두 적을 맞힐 수 있다.
+            bullets.push({
+              x: player.x, y: player.y - 12, vx: 0, vy: -8, type: 'BOOMERANG',
+              power: 1.6 * atkMult, phase: 'out', travel: 0, hitSet: new Set()
+            });
+          } else if (currentWeapon.type === 'CHAIN') {
+            // 처음 맞은 적에서 근처 적들로 번개가 튀어 한 번에 여러 마리를 때린다.
+            bullets.push({ x: player.x, y: player.y - 12, vx: 0, vy: -11, type: 'CHAIN', power: 1 * atkMult });
+          } else if (currentWeapon.type === 'ORBIT') {
+            // 플레이어 주위를 도는 플라즈마 구체 2개. 스치는 모든 것에 지속적으로 약한 피해를 준다.
+            bullets.push({ type: 'ORBIT', power: 0.35 * atkMult, angle: 0, life: 260, radius: 42 });
+            bullets.push({ type: 'ORBIT', power: 0.35 * atkMult, angle: Math.PI, life: 260, radius: 42 });
+          } else if (currentWeapon.type === 'RAILGUN') {
+            // 투사체 없이 즉시 화면을 세로로 관통하는 한 방. 저격형 무기라 발사 간격이 길다.
+            playSound('nuke');
+            const railX = player.x;
+            const railW = 16;
+            const railPower = 9 * atkMult;
+            railgunFlashes.push({ x: railX, life: 10, maxLife: 10 });
+            for (let ei = enemies.length - 1; ei >= 0; ei--) {
+              const e = enemies[ei];
+              if (Math.abs(e.x - railX) < railW / 2 + e.w / 2) {
+                e.hp -= railPower;
+                createExplosion(e.x, e.y, 10);
+                if (e.hp <= 0) {
+                  createExplosion(e.x, e.y, 20);
+                  playSound('explosion');
+                  score += 100;
+                  shopPoints += Math.floor(15 * (1 + (shopUpgrades.luckLv - 1) * 0.2));
+                  enemiesKilled++;
+                  enemies.splice(ei, 1);
+                }
+              }
+            }
+            if (boss && Math.abs(boss.x - railX) < railW / 2 + boss.w / 2) {
+              damageBoss(railPower * 0.4);
+              createExplosion(boss.x, boss.y, 16);
+              checkBossDefeat();
+            }
           }
         }
       }
@@ -1900,7 +2112,20 @@
         if (b.type === 'DRONE_SHOT') {
           b.speed = Math.min(13.0, (b.speed || 3.5) + 0.32);
 
-          let target = boss || (enemies.length > 0 ? enemies[0] : null);
+          // 🔧 [수정] 예전엔 무조건 enemies[0](배열의 첫 적)을 조준했는데,
+          // flank형 적처럼 화면 밖(x<0 또는 x>CANVAS_WIDTH)에서 대기 중인 적이 배열 앞쪽에
+          // 있으면 드론이 화면 밖을 향해 계속 꺾이는 버그가 있었다.
+          // 화면 안에 실제로 들어와 있는 적 중 가장 가까운 걸 조준하도록 수정.
+          let target = boss;
+          if (!target) {
+            let closestDist = Infinity;
+            for (let ei = 0; ei < enemies.length; ei++) {
+              const cand = enemies[ei];
+              if (cand.x < -5 || cand.x > CANVAS_WIDTH + 5 || cand.y < -5 || cand.y > CANVAS_HEIGHT + 5) continue;
+              const d = (cand.x - b.x) * (cand.x - b.x) + (cand.y - b.y) * (cand.y - b.y);
+              if (d < closestDist) { closestDist = d; target = cand; }
+            }
+          }
           let currentAngle = Math.atan2(b.vy, b.vx);
 
           if (target) {
@@ -1928,6 +2153,34 @@
           }
         }
 
+        if (b.type === 'BOOMERANG') {
+          b.travel++;
+          if (b.phase === 'out' && b.travel > 45) {
+            b.phase = 'back'; // 다 날아갔으면 플레이어 쪽으로 방향을 꺾는다
+          }
+          if (b.phase === 'back') {
+            const angle = Math.atan2(player.y - b.y, player.x - b.x);
+            b.vx = Math.cos(angle) * 7;
+            b.vy = Math.sin(angle) * 7;
+            if (Math.hypot(player.x - b.x, player.y - b.y) < 22) {
+              bullets.splice(bIdx, 1);
+              continue;
+            }
+          }
+        }
+
+        if (b.type === 'ORBIT') {
+          // 플레이어를 중심으로 계속 회전하며 따라다닌다 (vx/vy로 움직이지 않는 특수 케이스)
+          b.life--;
+          b.angle += 0.12;
+          b.x = player.x + Math.cos(b.angle) * b.radius;
+          b.y = player.y + Math.sin(b.angle) * b.radius;
+          if (b.life <= 0) {
+            bullets.splice(bIdx, 1);
+            continue;
+          }
+        }
+
         b.x += b.vx;
         b.y += b.vy;
 
@@ -1937,7 +2190,7 @@
           continue;
         }
 
-        if (b.type !== 'MINE' &&
+        if (b.type !== 'MINE' && b.type !== 'ORBIT' &&
             (b.y < -30 || b.y > CANVAS_HEIGHT + 30 || b.x < -20 || b.x > CANVAS_WIDTH + 20)) {
           bullets.splice(bIdx, 1);
         }
@@ -2020,6 +2273,14 @@
 
       for (let eIdx = enemies.length - 1; eIdx >= 0; eIdx--) {
         const e = enemies[eIdx];
+
+        // 체인 라이트닝처럼 "다른 적을 처리하다가" 이 적의 체력이 먼저 0 밑으로 떨어졌을 수 있으므로
+        // 여기서 한 번 더 걸러준다 (배열을 직접 잘라내지 않고 인덱스만으로 안전하게 정리)
+        if (e.hp <= 0) {
+          enemies.splice(eIdx, 1);
+          continue;
+        }
+
         e.time += 0.04;
 
         if (e.pType === 'sine') {
@@ -2108,9 +2369,28 @@
               continue;
             }
           }
+        } else if (e.pType === 'turret') {
+          // 터렛: 화성부터 등장하는 고정 포대. 자리를 잡으면 움직이지 않고
+          // 짧은 간격으로 계속 조준 사격을 퍼붓는 지속적인 위협이 된다.
+          if (!e.settled) {
+            e.y += e.speed * 0.6;
+            if (e.y > 130) e.settled = true;
+          } else {
+            e.shootTimer++;
+            if (e.shootTimer >= 14) {
+              e.shootTimer = 0;
+              const angle = Math.atan2(player.y - e.y, player.x - e.x);
+              enemyBullets.push({
+                x: e.x, y: e.y + 14,
+                vx: Math.cos(angle) * 3.6, vy: Math.sin(angle) * 3.6,
+                radius: 3.2, color: '#ff5533'
+              });
+              playSound('shoot');
+            }
+          }
         }
 
-        if (e.pType !== 'hover' && e.pType !== 'minedrop') {
+        if (e.pType !== 'hover' && e.pType !== 'minedrop' && e.pType !== 'turret') {
           e.shootTimer++;
           if (e.shootTimer > 80 && e.y > 10 && e.y < CANVAS_HEIGHT - 100) {
             e.shootTimer = 0;
@@ -2145,10 +2425,40 @@
                 checkBossDefeat();
               }
               bullets.splice(bIdx, 1);
-            } else {
-              // 관통 레이저(LASER)는 splice하지 않아 같은 적에게 매 프레임 지속 피해를 준다 (잡몹 청소용 설계)
+            } else if (b.type === 'BOOMERANG') {
+              // 같은 적은 한 번만 맞히고 통과한다 (가는 길/오는 길에 각각 다시 맞힐 수 있음)
+              if (!b.hitSet.has(e)) {
+                b.hitSet.add(e);
+                e.hp -= b.power;
+                createExplosion(b.x, b.y, 8);
+              }
+            } else if (b.type === 'CHAIN') {
               e.hp -= b.power;
-              if (b.type !== 'LASER') {
+              createExplosion(b.x, b.y, 8);
+              // 맞은 지점 근처의 다른 적들에게도 번개가 튀어 감소된 피해를 준다
+              let jumps = 0;
+              for (let oi = 0; oi < enemies.length && jumps < 3; oi++) {
+                const other = enemies[oi];
+                if (other === e) continue;
+                if (Math.hypot(other.x - e.x, other.y - e.y) < 90) {
+                  other.hp -= b.power * 0.6;
+                  createExplosion(other.x, other.y, 10);
+                  jumps++;
+                  if (other.hp <= 0) {
+                    createExplosion(other.x, other.y, 20);
+                    playSound('explosion');
+                    score += 100;
+                    shopPoints += Math.floor(15 * (1 + (shopUpgrades.luckLv - 1) * 0.2));
+                    enemiesKilled++;
+                  }
+                }
+              }
+              enemies = enemies.filter(en => en.hp > 0 || en === e); // 연쇄로 죽은 적 정리 (본체는 아래에서 처리)
+              bullets.splice(bIdx, 1);
+            } else {
+              // 관통 레이저(LASER)·궤도 플라즈마(ORBIT)는 splice하지 않아 스치는 동안 지속 피해를 준다
+              e.hp -= b.power;
+              if (b.type !== 'LASER' && b.type !== 'ORBIT') {
                 bullets.splice(bIdx, 1);
               }
               createExplosion(b.x, b.y, 8);
@@ -2392,8 +2702,13 @@
         initCraters();
         startBGM();
         fadeScreen.style.opacity = '0';
-        setTimeout(() => { fadeScreen.style.display = 'none'; }, 500);
-        openShop();
+        // 🔧 [수정] 예전엔 여기서 곧바로 상점을 열었는데, fade-screen이 z-index가 더 높은 채로
+        // 0.5초간 투명해지는 중이라 그 위에 상점 화면이 겹쳐 보여 "화면이 반투명하다"는
+        // 현상이 생겼다. 검은 화면이 완전히 걷힌 뒤에야 상점을 연다.
+        setTimeout(() => {
+          fadeScreen.style.display = 'none';
+          openShop();
+        }, 500);
       }, durationMs);
     }
 
@@ -2452,11 +2767,47 @@
       calloutTimer = setTimeout(() => el.classList.remove('show'), duration || 1400);
     }
 
-    function startFinalBossIntro() {
+    function showHiveMindReveal() {
       const el = document.getElementById('boss-intro');
       el.classList.add('on');
       playFinalBossRoar();
       setTimeout(() => el.classList.remove('on'), 2600);
+    }
+
+    // 최종전 직전 "시스템 해킹" 연출: 너무 강력한 무기를 들고 최종보스를 트리비얼하게
+    // 깨버리는 것을 막기 위해, 기본 레이저로 강제 초기화한다.
+    function playSystemHackSequence(callback) {
+      const el = document.getElementById('hack-intro');
+      el.classList.add('on');
+      playGlitchSound();
+      setTimeout(() => {
+        currentWeapon = WEAPONS[0];
+        showBossCallout('⚠ 무장 강제 초기화됨', 1300);
+      }, 850);
+      setTimeout(() => {
+        el.classList.remove('on');
+        callback();
+      }, 1500);
+    }
+
+    function playGlitchSound() {
+      if (!audioCtx) return;
+      const now = audioCtx.currentTime;
+      // 지지직거리는 노이즈 + 불안정하게 끊기는 삐 소리들
+      playNoiseHit(now, 1.3, 2500, 0.09);
+      for (let i = 0; i < 7; i++) {
+        const t = now + i * 0.2 + Math.random() * 0.05;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(180 + Math.random() * 520, t);
+        gain.gain.setValueAtTime(0.07, t);
+        gain.gain.exponentialRampToValueAtTime(0.0008, t + 0.08);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(t);
+        osc.stop(t + 0.09);
+      }
     }
 
     function playFinalBossRoar() {
@@ -2641,9 +2992,11 @@
       const roulette = document.getElementById('gacha-roulette');
       const result = document.getElementById('gacha-result');
       const claimBtn = document.getElementById('gacha-claim-btn');
+      const declineBtn = document.getElementById('gacha-decline-btn');
 
       modal.style.display = 'flex';
       claimBtn.style.display = 'none';
+      declineBtn.style.display = 'none';
       result.innerText = '전술 주포 분석 중...';
 
       let count = 0;
@@ -2659,6 +3012,7 @@
           roulette.innerText = pendingGachaWeapon.emoji;
           result.innerText = `[획득] ${pendingGachaWeapon.name}!`;
           claimBtn.style.display = 'inline-block';
+          declineBtn.style.display = 'inline-block';
         }
       }, 90);
     }
@@ -2667,6 +3021,16 @@
       if (pendingGachaWeapon) {
         currentWeapon = pendingGachaWeapon;
       }
+      pendingGachaWeapon = null;
+      document.getElementById('weaponModal').style.display = 'none';
+      gameState = 'PLAYING';
+      resumeLoop();
+    }
+
+    // 지금 쓰는 무기가 마음에 들 때, 랜덤 재장착 대신 포인트로 대신 받을 수 있게 한다.
+    function declineWeapon() {
+      const gained = Math.floor(150 * (1 + (shopUpgrades.luckLv - 1) * 0.2));
+      shopPoints += gained;
       pendingGachaWeapon = null;
       document.getElementById('weaponModal').style.display = 'none';
       gameState = 'PLAYING';
@@ -2916,6 +3280,10 @@
       enemies.forEach(e => {
         ctx.save();
         ctx.globalAlpha = e.alpha !== undefined ? e.alpha : 1.0;
+        if (e.pType === 'turret' && e.settled) {
+          ctx.shadowColor = '#ff5533';
+          ctx.shadowBlur = 10;
+        }
         ctx.font = '24px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -2965,6 +3333,31 @@
             ctx.arc(boss.x, boss.y, r * i * 0.9, 0, Math.PI * 2);
             ctx.stroke();
           }
+          ctx.restore();
+        }
+
+        // 낙하탄 예고선 + 낙하 중인 운석
+        if (boss.meteors && boss.meteors.length) {
+          ctx.save();
+          boss.meteors.forEach(m => {
+            if (!m.falling) {
+              const t = 1 - m.warn / 42;
+              ctx.strokeStyle = `rgba(255,120,40,${0.35 + t * 0.5})`;
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.arc(m.x, CANVAS_HEIGHT - 40, 30, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.fillStyle = `rgba(255,120,40,${0.12 + t * 0.2})`;
+              ctx.beginPath();
+              ctx.arc(m.x, CANVAS_HEIGHT - 40, 30, 0, Math.PI * 2);
+              ctx.fill();
+            } else {
+              ctx.font = '26px sans-serif';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText('☄️', m.x, m.y);
+            }
+          });
           ctx.restore();
         }
 
@@ -3246,6 +3639,7 @@
       shakeIntensity = 0;
       flashEffect = 0;
       document.getElementById('boss-intro').classList.remove('on');
+      document.getElementById('hack-intro').classList.remove('on');
       document.getElementById('boss-callout').classList.remove('show');
       score = 0;
       level = 1;
@@ -3274,6 +3668,7 @@
       document.getElementById('game-over-screen').style.display = 'none';
       document.getElementById('victory-screen').style.display = 'none';
       document.getElementById('weaponModal').style.display = 'none';
+      document.getElementById('gacha-decline-btn').style.display = 'none';
       document.getElementById('shopModal').style.display = 'none';
       document.getElementById('fade-screen').style.display = 'none';
       resumeLoop();
