@@ -1493,6 +1493,52 @@
         }
     </style>
 
+    <style id="card-80-final">
+        /* 최종 조정
+           - 카드 크기: 현재 카드의 약 80%
+           - 카드 내부 텍스트 크기: 기존 그대로 유지
+           - 카드 사이 좌우 간격: 없음
+           - 행 사이에는 약간의 세로 여백
+        */
+        .container {
+            column-gap: 0 !important;
+            row-gap: 10px !important;
+        }
+
+        .game-card {
+            width: 80% !important;
+            justify-self: center;
+        }
+
+        @media (min-width: 601px) and (max-width: 1000px) {
+            .container {
+                column-gap: 0 !important;
+                row-gap: 10px !important;
+            }
+
+            .game-card {
+                width: 80% !important;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                column-gap: 0 !important;
+                row-gap: 9px !important;
+            }
+
+            .game-card {
+                width: 80% !important;
+            }
+        }
+
+        @media (max-width: 380px) {
+            .game-card {
+                width: 80% !important;
+            }
+        }
+    </style>
+
 </head>
 
 <body>
