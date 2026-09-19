@@ -14,25 +14,16 @@
 
     <meta
         name="description"
-        content="미니지에서 다양한 무료 미니게임을 설치 없이 바로 즐겨보세요."
+        content="미니지에서 다양한 무료 미니게임과 레트로 게임을 설치 없이 바로 즐겨보세요."
     >
 
     <meta
         name="keywords"
         content="
-            미니지,
-            미니게임,
-            무료게임,
-            온라인게임,
-            브라우저게임,
-            레트로게임,
-            오락실게임,
-            테트리스,
-            2048,
-            체스,
-            부루마블,
-            레이싱,
-            리듬게임
+            미니지, 미니게임, 무료게임, 온라인게임,
+            브라우저게임, 레트로게임, 오락실게임,
+            테트리스, 2048, 체스, 부루마블,
+            레이싱, 리듬게임, 타이쿤
         "
     >
 
@@ -59,7 +50,10 @@
         href="./favicon.png"
     >
 
-    <!-- Open Graph -->
+
+    <!-- ==================================================
+         Open Graph
+    ================================================== -->
 
     <meta
         property="og:type"
@@ -80,7 +74,7 @@
         property="og:description"
         content="
             다양한 무료 미니게임과 레트로 게임을
-            설치 없이 바로 플레이해보세요.
+            설치 없이 바로 즐겨보세요.
         "
     >
 
@@ -99,7 +93,10 @@
         content="ko_KR"
     >
 
-    <!-- WebSite 구조화 데이터 -->
+
+    <!-- ==================================================
+         WebSite 구조화 데이터
+    ================================================== -->
 
     <script type="application/ld+json">
     {
@@ -114,7 +111,10 @@
     }
     </script>
 
-    <!-- 게임 목록 구조화 데이터 -->
+
+    <!-- ==================================================
+         게임 목록 구조화 데이터
+    ================================================== -->
 
     <script type="application/ld+json">
     {
@@ -248,6 +248,7 @@
     }
     </script>
 
+
     <style>
 
         /* ==================================================
@@ -257,59 +258,44 @@
         :root {
 
             --bg-color: #f8f9fa;
-
-            --text-color: #333333;
-
-            --card-bg: #ffffff;
-
+            --text-color: #333;
+            --card-bg: #fff;
             --card-border: #e9ecef;
-
-            --title-color: #222222;
-
-            --sub-color: #666666;
-
+            --title-color: #222;
+            --sub-color: #666;
             --accent-color: #ff6b6b;
-
-            --filter-bg: #ffffff;
+            --filter-bg: #fff;
 
         }
+
+
+        /* 크림 테마 */
 
         [data-theme="cream"] {
 
             --bg-color: #fff8ed;
-
             --text-color: #51463b;
-
             --card-bg: #fffdf8;
-
             --card-border: #eadfce;
-
             --title-color: #40352b;
-
             --sub-color: #756858;
-
             --accent-color: #d89b5b;
-
             --filter-bg: #fffaf2;
 
         }
 
+
+        /* 다크 테마 */
+
         [data-theme="dark"] {
 
             --bg-color: #0d1117;
-
             --text-color: #c9d1d9;
-
             --card-bg: #161b22;
-
             --card-border: #30363d;
-
             --title-color: #f0f6fc;
-
             --sub-color: #8b949e;
-
             --accent-color: #58a6ff;
-
             --filter-bg: #161b22;
 
         }
@@ -324,19 +310,20 @@
         }
 
         html {
+            min-height: 100%;
             scroll-behavior: smooth;
         }
 
         body {
 
-            margin: 0;
-
             min-height: 100vh;
 
+            margin: 0;
+
             padding:
-                34px
-                18px
-                45px;
+                28px
+                16px
+                38px;
 
             background:
                 var(--bg-color);
@@ -345,20 +332,61 @@
                 var(--text-color);
 
             font-family:
+                "Segoe UI",
                 "Malgun Gothic",
                 "Apple SD Gothic Neo",
+                Tahoma,
                 sans-serif;
 
-            text-align: center;
+            text-align:
+                center;
 
             transition:
                 background-color 0.25s ease,
                 color 0.25s ease;
+
+        }
+
+
+        button,
+        select,
+        textarea {
+            font: inherit;
+        }
+
+
+        button {
+            -webkit-tap-highlight-color:
+                transparent;
         }
 
 
         /* ==================================================
-           THEME BUTTONS
+           전체 폭
+        ================================================== */
+
+        header,
+        .category-nav,
+        .section-title,
+        .section-description,
+        .container,
+        .feedback-section,
+        footer {
+
+            width:
+                min(920px, 100%);
+
+            margin-left:
+                auto;
+
+            margin-right:
+                auto;
+
+        }
+
+
+        /* ==================================================
+           THEME SELECTOR
         ================================================== */
 
         .theme-selector {
@@ -367,10 +395,10 @@
                 fixed;
 
             top:
-                18px;
+                14px;
 
             right:
-                18px;
+                14px;
 
             z-index:
                 100;
@@ -379,13 +407,21 @@
                 flex;
 
             gap:
-                7px;
+                5px;
+
         }
+
 
         .theme-btn {
 
+            padding:
+                7px 11px;
+
             border:
                 1px solid var(--card-border);
+
+            border-radius:
+                999px;
 
             background:
                 var(--card-bg);
@@ -393,24 +429,20 @@
             color:
                 var(--text-color);
 
-            padding:
-                8px 13px;
-
-            border-radius:
-                999px;
-
             cursor:
                 pointer;
 
             font-size:
-                13px;
+                12px;
 
             font-weight:
                 700;
 
             transition:
                 0.2s ease;
+
         }
+
 
         .theme-btn:hover {
 
@@ -419,6 +451,7 @@
 
             transform:
                 translateY(-1px);
+
         }
 
 
@@ -428,65 +461,73 @@
 
         header {
 
-            max-width:
-                1050px;
+            margin-top:
+                16px;
 
-            margin:
-                20px auto 26px;
+            margin-bottom:
+                22px;
+
         }
+
 
         .decor-line {
 
             margin-bottom:
-                7px;
+                5px;
 
             color:
                 var(--accent-color);
 
             font-size:
-                17px;
+                15px;
 
             letter-spacing:
-                4px;
+                3px;
+
         }
+
 
         h1 {
 
             margin:
-                0 0 8px;
+                0 0 6px;
 
             color:
                 var(--title-color);
 
             font-size:
-                clamp(38px, 5vw, 48px);
+                42px;
 
             line-height:
                 1.15;
 
             font-weight:
                 800;
+
         }
+
 
         .subtitle {
 
             margin:
-                0 0 17px;
+                0 0 13px;
 
             color:
                 var(--sub-color);
 
             font-size:
-                17px;
+                15px;
 
             font-weight:
                 500;
+
         }
+
 
         .site-intro {
 
             max-width:
-                760px;
+                680px;
 
             margin:
                 0 auto;
@@ -495,10 +536,11 @@
                 var(--sub-color);
 
             font-size:
-                14px;
+                13px;
 
             line-height:
-                1.65;
+                1.6;
+
         }
 
 
@@ -507,12 +549,6 @@
         ================================================== */
 
         .category-nav {
-
-            max-width:
-                1100px;
-
-            margin:
-                0 auto 32px;
 
             display:
                 flex;
@@ -524,13 +560,24 @@
                 wrap;
 
             gap:
-                7px;
+                6px;
+
+            margin-bottom:
+                25px;
+
         }
+
 
         .category-btn {
 
+            padding:
+                7px 13px;
+
             border:
                 1px solid var(--card-border);
+
+            border-radius:
+                999px;
 
             background:
                 var(--filter-bg);
@@ -538,47 +585,41 @@
             color:
                 var(--text-color);
 
-            padding:
-                8px 15px;
-
-            border-radius:
-                999px;
-
             cursor:
                 pointer;
 
             font-size:
-                14px;
+                13px;
 
             transition:
                 0.2s ease;
+
         }
+
 
         .category-btn:hover,
         .category-btn.active {
+
+            border-color:
+                var(--accent-color);
 
             background:
                 var(--accent-color);
 
             color:
-                #ffffff;
+                #fff;
 
-            border-color:
-                var(--accent-color);
         }
 
 
         /* ==================================================
-           GAME SECTION
+           SECTION
         ================================================== */
 
         .section-title {
 
-            max-width:
-                1100px;
-
-            margin:
-                0 auto 5px;
+            margin-bottom:
+                4px;
 
             text-align:
                 left;
@@ -587,19 +628,18 @@
                 var(--title-color);
 
             font-size:
-                25px;
+                22px;
 
             line-height:
                 1.3;
+
         }
+
 
         .section-description {
 
-            max-width:
-                1100px;
-
-            margin:
-                0 auto 18px;
+            margin-bottom:
+                14px;
 
             text-align:
                 left;
@@ -608,7 +648,8 @@
                 var(--sub-color);
 
             font-size:
-                14px;
+                13px;
+
         }
 
 
@@ -618,12 +659,6 @@
 
         .container {
 
-            max-width:
-                1100px;
-
-            margin:
-                0 auto;
-
             display:
                 grid;
 
@@ -631,22 +666,30 @@
                 repeat(4, minmax(0, 1fr));
 
             gap:
-                18px;
+                14px;
 
             text-align:
                 left;
+
         }
 
+
         .game-card {
+
+            width:
+                auto;
 
             min-width:
                 0;
 
             min-height:
-                190px;
+                165px;
+
+            margin:
+                0;
 
             padding:
-                21px;
+                17px;
 
             display:
                 flex;
@@ -661,7 +704,7 @@
                 1px solid var(--card-border);
 
             border-radius:
-                16px;
+                14px;
 
             color:
                 inherit;
@@ -677,7 +720,9 @@
                 transform 0.2s ease,
                 border-color 0.2s ease,
                 box-shadow 0.2s ease;
+
         }
+
 
         .game-card:hover {
 
@@ -690,12 +735,15 @@
             box-shadow:
                 0 10px 24px
                 rgba(0, 0, 0, 0.075);
+
         }
+
 
         .game-card.hidden {
             display:
                 none;
         }
+
 
         .game-card .icon {
 
@@ -703,32 +751,36 @@
                 block;
 
             margin-bottom:
-                9px;
+                7px;
 
             font-size:
-                40px;
+                34px;
 
             line-height:
                 1;
+
         }
+
 
         .game-card h3 {
 
             margin:
-                0 0 7px;
+                0 0 5px;
 
             color:
                 var(--title-color);
 
             font-size:
-                19px;
+                17px;
 
             line-height:
-                1.35;
+                1.3;
 
             font-weight:
                 800;
+
         }
+
 
         .game-card p {
 
@@ -739,16 +791,15 @@
                 var(--sub-color);
 
             font-size:
-                13px;
+                12px;
 
             line-height:
-                1.55;
+                1.5;
+
         }
 
-        .game-tag {
 
-            display:
-                inline-block;
+        .game-tag {
 
             align-self:
                 flex-start;
@@ -757,7 +808,7 @@
                 auto;
 
             padding:
-                4px 7px;
+                3px 6px;
 
             border-radius:
                 7px;
@@ -769,7 +820,8 @@
                 var(--sub-color);
 
             font-size:
-                11px;
+                10px;
+
         }
 
 
@@ -779,35 +831,34 @@
 
         .feedback-section {
 
-            max-width:
-                1100px;
+            margin-top:
+                38px;
 
-            margin:
-                38px auto 0;
-
-            padding:
-                24px 0 0;
+            padding-top:
+                24px;
 
             border-top:
                 1px solid var(--card-border);
+
         }
+
 
         .feedback-button {
 
+            padding:
+                10px 18px;
+
             border:
                 1px solid var(--card-border);
+
+            border-radius:
+                999px;
 
             background:
                 var(--card-bg);
 
             color:
                 var(--text-color);
-
-            padding:
-                10px 18px;
-
-            border-radius:
-                999px;
 
             cursor:
                 pointer;
@@ -820,7 +871,9 @@
 
             transition:
                 0.2s ease;
+
         }
+
 
         .feedback-button:hover {
 
@@ -832,6 +885,7 @@
 
             transform:
                 translateY(-1px);
+
         }
 
 
@@ -841,24 +895,23 @@
 
         footer {
 
-            max-width:
-                1100px;
-
-            margin:
-                23px auto 0;
+            margin-top:
+                17px;
 
             color:
                 var(--sub-color);
 
             font-size:
-                12px;
+                11px;
 
             line-height:
                 1.7;
 
             opacity:
                 0.72;
+
         }
+
 
         footer p {
             margin:
@@ -895,12 +948,15 @@
 
             background:
                 rgba(0, 0, 0, 0.55);
+
         }
+
 
         .feedback-modal.open {
             display:
                 flex;
         }
+
 
         .feedback-modal-content {
 
@@ -934,7 +990,9 @@
 
             text-align:
                 left;
+
         }
+
 
         .feedback-modal-header {
 
@@ -952,7 +1010,9 @@
 
             margin-bottom:
                 16px;
+
         }
+
 
         .feedback-modal-header h2 {
 
@@ -964,7 +1024,9 @@
 
             font-size:
                 19px;
+
         }
+
 
         .feedback-close {
 
@@ -994,7 +1056,9 @@
 
             font-size:
                 15px;
+
         }
+
 
         .feedback-form {
 
@@ -1003,7 +1067,9 @@
 
             gap:
                 11px;
+
         }
+
 
         .feedback-form label {
 
@@ -1021,7 +1087,9 @@
 
             font-weight:
                 700;
+
         }
+
 
         .feedback-form select,
         .feedback-form textarea {
@@ -1029,8 +1097,14 @@
             width:
                 100%;
 
+            padding:
+                9px 11px;
+
             border:
                 1px solid var(--card-border);
+
+            border-radius:
+                9px;
 
             background:
                 var(--filter-bg);
@@ -1038,28 +1112,23 @@
             color:
                 var(--text-color);
 
-            border-radius:
-                9px;
-
-            padding:
-                9px 11px;
-
-            font:
-                inherit;
-
             font-size:
                 13px;
 
             outline:
                 none;
+
         }
+
 
         .feedback-form select:focus,
         .feedback-form textarea:focus {
 
             border-color:
                 var(--accent-color);
+
         }
+
 
         .feedback-form textarea {
 
@@ -1071,7 +1140,9 @@
 
             line-height:
                 1.5;
+
         }
+
 
         .feedback-info {
 
@@ -1086,7 +1157,9 @@
 
             font-size:
                 11px;
+
         }
+
 
         .feedback-notice {
 
@@ -1101,24 +1174,26 @@
 
             line-height:
                 1.5;
+
         }
+
 
         .feedback-submit {
 
+            padding:
+                10px 15px;
+
             border:
                 0;
+
+            border-radius:
+                9px;
 
             background:
                 var(--accent-color);
 
             color:
-                #ffffff;
-
-            padding:
-                10px 15px;
-
-            border-radius:
-                9px;
+                #fff;
 
             cursor:
                 pointer;
@@ -1128,12 +1203,15 @@
 
             font-weight:
                 800;
+
         }
+
 
         .feedback-submit:hover {
             filter:
                 brightness(0.96);
         }
+
 
         .feedback-submit:disabled {
 
@@ -1142,7 +1220,9 @@
 
             cursor:
                 wait;
+
         }
+
 
         .feedback-status {
 
@@ -1163,130 +1243,482 @@
 
             font-weight:
                 700;
+
         }
 
 
         /* ==================================================
-           RESPONSIVE
+           TABLET
         ================================================== */
 
-        @media (max-width: 950px) {
+        @media (max-width: 1000px) {
 
-            .container {
+            header,
+            .category-nav,
+            .section-title,
+            .section-description,
+            .container,
+            .feedback-section,
+            footer {
 
-                grid-template-columns:
-                    repeat(3, minmax(0, 1fr));
-            }
-        }
+                width:
+                    min(760px, 100%);
 
-        @media (max-width: 700px) {
-
-            body {
-                padding:
-                    78px 13px 35px;
-            }
-
-            .theme-selector {
-
-                top:
-                    12px;
-
-                right:
-                    12px;
             }
 
-            .container {
-
-                grid-template-columns:
-                    repeat(2, minmax(0, 1fr));
-
-                gap:
-                    13px;
-            }
-
-            .game-card {
-
-                min-height:
-                    175px;
-
-                padding:
-                    17px;
-            }
-
-            .game-card .icon {
-                font-size:
-                    34px;
-            }
-
-            .game-card h3 {
-                font-size:
-                    17px;
-            }
-
-            .game-card p {
-                font-size:
-                    12px;
-            }
-        }
-
-        @media (max-width: 470px) {
-
-            body {
-                padding-top:
-                    70px;
-            }
-
-            .theme-selector {
-
-                position:
-                    static;
-
-                justify-content:
-                    center;
-
-                margin-bottom:
-                    17px;
-            }
 
             h1 {
                 font-size:
-                    35px;
+                    38px;
             }
+
 
             .subtitle {
                 font-size:
                     14px;
             }
 
+
             .site-intro {
                 font-size:
-                    13px;
+                    12.5px;
+
+                max-width:
+                    620px;
             }
+
+
+            .category-btn {
+                padding:
+                    7px 12px;
+
+                font-size:
+                    12px;
+            }
+
 
             .container {
 
                 grid-template-columns:
-                    1fr;
+                    repeat(3, minmax(0, 1fr));
+
+                gap:
+                    12px;
+
             }
+
 
             .game-card {
+
                 min-height:
-                    160px;
+                    158px;
+
+                padding:
+                    15px;
+
             }
 
-            .section-title {
+
+            .game-card .icon {
+
                 font-size:
-                    22px;
+                    31px;
+
             }
+
+
+            .game-card h3 {
+
+                font-size:
+                    16px;
+
+            }
+
+
+            .game-card p {
+
+                font-size:
+                    11.5px;
+
+            }
+
+        }
+
+
+        /* ==================================================
+           MOBILE
+           2열 고정
+        ================================================== */
+
+        @media (max-width: 600px) {
+
+            body {
+
+                padding:
+                    14px
+                    8px
+                    28px;
+
+            }
+
+
+            .theme-selector {
+
+                position:
+                    static;
+
+                width:
+                    100%;
+
+                display:
+                    flex;
+
+                justify-content:
+                    center;
+
+                margin-bottom:
+                    12px;
+
+            }
+
+
+            .theme-btn {
+
+                padding:
+                    6px 10px;
+
+                font-size:
+                    11px;
+
+            }
+
+
+            header {
+
+                margin:
+                    6px auto 17px;
+
+            }
+
+
+            .decor-line {
+
+                font-size:
+                    13px;
+
+                letter-spacing:
+                    2px;
+
+            }
+
+
+            h1 {
+
+                font-size:
+                    32px;
+
+                margin-bottom:
+                    5px;
+
+            }
+
+
+            .subtitle {
+
+                font-size:
+                    12.5px;
+
+                margin-bottom:
+                    10px;
+
+            }
+
+
+            .site-intro {
+
+                padding:
+                    0 5px;
+
+                font-size:
+                    11.5px;
+
+                line-height:
+                    1.55;
+
+            }
+
+
+            .category-nav {
+
+                width:
+                    100%;
+
+                gap:
+                    5px;
+
+                margin-bottom:
+                    20px;
+
+            }
+
+
+            .category-btn {
+
+                padding:
+                    6px 10px;
+
+                font-size:
+                    11.5px;
+
+            }
+
+
+            .section-title {
+
+                width:
+                    100%;
+
+                font-size:
+                    19px;
+
+            }
+
+
+            .section-description {
+
+                width:
+                    100%;
+
+                margin-bottom:
+                    11px;
+
+                font-size:
+                    11.5px;
+
+            }
+
+
+            /* 핵심: 모바일 2열 */
+
+            .container {
+
+                width:
+                    100%;
+
+                grid-template-columns:
+                    repeat(2, minmax(0, 1fr));
+
+                gap:
+                    9px;
+
+            }
+
+
+            .game-card {
+
+                width:
+                    100% !important;
+
+                min-height:
+                    145px;
+
+                margin:
+                    0 !important;
+
+                padding:
+                    13px;
+
+                border-radius:
+                    12px;
+
+            }
+
+
+            .game-card .icon {
+
+                font-size:
+                    29px;
+
+                margin-bottom:
+                    6px;
+
+            }
+
+
+            .game-card h3 {
+
+                font-size:
+                    14px;
+
+                margin-bottom:
+                    4px;
+
+                line-height:
+                    1.3;
+
+            }
+
+
+            .game-card p {
+
+                font-size:
+                    10.5px;
+
+                line-height:
+                    1.45;
+
+            }
+
+
+            .game-tag {
+
+                margin-top:
+                    7px;
+
+                padding:
+                    2px 5px;
+
+                border-radius:
+                    5px;
+
+                font-size:
+                    9px;
+
+            }
+
+
+            .feedback-section {
+
+                width:
+                    100%;
+
+                margin-top:
+                    28px;
+
+                padding-top:
+                    18px;
+
+            }
+
+
+            .feedback-button {
+
+                padding:
+                    8px 15px;
+
+                font-size:
+                    12px;
+
+            }
+
+
+            footer {
+
+                width:
+                    100%;
+
+                margin-top:
+                    17px;
+
+                font-size:
+                    10px;
+
+            }
+
+        }
+
+
+        /* ==================================================
+           VERY SMALL PHONE
+        ================================================== */
+
+        @media (max-width: 380px) {
+
+            body {
+
+                padding:
+                    10px
+                    6px
+                    22px;
+
+            }
+
+
+            .container {
+                gap:
+                    7px;
+            }
+
+
+            .game-card {
+
+                min-height:
+                    138px;
+
+                padding:
+                    11px;
+
+            }
+
+
+            .game-card .icon {
+
+                font-size:
+                    26px;
+
+            }
+
+
+            .game-card h3 {
+
+                font-size:
+                    13px;
+
+            }
+
+
+            .game-card p {
+
+                font-size:
+                    9.5px;
+
+            }
+
+
+            .game-tag {
+
+                font-size:
+                    8px;
+
+            }
+
+
+            h1 {
+
+                font-size:
+                    29px;
+
+            }
+
+
+            .site-intro {
+
+                font-size:
+                    10.5px;
+
+            }
+
         }
 
     </style>
 </head>
 
+
 <body>
 
+
     <!-- ==================================================
-         THEME SELECTOR
+         THEME
     ================================================== -->
 
     <div class="theme-selector">
@@ -1347,7 +1779,7 @@
 
 
     <!-- ==================================================
-         CATEGORY FILTER
+         CATEGORY
     ================================================== -->
 
     <nav
@@ -1407,10 +1839,12 @@
 
 
     <!-- ==================================================
-         GAME SECTION
+         GAMES
     ================================================== -->
 
-    <section aria-labelledby="games-title">
+    <section
+        aria-labelledby="games-title"
+    >
 
         <h2
             id="games-title"
@@ -1419,6 +1853,7 @@
             🎮 전체 미니게임
         </h2>
 
+
         <p class="section-description">
             다양한 장르의 게임을 선택해서 바로 플레이해보세요.
         </p>
@@ -1426,65 +1861,74 @@
 
         <main class="container">
 
-            <!-- 01 -->
+
+            <!-- 스네이크 -->
 
             <a
                 class="game-card"
                 data-category="puzzle"
                 href="./snake/"
             >
-                <span class="icon">🐍</span>
+
+                <span class="icon">
+                    🐍
+                </span>
 
                 <h3>
                     스네이크 게임
                 </h3>
 
                 <p>
-                    방향키로 뱀을 움직여
-                    사과를 먹어보세요.
-                    몸집이 커질수록
-                    난이도가 상승합니다!
+                    방향키로 뱀을 움직여 사과를 먹어보세요.
+                    몸집이 커질수록 난이도가 상승합니다!
                 </p>
 
                 <span class="game-tag">
                     퍼즐
                 </span>
+
             </a>
 
 
-            <!-- 02 -->
+            <!-- 똥피하기 -->
 
             <a
                 class="game-card"
                 data-category="action"
                 href="./dodge/"
             >
-                <span class="icon">💩</span>
+
+                <span class="icon">
+                    💩
+                </span>
 
                 <h3>
                     똥피하기
                 </h3>
 
                 <p>
-                    하늘에서 떨어지는 장애물을
-                    좌우로 피하며 끝까지
-                    버텨보세요!
+                    하늘에서 떨어지는 장애물을 좌우로
+                    피하며 끝까지 버텨보세요!
                 </p>
 
                 <span class="game-tag">
                     액션
                 </span>
+
             </a>
 
 
-            <!-- 03 -->
+            <!-- 벽돌깨기 -->
 
             <a
                 class="game-card"
                 data-category="action"
                 href="./brick/"
             >
-                <span class="icon">🧱</span>
+
+                <span class="icon">
+                    🧱
+                </span>
 
                 <h3>
                     벽돌깨기
@@ -1498,92 +1942,105 @@
                 <span class="game-tag">
                     액션
                 </span>
+
             </a>
 
 
-            <!-- 04 -->
+            <!-- 틱택토 -->
 
             <a
                 class="game-card"
                 data-category="board"
                 href="./tictactoe/"
             >
-                <span class="icon">❌</span>
+
+                <span class="icon">
+                    ❌
+                </span>
 
                 <h3>
                     틱택토
                 </h3>
 
                 <p>
-                    컴퓨터 AI와 대결하며
-                    먼저 3줄을 완성해
-                    승리를 차지하세요.
+                    컴퓨터 AI와 대결하며 먼저 3줄을
+                    완성해 승리를 차지하세요.
                 </p>
 
                 <span class="game-tag">
                     보드
                 </span>
+
             </a>
 
 
-            <!-- 05 -->
+            <!-- 카드 뒤집기 -->
 
             <a
                 class="game-card"
                 data-category="puzzle"
                 href="./card/"
             >
-                <span class="icon">🃏</span>
+
+                <span class="icon">
+                    🃏
+                </span>
 
                 <h3>
                     카드 뒤집기
                 </h3>
 
                 <p>
-                    같은 그림의 카드를 찾아
-                    뒤집는 기억력 테스트
-                    게임입니다.
+                    같은 그림의 카드를 찾아 뒤집는
+                    기억력 테스트 게임입니다.
                 </p>
 
                 <span class="game-tag">
                     퍼즐
                 </span>
+
             </a>
 
 
-            <!-- 06 -->
+            <!-- 공룡 달리기 -->
 
             <a
                 class="game-card"
                 data-category="action"
                 href="./dino/"
             >
-                <span class="icon">🦖</span>
+
+                <span class="icon">
+                    🦖
+                </span>
 
                 <h3>
                     공룡 달리기
                 </h3>
 
                 <p>
-                    점프하며 선인장 장애물을
-                    피하고 최대한 멀리
-                    달려보세요!
+                    점프하며 선인장 장애물을 피하고
+                    최대한 멀리 달려보세요!
                 </p>
 
                 <span class="game-tag">
                     액션
                 </span>
+
             </a>
 
 
-            <!-- 07 -->
+            <!-- 행운의 동전 -->
 
             <a
                 class="game-card"
                 data-category="puzzle"
                 href="./gacha/"
             >
-                <span class="icon">🪙</span>
+
+                <span class="icon">
+                    🪙
+                </span>
 
                 <h3>
                     행운의 동전
@@ -1591,24 +2048,27 @@
 
                 <p>
                     앞면일까 뒷면일까?
-                    오늘의 행운을
-                    시험해보세요.
+                    오늘의 행운을 시험해보세요.
                 </p>
 
                 <span class="game-tag">
                     퍼즐
                 </span>
+
             </a>
 
 
-            <!-- 08 -->
+            <!-- 50층 대모험 -->
 
             <a
                 class="game-card"
                 data-category="action"
                 href="./jump/"
             >
-                <span class="icon">🏃</span>
+
+                <span class="icon">
+                    🏃
+                </span>
 
                 <h3>
                     50층 대모험
@@ -1616,24 +2076,27 @@
 
                 <p>
                     가시를 피하고 상자를 향해
-                    50개의 스테이지를
-                    돌파하세요!
+                    50개의 스테이지를 돌파하세요!
                 </p>
 
                 <span class="game-tag">
                     액션
                 </span>
+
             </a>
 
 
-            <!-- 09 -->
+            <!-- 미니지호 -->
 
             <a
                 class="game-card"
                 data-category="action"
                 href="./shoot/"
             >
-                <span class="icon">🛸</span>
+
+                <span class="icon">
+                    🛸
+                </span>
 
                 <h3>
                     지구 방위대 최후의 함선
@@ -1641,25 +2104,28 @@
                 </h3>
 
                 <p>
-                    우주선을 조종하여
-                    적의 탄막을 피하고
-                    거대 보스를 격추하세요!
+                    우주선을 조종하여 적의 탄막을
+                    피하고 거대 보스를 격추하세요!
                 </p>
 
                 <span class="game-tag">
                     액션
                 </span>
+
             </a>
 
 
-            <!-- 10 -->
+            <!-- 스페이스 타워디펜스 -->
 
             <a
                 class="game-card"
                 data-category="strategy"
                 href="./defense/"
             >
-                <span class="icon">🛡️</span>
+
+                <span class="icon">
+                    🛡️
+                </span>
 
                 <h3>
                     스페이스 타워디펜스
@@ -1667,49 +2133,55 @@
 
                 <p>
                     전략적으로 포탑을 배치해
-                    밀려오는 적 부대를
-                    막아내세요!
+                    밀려오는 적 부대를 막아내세요!
                 </p>
 
                 <span class="game-tag">
                     전략
                 </span>
+
             </a>
 
 
-            <!-- 11 -->
+            <!-- 테트리스 -->
 
             <a
                 class="game-card"
                 data-category="puzzle"
                 href="./tetris/"
             >
-                <span class="icon">🧱</span>
+
+                <span class="icon">
+                    🧱
+                </span>
 
                 <h3>
                     레트로 테트리스
                 </h3>
 
                 <p>
-                    블록을 빈틈없이 쌓아
-                    줄을 완성하고
+                    블록을 빈틈없이 쌓아 줄을 완성하고
                     최고 점수에 도전하세요!
                 </p>
 
                 <span class="game-tag">
                     퍼즐
                 </span>
+
             </a>
 
 
-            <!-- 12 -->
+            <!-- 2048 -->
 
             <a
                 class="game-card"
                 data-category="puzzle"
                 href="./p2048/"
             >
-                <span class="icon">🔢</span>
+
+                <span class="icon">
+                    🔢
+                </span>
 
                 <h3>
                     레트로 2048
@@ -1723,42 +2195,49 @@
                 <span class="game-tag">
                     퍼즐
                 </span>
+
             </a>
 
 
-            <!-- 13 -->
+            <!-- RTS -->
 
             <a
                 class="game-card"
                 data-category="strategy"
                 href="./rts/"
             >
-                <span class="icon">⚔️</span>
+
+                <span class="icon">
+                    ⚔️
+                </span>
 
                 <h3>
                     블리츠RTS
                 </h3>
 
                 <p>
-                    자원을 채취하고 병력을
-                    생산하여 적 기지를
-                    무너뜨리세요!
+                    자원을 채취하고 병력을 생산하여
+                    적 기지를 무너뜨리세요!
                 </p>
 
                 <span class="game-tag">
                     전략
                 </span>
+
             </a>
 
 
-            <!-- 14 -->
+            <!-- 레이싱 -->
 
             <a
                 class="game-card"
                 data-category="action"
                 href="./racing/"
             >
-                <span class="icon">🏎️</span>
+
+                <span class="icon">
+                    🏎️
+                </span>
 
                 <h3>
                     레트로 레이싱
@@ -1766,24 +2245,27 @@
 
                 <p>
                     차량을 피하고 추월하며
-                    최대 주행 거리에
-                    도전하세요!
+                    최대 주행 거리에 도전하세요!
                 </p>
 
                 <span class="game-tag">
                     액션
                 </span>
+
             </a>
 
 
-            <!-- 15 -->
+            <!-- 블랙잭 -->
 
             <a
                 class="game-card"
                 data-category="board"
                 href="./blackjack/"
             >
-                <span class="icon">🂡</span>
+
+                <span class="icon">
+                    🂡
+                </span>
 
                 <h3>
                     클래식 블랙잭
@@ -1797,132 +2279,149 @@
                 <span class="game-tag">
                     보드
                 </span>
+
             </a>
 
 
-            <!-- 16 -->
+            <!-- 부루마블 -->
 
             <a
                 class="game-card"
                 data-category="board"
                 href="./marble/"
             >
-                <span class="icon">🎲</span>
+
+                <span class="icon">
+                    🎲
+                </span>
 
                 <h3>
                     미니 부루마블
                 </h3>
 
                 <p>
-                    도시를 매입하고 건물을
-                    건설하며 보드판을
-                    점령해보세요!
+                    도시를 매입하고 건물을 건설하며
+                    보드판을 점령해보세요!
                 </p>
 
                 <span class="game-tag">
                     보드
                 </span>
+
             </a>
 
 
-            <!-- 17 -->
+            <!-- 커피숍 타이쿤 -->
 
             <a
                 class="game-card"
                 data-category="simulation"
                 href="./tycoon/"
             >
-                <span class="icon">☕</span>
+
+                <span class="icon">
+                    ☕
+                </span>
 
                 <h3>
                     커피숍 타이쿤
                 </h3>
 
                 <p>
-                    손님의 주문을 처리하고
-                    매장을 성장시키는
-                    경영 게임입니다.
+                    손님의 주문을 처리하고 매장을
+                    성장시키는 경영 게임입니다.
                 </p>
 
                 <span class="game-tag">
                     시뮬레이션
                 </span>
+
             </a>
 
 
-            <!-- 18 -->
+            <!-- 행성 채굴 -->
 
             <a
                 class="game-card"
                 data-category="simulation"
                 href="./simulator/"
             >
-                <span class="icon">🌌</span>
+
+                <span class="icon">
+                    🌌
+                </span>
 
                 <h3>
                     행성 채굴 시뮬레이터
                 </h3>
 
                 <p>
-                    우주 자원을 채굴하고
-                    장비를 업그레이드하며
-                    기지를 성장시키세요.
+                    우주 자원을 채굴하고 장비를
+                    업그레이드하며 기지를 성장시키세요.
                 </p>
 
                 <span class="game-tag">
                     시뮬레이션
                 </span>
+
             </a>
 
 
-            <!-- 19 -->
+            <!-- 레트로 비트 -->
 
             <a
                 class="game-card"
                 data-category="action"
                 href="./rhythm/"
             >
-                <span class="icon">🎧</span>
+
+                <span class="icon">
+                    🎧
+                </span>
 
                 <h3>
                     레트로 비트
                 </h3>
 
                 <p>
-                    음악의 비트에 맞춰
-                    내려오는 노트를
+                    음악의 비트에 맞춰 내려오는 노트를
                     정확하게 입력해보세요!
                 </p>
 
                 <span class="game-tag">
                     액션
                 </span>
+
             </a>
 
 
-            <!-- 20 -->
+            <!-- 체스 -->
 
             <a
                 class="game-card"
                 data-category="board"
                 href="./chess/"
             >
-                <span class="icon">♟️</span>
+
+                <span class="icon">
+                    ♟️
+                </span>
 
                 <h3>
                     아케이드 체스
                 </h3>
 
                 <p>
-                    AI와 8×8 전술 보드에서
-                    대결하며 상대 킹을
-                    체크메이트하세요!
+                    AI와 8×8 전술 보드에서 대결하며
+                    상대 킹을 체크메이트하세요!
                 </p>
 
                 <span class="game-tag">
                     보드
                 </span>
+
             </a>
+
 
         </main>
 
@@ -2047,10 +2546,7 @@
                         id="feedback-message"
                         name="message"
                         maxlength="2000"
-                        placeholder="
-                            게임 오류나 불편한 점,
-                            새로운 게임 아이디어 등을 적어주세요.
-                        "
+                        placeholder="게임 오류나 불편한 점, 새로운 게임 아이디어 등을 적어주세요."
                         required
                     ></textarea>
 
@@ -2078,10 +2574,7 @@
 
 
                 <p class="feedback-notice">
-
-                    개인정보(이름, 전화번호, 주소 등)는
-                    입력하지 말아주세요.
-
+                    개인정보(이름, 전화번호, 주소 등)는 입력하지 말아주세요.
                 </p>
 
 
@@ -2117,13 +2610,19 @@
            THEME SYSTEM
         ================================================== */
 
-        function applyTheme(theme) {
+        function applyMiniGTheme(theme) {
+
+            const normalized =
+                theme === "light"
+                    ? "white"
+                    : theme;
 
             const safeTheme =
-                theme === "cream" ||
-                theme === "dark"
-                    ? theme
+                normalized === "cream" ||
+                normalized === "dark"
+                    ? normalized
                     : "white";
+
 
             if (safeTheme === "white") {
 
@@ -2139,7 +2638,9 @@
                         "data-theme",
                         safeTheme
                     );
+
             }
+
         }
 
 
@@ -2151,31 +2652,31 @@
                     ? theme
                     : "white";
 
+
             localStorage.setItem(
                 "minig-theme",
                 safeTheme
             );
 
-            applyTheme(
+
+            applyMiniGTheme(
                 safeTheme
             );
+
         }
 
 
-        const savedTheme =
+        /* 저장된 테마 */
+
+        applyMiniGTheme(
             localStorage.getItem(
                 "minig-theme"
-            );
-
-        applyTheme(
-            savedTheme || "white"
+            )
         );
 
 
-        /*
-         * 다른 미니게임 페이지에서
-         * 테마가 변경됐을 때 동기화
-         */
+        /* 다른 탭에서 변경된 경우 */
+
         window.addEventListener(
             "storage",
             function(event) {
@@ -2185,27 +2686,28 @@
                     "minig-theme"
                 ) {
 
-                    applyTheme(
-                        event.newValue ||
-                        "white"
+                    applyMiniGTheme(
+                        event.newValue
                     );
+
                 }
+
             }
         );
 
 
-        /*
-         * 페이지 복귀 시 테마 재확인
-         */
+        /* 다른 게임에서 메인으로 돌아왔을 때 */
+
         window.addEventListener(
             "pageshow",
             function() {
 
-                applyTheme(
+                applyMiniGTheme(
                     localStorage.getItem(
                         "minig-theme"
-                    ) || "white"
+                    )
                 );
+
             }
         );
 
@@ -2218,6 +2720,7 @@
             document.querySelectorAll(
                 ".category-btn"
             );
+
 
         const gameCards =
             document.querySelectorAll(
@@ -2243,20 +2746,21 @@
                                     .remove(
                                         "active"
                                     );
+
                             }
                         );
 
 
-                        this.classList
-                            .add("active");
+                        this.classList.add(
+                            "active"
+                        );
 
 
                         gameCards.forEach(
                             function(card) {
 
                                 const category =
-                                    card.dataset
-                                        .category;
+                                    card.dataset.category;
 
 
                                 if (
@@ -2277,7 +2781,9 @@
                                         .add(
                                             "hidden"
                                         );
+
                                 }
+
                             }
                         );
 
@@ -2297,35 +2803,42 @@
                 "feedback-open"
             );
 
+
         const feedbackModal =
             document.getElementById(
                 "feedback-modal"
             );
+
 
         const feedbackClose =
             document.getElementById(
                 "feedback-close"
             );
 
+
         const feedbackForm =
             document.getElementById(
                 "feedback-form"
             );
+
 
         const feedbackMessage =
             document.getElementById(
                 "feedback-message"
             );
 
+
         const feedbackCount =
             document.getElementById(
                 "feedback-count"
             );
 
+
         const feedbackStatus =
             document.getElementById(
                 "feedback-status"
             );
+
 
         const feedbackSubmit =
             document.getElementById(
@@ -2334,14 +2847,14 @@
 
 
         /*
-         * 중요:
-         * 현재 사용 중인 Formspree 주소를 넣으세요.
+         * 여기만 실제 Formspree 주소로 설정
          *
          * 예:
          * https://formspree.io/f/xxxxxxxx
          */
+
         const FORM_ENDPOINT =
-            "https://formspree.io/f/YOUR_FORM_ID";
+            "https://formspree.io/f/mjykveqr";
 
 
         function updateFeedbackCount() {
@@ -2349,19 +2862,24 @@
             feedbackCount.textContent =
                 feedbackMessage.value.length +
                 " / 2000";
+
         }
 
 
         function openFeedbackModal() {
 
-            feedbackModal.classList
-                .add("open");
+            feedbackModal.classList.add(
+                "open"
+            );
+
 
             feedbackStatus.textContent =
                 "";
 
+
             document.body.style.overflow =
                 "hidden";
+
 
             setTimeout(
                 function() {
@@ -2371,16 +2889,20 @@
                 },
                 0
             );
+
         }
 
 
         function closeFeedbackModal() {
 
-            feedbackModal.classList
-                .remove("open");
+            feedbackModal.classList.remove(
+                "open"
+            );
+
 
             document.body.style.overflow =
                 "";
+
         }
 
 
@@ -2412,7 +2934,9 @@
                 ) {
 
                     closeFeedbackModal();
+
                 }
+
             }
         );
 
@@ -2428,7 +2952,9 @@
                 ) {
 
                     closeFeedbackModal();
+
                 }
+
             }
         );
 
@@ -2450,11 +2976,13 @@
                         "Formspree 연결 주소를 설정해주세요.";
 
                     return;
+
                 }
 
 
                 feedbackSubmit.disabled =
                     true;
+
 
                 feedbackStatus.textContent =
                     "의견을 보내는 중...";
@@ -2487,6 +3015,7 @@
                         throw new Error(
                             "전송 실패"
                         );
+
                     }
 
 
@@ -2495,6 +3024,7 @@
 
 
                     feedbackForm.reset();
+
 
                     updateFeedbackCount();
 
@@ -2514,6 +3044,7 @@
 
                     feedbackSubmit.disabled =
                         false;
+
                 }
 
             }
