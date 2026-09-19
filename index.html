@@ -889,6 +889,148 @@
             }
         }
     </style>
+
+
+    <style id="final-60-percent-tuning">
+        /* ==========================================
+           최종 크기 조정
+           - 현재 정사각형 카드 크기의 약 60%
+           - 분류 태그는 글자 크기에 맞게만 표시
+           ========================================== */
+
+        .container {
+            width: min(576px, calc(100% - 20px));
+            max-width: 576px;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .game-card {
+            padding: 10px;
+            border-radius: 11px;
+        }
+
+        .game-card .icon {
+            font-size: 1.45rem;
+            margin-bottom: 6px;
+        }
+
+        .game-card h3 {
+            font-size: 0.70rem;
+            line-height: 1.28;
+            margin-bottom: 4px;
+        }
+
+        .game-card p {
+            font-size: 0.54rem;
+            line-height: 1.45;
+        }
+
+        .game-tag {
+            display: inline-block;
+            width: max-content;
+            max-width: 100%;
+            align-self: flex-start;
+            margin-top: auto;
+            padding: 3px 5px;
+            border-radius: 6px;
+            font-size: 0.52rem;
+            line-height: 1.2;
+            white-space: nowrap;
+        }
+
+        @media (min-width: 601px) and (max-width: 1000px) {
+            .container {
+                width: min(520px, calc(100% - 20px));
+                max-width: 520px;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 8px;
+            }
+
+            .game-card {
+                padding: 9px;
+            }
+
+            .game-card .icon {
+                font-size: 1.3rem;
+                margin-bottom: 5px;
+            }
+
+            .game-card h3 {
+                font-size: 0.66rem;
+            }
+
+            .game-card p {
+                font-size: 0.50rem;
+            }
+
+            .game-tag {
+                font-size: 0.48rem;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                width: 100%;
+                max-width: none;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 7px;
+            }
+
+            .game-card {
+                padding: 9px;
+                border-radius: 10px;
+            }
+
+            .game-card .icon {
+                font-size: 1.35rem;
+                margin-bottom: 6px;
+            }
+
+            .game-card h3 {
+                font-size: 0.68rem;
+                line-height: 1.28;
+            }
+
+            .game-card p {
+                font-size: 0.52rem;
+                line-height: 1.42;
+            }
+
+            .game-tag {
+                width: max-content;
+                padding: 2px 5px;
+                font-size: 0.50rem;
+            }
+        }
+
+        @media (max-width: 380px) {
+            .container {
+                gap: 6px;
+            }
+
+            .game-card {
+                padding: 8px;
+            }
+
+            .game-card .icon {
+                font-size: 1.2rem;
+            }
+
+            .game-card h3 {
+                font-size: 0.62rem;
+            }
+
+            .game-card p {
+                font-size: 0.48rem;
+            }
+
+            .game-tag {
+                font-size: 0.46rem;
+            }
+        }
+    </style>
+
 </head>
 
 <body>
