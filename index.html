@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
+
     <meta charset="UTF-8">
 
     <meta
@@ -9,25 +11,40 @@
     >
 
     <title>
-        미니지 - 무료 미니게임 오락실 | 레트로 게임 모음
+        미니지 - 무료 미니게임 오락실
     </title>
 
     <meta
         name="description"
-        content="미니지에서 다양한 무료 미니게임과 레트로 게임을 설치 없이 바로 즐겨보세요."
+        content="
+            미니지에서 다양한 무료 미니게임과
+            레트로 게임을 설치 없이 바로 즐겨보세요.
+        "
     >
 
     <meta
         name="keywords"
         content="
-            미니지, 미니게임, 무료게임, 온라인게임,
-            브라우저게임, 레트로게임, 오락실게임,
-            테트리스, 2048, 체스, 부루마블,
-            레이싱, 리듬게임, 타이쿤
+            미니지,
+            미니게임,
+            무료게임,
+            온라인게임,
+            브라우저게임,
+            레트로게임,
+            오락실게임,
+            테트리스,
+            2048,
+            체스,
+            부루마블,
+            레이싱,
+            리듬게임
         "
     >
 
-    <meta name="author" content="미니지">
+    <meta
+        name="author"
+        content="미니지"
+    >
 
     <meta
         name="robots"
@@ -52,7 +69,7 @@
 
 
     <!-- ==================================================
-         Open Graph
+         OPEN GRAPH
     ================================================== -->
 
     <meta
@@ -74,7 +91,7 @@
         property="og:description"
         content="
             다양한 무료 미니게임과 레트로 게임을
-            설치 없이 바로 즐겨보세요.
+            설치 없이 바로 플레이해보세요.
         "
     >
 
@@ -95,7 +112,7 @@
 
 
     <!-- ==================================================
-         WebSite 구조화 데이터
+         WEBSITE STRUCTURED DATA
     ================================================== -->
 
     <script type="application/ld+json">
@@ -113,7 +130,7 @@
 
 
     <!-- ==================================================
-         게임 목록 구조화 데이터
+         GAME LIST STRUCTURED DATA
     ================================================== -->
 
     <script type="application/ld+json">
@@ -257,47 +274,85 @@
 
         :root {
 
-            --bg-color: #f8f9fa;
-            --text-color: #333;
-            --card-bg: #fff;
-            --card-border: #e9ecef;
-            --title-color: #222;
-            --sub-color: #666;
-            --accent-color: #ff6b6b;
-            --filter-bg: #fff;
+            --bg-color:
+                #f8f9fa;
 
+            --text-color:
+                #333;
+
+            --card-bg:
+                #fff;
+
+            --card-border:
+                #e9ecef;
+
+            --title-color:
+                #222;
+
+            --sub-color:
+                #666;
+
+            --accent-color:
+                #ff6b6b;
+
+            --filter-bg:
+                #fff;
         }
 
-
-        /* 크림 테마 */
 
         [data-theme="cream"] {
 
-            --bg-color: #fff8ed;
-            --text-color: #51463b;
-            --card-bg: #fffdf8;
-            --card-border: #eadfce;
-            --title-color: #40352b;
-            --sub-color: #756858;
-            --accent-color: #d89b5b;
-            --filter-bg: #fffaf2;
+            --bg-color:
+                #fff8ed;
 
+            --text-color:
+                #51463b;
+
+            --card-bg:
+                #fffdf8;
+
+            --card-border:
+                #eadfce;
+
+            --title-color:
+                #40352b;
+
+            --sub-color:
+                #756858;
+
+            --accent-color:
+                #d89b5b;
+
+            --filter-bg:
+                #fffaf2;
         }
 
 
-        /* 다크 테마 */
-
         [data-theme="dark"] {
 
-            --bg-color: #0d1117;
-            --text-color: #c9d1d9;
-            --card-bg: #161b22;
-            --card-border: #30363d;
-            --title-color: #f0f6fc;
-            --sub-color: #8b949e;
-            --accent-color: #58a6ff;
-            --filter-bg: #161b22;
+            --bg-color:
+                #0d1117;
 
+            --text-color:
+                #c9d1d9;
+
+            --card-bg:
+                #161b22;
+
+            --card-border:
+                #30363d;
+
+            --title-color:
+                #f0f6fc;
+
+            --sub-color:
+                #8b949e;
+
+            --accent-color:
+                #58a6ff;
+
+            --filter-bg:
+                #161b22;
         }
 
 
@@ -321,9 +376,9 @@
             margin: 0;
 
             padding:
-                28px
-                16px
-                38px;
+                18px
+                10px
+                25px;
 
             background:
                 var(--bg-color);
@@ -344,7 +399,6 @@
             transition:
                 background-color 0.25s ease,
                 color 0.25s ease;
-
         }
 
 
@@ -362,7 +416,7 @@
 
 
         /* ==================================================
-           전체 폭
+           CONTENT WIDTH
         ================================================== */
 
         header,
@@ -374,19 +428,18 @@
         footer {
 
             width:
-                min(920px, 100%);
+                min(760px, 100%);
 
             margin-left:
                 auto;
 
             margin-right:
                 auto;
-
         }
 
 
         /* ==================================================
-           THEME SELECTOR
+           THEME BUTTON
         ================================================== */
 
         .theme-selector {
@@ -395,10 +448,10 @@
                 fixed;
 
             top:
-                14px;
+                9px;
 
             right:
-                14px;
+                9px;
 
             z-index:
                 100;
@@ -407,18 +460,18 @@
                 flex;
 
             gap:
-                5px;
-
+                3px;
         }
 
 
         .theme-btn {
 
             padding:
-                7px 11px;
+                4px 7px;
 
             border:
-                1px solid var(--card-border);
+                1px solid
+                var(--card-border);
 
             border-radius:
                 999px;
@@ -433,14 +486,13 @@
                 pointer;
 
             font-size:
-                12px;
+                8px;
 
             font-weight:
                 700;
 
             transition:
                 0.2s ease;
-
         }
 
 
@@ -451,7 +503,6 @@
 
             transform:
                 translateY(-1px);
-
         }
 
 
@@ -462,72 +513,65 @@
         header {
 
             margin-top:
-                16px;
+                8px;
 
             margin-bottom:
-                22px;
-
+                12px;
         }
 
 
         .decor-line {
 
             margin-bottom:
-                5px;
+                3px;
 
             color:
                 var(--accent-color);
 
             font-size:
-                15px;
+                10px;
 
             letter-spacing:
-                3px;
-
+                2px;
         }
 
 
         h1 {
 
             margin:
-                0 0 6px;
+                0 0 4px;
 
             color:
                 var(--title-color);
 
             font-size:
-                42px;
+                28px;
 
             line-height:
                 1.15;
 
             font-weight:
                 800;
-
         }
 
 
         .subtitle {
 
             margin:
-                0 0 13px;
+                0 0 7px;
 
             color:
                 var(--sub-color);
 
             font-size:
-                15px;
-
-            font-weight:
-                500;
-
+                10px;
         }
 
 
         .site-intro {
 
             max-width:
-                680px;
+                500px;
 
             margin:
                 0 auto;
@@ -536,11 +580,10 @@
                 var(--sub-color);
 
             font-size:
-                13px;
+                9px;
 
             line-height:
-                1.6;
-
+                1.45;
         }
 
 
@@ -560,21 +603,21 @@
                 wrap;
 
             gap:
-                6px;
+                3px;
 
             margin-bottom:
-                25px;
-
+                13px;
         }
 
 
         .category-btn {
 
             padding:
-                7px 13px;
+                4px 7px;
 
             border:
-                1px solid var(--card-border);
+                1px solid
+                var(--card-border);
 
             border-radius:
                 999px;
@@ -589,11 +632,10 @@
                 pointer;
 
             font-size:
-                13px;
+                9px;
 
             transition:
                 0.2s ease;
-
         }
 
 
@@ -608,7 +650,6 @@
 
             color:
                 #fff;
-
         }
 
 
@@ -619,7 +660,7 @@
         .section-title {
 
             margin-bottom:
-                4px;
+                2px;
 
             text-align:
                 left;
@@ -628,18 +669,17 @@
                 var(--title-color);
 
             font-size:
-                22px;
+                15px;
 
             line-height:
                 1.3;
-
         }
 
 
         .section-description {
 
             margin-bottom:
-                14px;
+                8px;
 
             text-align:
                 left;
@@ -648,8 +688,7 @@
                 var(--sub-color);
 
             font-size:
-                13px;
-
+                9px;
         }
 
 
@@ -666,11 +705,10 @@
                 repeat(4, minmax(0, 1fr));
 
             gap:
-                14px;
+                7px;
 
             text-align:
                 left;
-
         }
 
 
@@ -683,13 +721,13 @@
                 0;
 
             min-height:
-                165px;
+                105px;
 
             margin:
                 0;
 
             padding:
-                17px;
+                9px;
 
             display:
                 flex;
@@ -701,10 +739,11 @@
                 var(--card-bg);
 
             border:
-                1px solid var(--card-border);
+                1px solid
+                var(--card-border);
 
             border-radius:
-                14px;
+                9px;
 
             color:
                 inherit;
@@ -713,29 +752,27 @@
                 none;
 
             box-shadow:
-                0 3px 10px
+                0 2px 6px
                 rgba(0, 0, 0, 0.025);
 
             transition:
-                transform 0.2s ease,
-                border-color 0.2s ease,
-                box-shadow 0.2s ease;
-
+                transform 0.18s ease,
+                border-color 0.18s ease,
+                box-shadow 0.18s ease;
         }
 
 
         .game-card:hover {
 
             transform:
-                translateY(-5px);
+                translateY(-3px);
 
             border-color:
                 var(--accent-color);
 
             box-shadow:
-                0 10px 24px
-                rgba(0, 0, 0, 0.075);
-
+                0 6px 14px
+                rgba(0, 0, 0, 0.06);
         }
 
 
@@ -751,34 +788,32 @@
                 block;
 
             margin-bottom:
-                7px;
+                4px;
 
             font-size:
-                34px;
+                22px;
 
             line-height:
                 1;
-
         }
 
 
         .game-card h3 {
 
             margin:
-                0 0 5px;
+                0 0 3px;
 
             color:
                 var(--title-color);
 
             font-size:
-                17px;
+                10px;
 
             line-height:
-                1.3;
+                1.25;
 
             font-weight:
                 800;
-
         }
 
 
@@ -791,11 +826,10 @@
                 var(--sub-color);
 
             font-size:
-                12px;
+                8px;
 
             line-height:
-                1.5;
-
+                1.35;
         }
 
 
@@ -808,10 +842,10 @@
                 auto;
 
             padding:
-                3px 6px;
+                2px 4px;
 
             border-radius:
-                7px;
+                4px;
 
             background:
                 var(--bg-color);
@@ -820,8 +854,7 @@
                 var(--sub-color);
 
             font-size:
-                10px;
-
+                7px;
         }
 
 
@@ -832,24 +865,25 @@
         .feedback-section {
 
             margin-top:
-                38px;
+                18px;
 
             padding-top:
-                24px;
+                12px;
 
             border-top:
-                1px solid var(--card-border);
-
+                1px solid
+                var(--card-border);
         }
 
 
         .feedback-button {
 
             padding:
-                10px 18px;
+                5px 9px;
 
             border:
-                1px solid var(--card-border);
+                1px solid
+                var(--card-border);
 
             border-radius:
                 999px;
@@ -864,14 +898,13 @@
                 pointer;
 
             font-size:
-                14px;
+                9px;
 
             font-weight:
                 700;
 
             transition:
                 0.2s ease;
-
         }
 
 
@@ -882,10 +915,6 @@
 
             border-color:
                 var(--accent-color);
-
-            transform:
-                translateY(-1px);
-
         }
 
 
@@ -896,26 +925,25 @@
         footer {
 
             margin-top:
-                17px;
+                9px;
 
             color:
                 var(--sub-color);
 
             font-size:
-                11px;
+                7px;
 
             line-height:
-                1.7;
+                1.6;
 
             opacity:
                 0.72;
-
         }
 
 
         footer p {
             margin:
-                4px 0;
+                3px 0;
         }
 
 
@@ -944,11 +972,10 @@
                 center;
 
             padding:
-                15px;
+                10px;
 
             background:
                 rgba(0, 0, 0, 0.55);
-
         }
 
 
@@ -961,16 +988,16 @@
         .feedback-modal-content {
 
             width:
-                min(510px, 100%);
+                min(420px, 100%);
 
             max-height:
-                calc(100vh - 30px);
+                calc(100vh - 20px);
 
             overflow-y:
                 auto;
 
             padding:
-                21px;
+                16px;
 
             background:
                 var(--card-bg);
@@ -979,18 +1006,18 @@
                 var(--text-color);
 
             border:
-                1px solid var(--card-border);
+                1px solid
+                var(--card-border);
 
             border-radius:
-                17px;
+                14px;
 
             box-shadow:
-                0 18px 50px
+                0 12px 35px
                 rgba(0, 0, 0, 0.22);
 
             text-align:
                 left;
-
         }
 
 
@@ -1006,11 +1033,10 @@
                 space-between;
 
             gap:
-                10px;
+                8px;
 
             margin-bottom:
-                16px;
-
+                12px;
         }
 
 
@@ -1023,24 +1049,27 @@
                 var(--title-color);
 
             font-size:
-                19px;
-
+                16px;
         }
 
 
         .feedback-close {
 
             width:
-                32px;
+                28px;
 
             height:
-                32px;
+                28px;
 
             padding:
                 0;
 
             border:
-                1px solid var(--card-border);
+                1px solid
+                var(--card-border);
+
+            border-radius:
+                8px;
 
             background:
                 var(--card-bg);
@@ -1048,15 +1077,11 @@
             color:
                 var(--text-color);
 
-            border-radius:
-                9px;
-
             cursor:
                 pointer;
 
             font-size:
-                15px;
-
+                13px;
         }
 
 
@@ -1066,8 +1091,7 @@
                 grid;
 
             gap:
-                11px;
-
+                9px;
         }
 
 
@@ -1077,17 +1101,16 @@
                 grid;
 
             gap:
-                5px;
+                4px;
 
             color:
                 var(--title-color);
 
             font-size:
-                13px;
+                11px;
 
             font-weight:
                 700;
-
         }
 
 
@@ -1098,13 +1121,14 @@
                 100%;
 
             padding:
-                9px 11px;
+                8px 9px;
 
             border:
-                1px solid var(--card-border);
+                1px solid
+                var(--card-border);
 
             border-radius:
-                9px;
+                8px;
 
             background:
                 var(--filter-bg);
@@ -1113,34 +1137,23 @@
                 var(--text-color);
 
             font-size:
-                13px;
+                11px;
 
             outline:
                 none;
-
-        }
-
-
-        .feedback-form select:focus,
-        .feedback-form textarea:focus {
-
-            border-color:
-                var(--accent-color);
-
         }
 
 
         .feedback-form textarea {
 
             min-height:
-                135px;
+                110px;
 
             resize:
                 vertical;
 
             line-height:
-                1.5;
-
+                1.4;
         }
 
 
@@ -1156,8 +1169,7 @@
                 var(--sub-color);
 
             font-size:
-                11px;
-
+                9px;
         }
 
 
@@ -1170,24 +1182,23 @@
                 var(--sub-color);
 
             font-size:
-                11px;
+                9px;
 
             line-height:
-                1.5;
-
+                1.4;
         }
 
 
         .feedback-submit {
 
             padding:
-                10px 15px;
+                8px 11px;
 
             border:
                 0;
 
             border-radius:
-                9px;
+                8px;
 
             background:
                 var(--accent-color);
@@ -1199,17 +1210,10 @@
                 pointer;
 
             font-size:
-                13px;
+                11px;
 
             font-weight:
                 800;
-
-        }
-
-
-        .feedback-submit:hover {
-            filter:
-                brightness(0.96);
         }
 
 
@@ -1220,14 +1224,13 @@
 
             cursor:
                 wait;
-
         }
 
 
         .feedback-status {
 
             min-height:
-                19px;
+                16px;
 
             margin:
                 0;
@@ -1239,11 +1242,10 @@
                 center;
 
             font-size:
-                11px;
+                9px;
 
             font-weight:
                 700;
-
         }
 
 
@@ -1251,103 +1253,83 @@
            TABLET
         ================================================== */
 
-        @media (max-width: 1000px) {
+        @media (min-width: 601px)
+        and (max-width: 1000px) {
 
-            header,
-            .category-nav,
-            .section-title,
-            .section-description,
-            .container,
-            .feedback-section,
-            footer {
+            body {
 
-                width:
-                    min(760px, 100%);
-
-            }
-
-
-            h1 {
-                font-size:
-                    38px;
-            }
-
-
-            .subtitle {
-                font-size:
-                    14px;
-            }
-
-
-            .site-intro {
-                font-size:
-                    12.5px;
-
-                max-width:
-                    620px;
-            }
-
-
-            .category-btn {
                 padding:
-                    7px 12px;
+                    16px
+                    8px
+                    23px;
+            }
 
-                font-size:
-                    12px;
+
+            header {
+
+                margin:
+                    7px auto 11px;
             }
 
 
             .container {
 
+                width:
+                    min(650px, 100%);
+
                 grid-template-columns:
                     repeat(3, minmax(0, 1fr));
 
                 gap:
-                    12px;
+                    6px;
+            }
 
+
+            h1 {
+
+                font-size:
+                    26px;
+            }
+
+
+            .subtitle {
+
+                font-size:
+                    10px;
+            }
+
+
+            .site-intro {
+
+                max-width:
+                    500px;
+
+                font-size:
+                    9px;
             }
 
 
             .game-card {
 
                 min-height:
-                    158px;
+                    105px;
 
                 padding:
-                    15px;
-
+                    9px;
             }
 
 
             .game-card .icon {
 
                 font-size:
-                    31px;
-
+                    21px;
             }
-
-
-            .game-card h3 {
-
-                font-size:
-                    16px;
-
-            }
-
-
-            .game-card p {
-
-                font-size:
-                    11.5px;
-
-            }
-
         }
 
 
         /* ==================================================
            MOBILE
-           2열 고정
+           정확히 2열
         ================================================== */
 
         @media (max-width: 600px) {
@@ -1355,10 +1337,9 @@
             body {
 
                 padding:
-                    14px
                     8px
-                    28px;
-
+                    5px
+                    18px;
             }
 
 
@@ -1376,75 +1357,71 @@
                 justify-content:
                     center;
 
-                margin-bottom:
-                    12px;
+                gap:
+                    3px;
 
+                margin-bottom:
+                    7px;
             }
 
 
             .theme-btn {
 
                 padding:
-                    6px 10px;
+                    4px 7px;
 
                 font-size:
-                    11px;
-
+                    8px;
             }
 
 
             header {
 
                 margin:
-                    6px auto 17px;
-
+                    3px auto 10px;
             }
 
 
             .decor-line {
 
                 font-size:
-                    13px;
+                    9px;
 
                 letter-spacing:
-                    2px;
-
+                    1px;
             }
 
 
             h1 {
 
                 font-size:
-                    32px;
+                    24px;
 
                 margin-bottom:
-                    5px;
-
+                    3px;
             }
 
 
             .subtitle {
 
                 font-size:
-                    12.5px;
+                    9px;
 
                 margin-bottom:
-                    10px;
-
+                    6px;
             }
 
 
             .site-intro {
 
                 padding:
-                    0 5px;
+                    0 3px;
 
                 font-size:
-                    11.5px;
+                    8px;
 
                 line-height:
-                    1.55;
-
+                    1.4;
             }
 
 
@@ -1454,22 +1431,20 @@
                     100%;
 
                 gap:
-                    5px;
+                    3px;
 
                 margin-bottom:
-                    20px;
-
+                    10px;
             }
 
 
             .category-btn {
 
                 padding:
-                    6px 10px;
+                    4px 6px;
 
                 font-size:
-                    11.5px;
-
+                    8px;
             }
 
 
@@ -1479,8 +1454,7 @@
                     100%;
 
                 font-size:
-                    19px;
-
+                    14px;
             }
 
 
@@ -1490,15 +1464,14 @@
                     100%;
 
                 margin-bottom:
-                    11px;
+                    6px;
 
                 font-size:
-                    11.5px;
-
+                    8px;
             }
 
 
-            /* 핵심: 모바일 2열 */
+            /* 모바일 2열 */
 
             .container {
 
@@ -1509,8 +1482,7 @@
                     repeat(2, minmax(0, 1fr));
 
                 gap:
-                    9px;
-
+                    5px;
             }
 
 
@@ -1520,70 +1492,62 @@
                     100% !important;
 
                 min-height:
-                    145px;
+                    103px;
 
                 margin:
                     0 !important;
 
                 padding:
-                    13px;
+                    8px;
 
                 border-radius:
-                    12px;
-
+                    8px;
             }
 
 
             .game-card .icon {
 
                 font-size:
-                    29px;
+                    21px;
 
                 margin-bottom:
-                    6px;
-
+                    3px;
             }
 
 
             .game-card h3 {
 
                 font-size:
-                    14px;
-
-                margin-bottom:
-                    4px;
+                    10px;
 
                 line-height:
-                    1.3;
+                    1.2;
 
+                margin-bottom:
+                    2px;
             }
 
 
             .game-card p {
 
                 font-size:
-                    10.5px;
+                    7.5px;
 
                 line-height:
-                    1.45;
-
+                    1.35;
             }
 
 
             .game-tag {
 
                 margin-top:
-                    7px;
+                    4px;
 
                 padding:
-                    2px 5px;
-
-                border-radius:
-                    5px;
+                    2px 3px;
 
                 font-size:
-                    9px;
-
+                    6.5px;
             }
 
 
@@ -1593,22 +1557,20 @@
                     100%;
 
                 margin-top:
-                    28px;
+                    16px;
 
                 padding-top:
-                    18px;
-
+                    10px;
             }
 
 
             .feedback-button {
 
                 padding:
-                    8px 15px;
+                    5px 9px;
 
                 font-size:
-                    12px;
-
+                    8px;
             }
 
 
@@ -1618,11 +1580,10 @@
                     100%;
 
                 margin-top:
-                    17px;
+                    8px;
 
                 font-size:
-                    10px;
-
+                    7px;
             }
 
         }
@@ -1637,80 +1598,72 @@
             body {
 
                 padding:
-                    10px
                     6px
-                    22px;
-
+                    4px
+                    14px;
             }
 
 
             .container {
                 gap:
-                    7px;
+                    4px;
             }
 
 
             .game-card {
 
                 min-height:
-                    138px;
+                    98px;
 
                 padding:
-                    11px;
-
+                    7px;
             }
 
 
             .game-card .icon {
 
                 font-size:
-                    26px;
-
+                    19px;
             }
 
 
             .game-card h3 {
 
                 font-size:
-                    13px;
-
+                    9px;
             }
 
 
             .game-card p {
 
                 font-size:
-                    9.5px;
-
+                    7px;
             }
 
 
             .game-tag {
 
                 font-size:
-                    8px;
-
+                    6px;
             }
 
 
             h1 {
 
                 font-size:
-                    29px;
-
+                    22px;
             }
 
 
             .site-intro {
 
                 font-size:
-                    10.5px;
-
+                    7.5px;
             }
-
         }
 
     </style>
+
 </head>
 
 
@@ -1718,7 +1671,7 @@
 
 
     <!-- ==================================================
-         THEME
+         THEME SELECTOR
     ================================================== -->
 
     <div class="theme-selector">
@@ -1779,7 +1732,7 @@
 
 
     <!-- ==================================================
-         CATEGORY
+         CATEGORY FILTER
     ================================================== -->
 
     <nav
@@ -1839,7 +1792,7 @@
 
 
     <!-- ==================================================
-         GAMES
+         GAME LIST
     ================================================== -->
 
     <section
@@ -1862,7 +1815,7 @@
         <main class="container">
 
 
-            <!-- 스네이크 -->
+            <!-- 01 -->
 
             <a
                 class="game-card"
@@ -1890,7 +1843,7 @@
             </a>
 
 
-            <!-- 똥피하기 -->
+            <!-- 02 -->
 
             <a
                 class="game-card"
@@ -1918,7 +1871,7 @@
             </a>
 
 
-            <!-- 벽돌깨기 -->
+            <!-- 03 -->
 
             <a
                 class="game-card"
@@ -1946,7 +1899,7 @@
             </a>
 
 
-            <!-- 틱택토 -->
+            <!-- 04 -->
 
             <a
                 class="game-card"
@@ -1974,7 +1927,7 @@
             </a>
 
 
-            <!-- 카드 뒤집기 -->
+            <!-- 05 -->
 
             <a
                 class="game-card"
@@ -2002,7 +1955,7 @@
             </a>
 
 
-            <!-- 공룡 달리기 -->
+            <!-- 06 -->
 
             <a
                 class="game-card"
@@ -2030,7 +1983,7 @@
             </a>
 
 
-            <!-- 행운의 동전 -->
+            <!-- 07 -->
 
             <a
                 class="game-card"
@@ -2058,7 +2011,7 @@
             </a>
 
 
-            <!-- 50층 대모험 -->
+            <!-- 08 -->
 
             <a
                 class="game-card"
@@ -2086,7 +2039,7 @@
             </a>
 
 
-            <!-- 미니지호 -->
+            <!-- 09 -->
 
             <a
                 class="game-card"
@@ -2115,7 +2068,7 @@
             </a>
 
 
-            <!-- 스페이스 타워디펜스 -->
+            <!-- 10 -->
 
             <a
                 class="game-card"
@@ -2143,7 +2096,7 @@
             </a>
 
 
-            <!-- 테트리스 -->
+            <!-- 11 -->
 
             <a
                 class="game-card"
@@ -2171,7 +2124,7 @@
             </a>
 
 
-            <!-- 2048 -->
+            <!-- 12 -->
 
             <a
                 class="game-card"
@@ -2199,7 +2152,7 @@
             </a>
 
 
-            <!-- RTS -->
+            <!-- 13 -->
 
             <a
                 class="game-card"
@@ -2227,7 +2180,7 @@
             </a>
 
 
-            <!-- 레이싱 -->
+            <!-- 14 -->
 
             <a
                 class="game-card"
@@ -2255,7 +2208,7 @@
             </a>
 
 
-            <!-- 블랙잭 -->
+            <!-- 15 -->
 
             <a
                 class="game-card"
@@ -2283,7 +2236,7 @@
             </a>
 
 
-            <!-- 부루마블 -->
+            <!-- 16 -->
 
             <a
                 class="game-card"
@@ -2311,7 +2264,7 @@
             </a>
 
 
-            <!-- 커피숍 타이쿤 -->
+            <!-- 17 -->
 
             <a
                 class="game-card"
@@ -2339,7 +2292,7 @@
             </a>
 
 
-            <!-- 행성 채굴 -->
+            <!-- 18 -->
 
             <a
                 class="game-card"
@@ -2367,7 +2320,7 @@
             </a>
 
 
-            <!-- 레트로 비트 -->
+            <!-- 19 -->
 
             <a
                 class="game-card"
@@ -2395,7 +2348,7 @@
             </a>
 
 
-            <!-- 체스 -->
+            <!-- 20 -->
 
             <a
                 class="game-card"
@@ -2429,7 +2382,7 @@
 
 
     <!-- ==================================================
-         FEEDBACK
+         FEEDBACK BUTTON
     ================================================== -->
 
     <section
@@ -2480,6 +2433,7 @@
 
         <div class="feedback-modal-content">
 
+
             <div class="feedback-modal-header">
 
                 <h2 id="feedback-title">
@@ -2503,7 +2457,10 @@
                 id="feedback-form"
             >
 
-                <label for="feedback-category">
+
+                <label
+                    for="feedback-category"
+                >
 
                     의견 종류
 
@@ -2538,7 +2495,9 @@
                 </label>
 
 
-                <label for="feedback-message">
+                <label
+                    for="feedback-message"
+                >
 
                     의견 내용
 
@@ -2546,7 +2505,10 @@
                         id="feedback-message"
                         name="message"
                         maxlength="2000"
-                        placeholder="게임 오류나 불편한 점, 새로운 게임 아이디어 등을 적어주세요."
+                        placeholder="
+                            게임 오류나 불편한 점,
+                            새로운 게임 아이디어 등을 적어주세요.
+                        "
                         required
                     ></textarea>
 
@@ -2559,7 +2521,9 @@
                         최대 2000자
                     </span>
 
-                    <span id="feedback-count">
+                    <span
+                        id="feedback-count"
+                    >
                         0 / 2000
                     </span>
 
@@ -2574,7 +2538,8 @@
 
 
                 <p class="feedback-notice">
-                    개인정보(이름, 전화번호, 주소 등)는 입력하지 말아주세요.
+                    개인정보(이름, 전화번호, 주소 등)는
+                    입력하지 말아주세요.
                 </p>
 
 
@@ -2593,6 +2558,7 @@
                     aria-live="polite"
                 ></p>
 
+
             </form>
 
         </div>
@@ -2606,16 +2572,20 @@
 
     <script>
 
+
         /* ==================================================
            THEME SYSTEM
         ================================================== */
 
-        function applyMiniGTheme(theme) {
+        function applyMiniGTheme(
+            theme
+        ) {
 
             const normalized =
                 theme === "light"
                     ? "white"
                     : theme;
+
 
             const safeTheme =
                 normalized === "cream" ||
@@ -2624,7 +2594,9 @@
                     : "white";
 
 
-            if (safeTheme === "white") {
+            if (
+                safeTheme === "white"
+            ) {
 
                 document.documentElement
                     .removeAttribute(
@@ -2644,7 +2616,9 @@
         }
 
 
-        function setTheme(theme) {
+        function setTheme(
+            theme
+        ) {
 
             const safeTheme =
                 theme === "cream" ||
@@ -2666,7 +2640,7 @@
         }
 
 
-        /* 저장된 테마 */
+        /* 저장된 테마 적용 */
 
         applyMiniGTheme(
             localStorage.getItem(
@@ -2675,7 +2649,7 @@
         );
 
 
-        /* 다른 탭에서 변경된 경우 */
+        /* 다른 탭에서 테마가 변경된 경우 */
 
         window.addEventListener(
             "storage",
@@ -2696,7 +2670,7 @@
         );
 
 
-        /* 다른 게임에서 메인으로 돌아왔을 때 */
+        /* 다른 게임에서 돌아왔을 때 */
 
         window.addEventListener(
             "pageshow",
@@ -2760,7 +2734,8 @@
                             function(card) {
 
                                 const category =
-                                    card.dataset.category;
+                                    card.dataset
+                                        .category;
 
 
                                 if (
@@ -2846,12 +2821,7 @@
             );
 
 
-        /*
-         * 여기만 실제 Formspree 주소로 설정
-         *
-         * 예:
-         * https://formspree.io/f/xxxxxxxx
-         */
+        /* 실제 Formspree */
 
         const FORM_ENDPOINT =
             "https://formspree.io/f/mjykveqr";
@@ -2946,7 +2916,8 @@
             function(event) {
 
                 if (
-                    event.key === "Escape" &&
+                    event.key ===
+                        "Escape" &&
                     feedbackModal.classList
                         .contains("open")
                 ) {
@@ -2966,20 +2937,6 @@
                 event.preventDefault();
 
 
-                if (
-                    FORM_ENDPOINT.includes(
-                        "YOUR_FORM_ID"
-                    )
-                ) {
-
-                    feedbackStatus.textContent =
-                        "Formspree 연결 주소를 설정해주세요.";
-
-                    return;
-
-                }
-
-
                 feedbackSubmit.disabled =
                     true;
 
@@ -2994,6 +2951,7 @@
                         await fetch(
                             FORM_ENDPOINT,
                             {
+
                                 method:
                                     "POST",
 
@@ -3006,11 +2964,14 @@
                                     Accept:
                                         "application/json"
                                 }
+
                             }
                         );
 
 
-                    if (!response.ok) {
+                    if (
+                        !response.ok
+                    ) {
 
                         throw new Error(
                             "전송 실패"
@@ -3035,7 +2996,9 @@
                     );
 
 
-                } catch (error) {
+                } catch (
+                    error
+                ) {
 
                     feedbackStatus.textContent =
                         "전송에 실패했습니다. 잠시 후 다시 시도해주세요.";
@@ -3056,4 +3019,5 @@
     </script>
 
 </body>
+
 </html>
