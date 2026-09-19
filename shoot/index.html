@@ -557,6 +557,89 @@
       100% { opacity: 0; transform: scale(1); }
     }
 
+    /* 🌌 최종 보스 격파 후 에필로그: 잔당 도주 + 웜홀 진입 연출 */
+    #epilogue-screen {
+      position: absolute;
+      inset: 0;
+      z-index: 37;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      overflow: hidden;
+      text-align: center;
+      padding: 0 26px;
+      background: radial-gradient(circle at 50% 38%, rgba(20,25,55,0.92), rgba(0,0,0,0.97));
+    }
+    #epilogue-screen.on { display: flex; }
+    #epilogue-screen .ep-line {
+      color: #cfe8ff;
+      font-size: 12.5px;
+      line-height: 1.7;
+      max-width: 90%;
+      opacity: 0;
+      text-shadow: 0 0 8px rgba(0,0,0,0.8);
+    }
+    #epilogue-screen .ep-line.show {
+      animation: fadeTextIn 0.9s ease-out both;
+    }
+    #epilogue-screen .ep-fleet {
+      position: absolute;
+      top: 18%;
+      left: 0;
+      width: 100%;
+      height: 60px;
+      pointer-events: none;
+    }
+    #epilogue-screen .ep-grunt {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      font-size: 22px;
+      opacity: 0;
+    }
+    #epilogue-screen.on .ep-grunt {
+      animation: gruntFlee 1.6s ease-in forwards;
+    }
+    #epilogue-screen .ep-grunt:nth-child(1) { animation-delay: 0.05s; --dx: -140px; --dy: -60px; }
+    #epilogue-screen .ep-grunt:nth-child(2) { animation-delay: 0.15s; --dx: 130px; --dy: -70px; }
+    #epilogue-screen .ep-grunt:nth-child(3) { animation-delay: 0.05s; --dx: -80px; --dy: 40px; }
+    #epilogue-screen .ep-grunt:nth-child(4) { animation-delay: 0.25s; --dx: 100px; --dy: 50px; }
+    #epilogue-screen .ep-grunt:nth-child(5) { animation-delay: 0.35s; --dx: 20px; --dy: -90px; }
+    @keyframes gruntFlee {
+      0%   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.5); }
+    }
+    #epilogue-screen .ep-wormhole {
+      position: absolute;
+      inset: -30%;
+      background-image: repeating-conic-gradient(from 0deg, rgba(140,90,255,0.28) 0deg 3deg, transparent 3deg 14deg);
+      opacity: 0;
+      pointer-events: none;
+    }
+    #epilogue-screen .ep-wormhole.spin {
+      animation: warpSpin 2.4s linear infinite, epWormholeIn 1.2s ease-out forwards;
+    }
+    @keyframes epWormholeIn {
+      from { opacity: 0; transform: scale(0.25); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    #epilogue-screen .ep-ship {
+      font-size: 40px;
+      opacity: 0;
+    }
+    #epilogue-screen .ep-ship.enter {
+      opacity: 1;
+    }
+    #epilogue-screen .ep-ship.suck {
+      animation: epShipSuck 0.9s ease-in forwards;
+    }
+    @keyframes epShipSuck {
+      0%   { opacity: 1; transform: scale(1) translateY(0) rotate(0deg); }
+      100% { opacity: 0; transform: scale(0.1) translateY(-30px) rotate(340deg); }
+    }
+
     /* 🎉 최종 승리 연출 */
     #victory-screen {
       overflow: hidden;
@@ -684,6 +767,22 @@
     </div>
 
     <div id="boss-callout"></div>
+
+    <div id="epilogue-screen">
+      <div class="ep-fleet" id="ep-fleet">
+        <div class="ep-grunt">👾</div>
+        <div class="ep-grunt">🛸</div>
+        <div class="ep-grunt">👽</div>
+        <div class="ep-grunt">🛸</div>
+        <div class="ep-grunt">👾</div>
+      </div>
+      <div class="ep-wormhole" id="ep-wormhole"></div>
+      <div class="ep-line" id="ep-line1">레이더에 남아있던 하이브 잔당들의 반응이 사방으로 흩어진다...</div>
+      <div class="ep-line" id="ep-line2">완전히 소탕하지 않으면, 언젠가 또 다른 침공이 시작될 것이다.</div>
+      <div class="ep-line" id="ep-line3">잔당을 쫓던 중 — 그들이 급히 열어놓고 미처 닫지 못한 균열을 발견했다.</div>
+      <div class="ep-line" id="ep-line4">미니지호는 주저 없이 그 웜홀 속으로 뛰어든다...</div>
+      <div class="ep-ship" id="ep-ship">🚀</div>
+    </div>
 
     <div id="weaponModal" class="modal">
       <div class="modal-content">
@@ -1263,18 +1362,23 @@
       rafId = null;
     }
 
+    // 🔧 [수정] 발사 속도가 무기마다 다 똑같이 player.shootDelay(130ms)를 그대로 썼던 게
+    // 난이도가 낮았던 진짜 원인이었다. 위력이 세거나 광역인 무기까지 기본 연사 속도로
+    // "다다다다" 나가니 화력이 지나치게 높아진 것. fireRateMult로 무기별 발사 간격을
+    // 위력/범위에 맞게 늘려서, 초당 화력이 무기 간에 고르게 맞춰지도록 했다.
+    // (기준: 기본 레이저 1발 위력 1 / 0.13초 ≈ 초당 7.7 데미지)
     const WEAPONS = [
-      { name: '기본 레이저', emoji: '🔫', type: 'NORMAL' },
-      { name: '범위 미사일', emoji: '🚀', type: 'MISSILE' },
-      { name: '기뢰 설치', emoji: '💣', type: 'MINE' },
-      { name: '관통 레이저', emoji: '⚡', type: 'LASER' },
-      { name: '3갈래 확산탄', emoji: '🔱', type: 'SPREAD' },
-      { name: '유도 드론', emoji: '🛡️', type: 'DRONE' },
-      { name: 'CNG 블랙홀', emoji: '🌀', type: 'BLACKHOLE' },
-      { name: '핵융합 폭탄', emoji: '💥', type: 'NUKE' },
-      { name: '부메랑 커터', emoji: '🪃', type: 'BOOMERANG' },
-      { name: '체인 라이트닝', emoji: '🔗', type: 'CHAIN' },
-      { name: '궤도 플라즈마', emoji: '💠', type: 'ORBIT' },
+      { name: '기본 레이저', emoji: '🔫', type: 'NORMAL', fireRateMult: 1.0 },
+      { name: '범위 미사일', emoji: '🚀', type: 'MISSILE', fireRateMult: 2.2 },
+      { name: '기뢰 설치', emoji: '💣', type: 'MINE', fireRateMult: 3.2 },
+      { name: '관통 레이저', emoji: '⚡', type: 'LASER', fireRateMult: 2.0 },
+      { name: '3갈래 확산탄', emoji: '🔱', type: 'SPREAD', fireRateMult: 2.3 },
+      { name: '유도 드론', emoji: '🛡️', type: 'DRONE', fireRateMult: 2.0 },
+      { name: 'CNG 블랙홀', emoji: '🌀', type: 'BLACKHOLE', fireRateMult: 1.3 },
+      { name: '핵융합 폭탄', emoji: '💥', type: 'NUKE', fireRateMult: 1.0 },
+      { name: '부메랑 커터', emoji: '🪃', type: 'BOOMERANG', fireRateMult: 2.6 },
+      { name: '체인 라이트닝', emoji: '🔗', type: 'CHAIN', fireRateMult: 2.8 },
+      { name: '궤도 플라즈마', emoji: '💠', type: 'ORBIT', fireRateMult: 3.4 },
       { name: '레일건', emoji: '🎯', type: 'RAILGUN', fireRateMult: 2.4 }
     ];
     let currentWeapon = WEAPONS[0];
@@ -1326,10 +1430,37 @@
       flashEffect = 5;
       createExplosion(player.x, player.y, 14);
       if (player.hp <= 0) {
+        // 하이브 마인드전에서 격추당하면, 단 한 번 지원 편대를 불러 재기의 기회를 준다.
+        if (boss && boss.isFinal && !finalBossReinforcementUsed) {
+          finalBossReinforcementUsed = true;
+          triggerFinalBossReinforcements();
+          return;
+        }
         player.hp = 0;
         gameState = 'GAMEOVER';
         playSound('explosion');
       }
+    }
+
+    // 하이브전 전멸 직전 지원군 도착: 플레이어는 새 기체로 복귀하고,
+    // 2번기·3번기는 알아서 보스를 계속 공격하는 자동 전투기로 합류한다.
+    function triggerFinalBossReinforcements() {
+      createExplosion(player.x, player.y, 24);
+      playSound('explosion');
+
+      player.hp = Math.ceil(player.maxHp * 0.6);
+      player.invuln = 150; // 도착 직후 잠깐 무적으로 숨 돌릴 틈을 준다
+      player.x = CANVAS_WIDTH / 2;
+      player.y = CANVAS_HEIGHT - 70;
+
+      wingmen = [
+        { offsetX: -46, offsetY: 14, x: player.x - 46, y: player.y + 14, shootTimer: 0, power: 1.1 },
+        { offsetX: 46, offsetY: 14, x: player.x + 46, y: player.y + 14, shootTimer: 0, power: 1.1 }
+      ];
+
+      enemyBullets = []; // 화면을 정리해 숨 돌릴 틈을 준다
+      showBossCallout('🚀 지원 편대 도착! 2번기·3번기 전투 합류', 2600);
+      flashEffect = 14;
     }
 
     const stars = Array.from({ length: 25 }, () => ({
@@ -1360,6 +1491,8 @@
     let explosions = [];
     let buildings = [];
     let railgunFlashes = []; // 레일건이 발사할 때 그려지는 순간 섬광 이펙트
+    let wingmen = []; // 하이브전 지원 편대(2번기/3번기) - 격추당했을 때 한 번 지원군을 부를 수 있다
+    let finalBossReinforcementUsed = false;
     let boss = null;
     let enemySpawnTimer = 0;
     let buildingSpawnTimer = 0;
@@ -1497,8 +1630,9 @@
 
     // 최종 보스 본체 생성 (해킹 연출이 끝난 뒤 호출된다)
     function createFinalBoss(bossLevel) {
-      // 최종 보스 체력. "더더더" 늘려달라는 요청으로 대폭 상향(기존 대비 2배 이상).
-      const finalHp = 9500 + bossLevel * 70;
+      // 최종 보스 체력. "더더더" 늘려달라는 요청으로 한 차례 대폭 상향했고,
+      // 이번엔 "하이브가 약한 느낌" 피드백으로 그 값의 2.5배를 추가 적용했다.
+      const finalHp = (9500 + bossLevel * 70) * 2.5;
       boss = {
         isFinal: true,
         name: '하이브 마인드',
@@ -1904,10 +2038,28 @@
     }
 
     // 보스 피해 처리 일원화: 등장 연출/페이즈 전환 중에는 무적, 최종 보스는 페이즈 판정 포함
+    // 플레이어가 지금 얼마나 강한지를 대략적인 배율로 환산한다.
+    // 강화/무기가 좋을수록 값이 커지고, 보스에게 들어가는 피해를 그만큼 완만하게 줄여서
+    // "너무 빨리 죽어서 패턴을 다 못 보는" 문제를 해결한다. 강화를 안 한 기본 상태(1.0)에서는
+    // 원래 밸런스 그대로 들어간다.
+    const WEAPON_POWER_TIER = {
+      NORMAL: 1.0, SPREAD: 1.15, MISSILE: 1.3, MINE: 1.3, DRONE: 1.25,
+      LASER: 1.2, BLACKHOLE: 1.1, BOOMERANG: 1.3, CHAIN: 1.35,
+      ORBIT: 1.15, RAILGUN: 1.4, NUKE: 1.0
+    };
+    function playerPowerFactor() {
+      let f = 1 + (shopUpgrades.atkLv - 1) * 0.25;
+      f *= WEAPON_POWER_TIER[currentWeapon.type] || 1.0;
+      return f;
+    }
+
     function damageBoss(amount) {
       if (!boss) return;
       if (boss.intro || boss.invulnTimer > 0) return;
-      boss.hp -= amount;
+      // power=1(무강화+기본무기)이면 원래 데미지 그대로, 강해질수록 감쇄되지만
+      // 아무리 강해져도 최소 45%는 들어가게 하한선을 둬서 보스가 아예 안 죽는 일은 없게 한다.
+      const mitigation = Math.max(0.45, 1 / playerPowerFactor());
+      boss.hp -= amount * mitigation;
       if (boss.isFinal) updateFinalBossPhase();
     }
 
@@ -2068,10 +2220,11 @@
             const railX = player.x;
             const railW = 16;
             const railPower = 9 * atkMult;
-            railgunFlashes.push({ x: railX, life: 10, maxLife: 10 });
+            railgunFlashes.push({ x: railX, y: player.y, life: 10, maxLife: 10 });
             for (let ei = enemies.length - 1; ei >= 0; ei--) {
               const e = enemies[ei];
-              if (Math.abs(e.x - railX) < railW / 2 + e.w / 2) {
+              // 🔧 [수정] 시각적으로 플레이어보다 위쪽으로만 빔이 나가므로, 판정도 앞쪽(위)에 있는 적만 맞도록 제한
+              if (e.y <= player.y && Math.abs(e.x - railX) < railW / 2 + e.w / 2) {
                 e.hp -= railPower;
                 createExplosion(e.x, e.y, 10);
                 if (e.hp <= 0) {
@@ -2177,8 +2330,10 @@
           b.y = player.y + Math.sin(b.angle) * b.radius;
           if (b.life <= 0) {
             bullets.splice(bIdx, 1);
-            continue;
           }
+          // 🔧 [수정] 여기서 continue하지 않으면 아래 공용 이동 코드(b.x += b.vx)가 그대로 실행돼
+          // vx/vy가 없는(undefined) ORBIT 좌표가 매 프레임 NaN이 되어 절대 충돌하지 않는 버그가 있었다.
+          continue;
         }
 
         b.x += b.vx;
@@ -2493,6 +2648,20 @@
         if (e.y > CANVAS_HEIGHT + 40 || e.y < -90) enemies.splice(eIdx, 1);
       }
 
+      // 하이브전 지원 편대(2번기/3번기): 플레이어를 따라다니며 알아서 보스에게 사격한다
+      if (wingmen.length > 0) {
+        wingmen.forEach(w => {
+          w.x = player.x + w.offsetX;
+          w.y = player.y + w.offsetY;
+          w.shootTimer++;
+          if (w.shootTimer > 24 && boss) {
+            w.shootTimer = 0;
+            bullets.push({ x: w.x, y: w.y - 10, vx: 0, vy: -10, type: 'NORMAL', power: w.power });
+            playSound('shoot');
+          }
+        });
+      }
+
       if (boss) {
         boss.pulse++;
         if (boss.invulnTimer > 0) boss.invulnTimer--;
@@ -2546,11 +2715,25 @@
               bullets.splice(bIdx, 1);
             } else if (b.type === 'MINE') {
               continue;
+            } else if (b.type === 'BOOMERANG') {
+              // 부메랑도 잡몹과 마찬가지로 왕복 중 보스를 최대 두 번(가는 길/오는 길) 때릴 수 있다
+              if (!b.hitSet.has(boss)) {
+                b.hitSet.add(boss);
+                damageBoss(b.power);
+                createExplosion(b.x, b.y, 10);
+                checkBossDefeat();
+              }
+            } else if (b.type === 'CHAIN') {
+              // 보스는 단일 대상이라 번개가 튈 곳이 없어 그냥 직격 피해만 준다
+              damageBoss(b.power);
+              createExplosion(b.x, b.y, 10);
+              checkBossDefeat();
+              bullets.splice(bIdx, 1);
             } else {
-              // 관통 레이저는 잡몹 상대로는 지속 딜이라 강력한 대신,
+              // 관통 레이저·궤도 플라즈마는 잡몹 상대로는 지속 딜이라 강력한 대신,
               // 보스에게는 LASER_BOSS_MULT만큼만 들어가 밸런스를 맞춘다
-              damageBoss((b.type === 'LASER') ? b.power * LASER_BOSS_MULT : b.power);
-              if (b.type !== 'LASER') {
+              damageBoss((b.type === 'LASER' || b.type === 'ORBIT') ? b.power * LASER_BOSS_MULT : b.power);
+              if (b.type !== 'LASER' && b.type !== 'ORBIT') {
                 bullets.splice(bIdx, 1);
               }
               createExplosion(b.x, b.y, 10);
@@ -2885,6 +3068,7 @@
       bossSpawned = false;
       enemyBullets = [];
       bullets = [];
+      wingmen = []; // 지원 편대는 임무 완수, 승리 연출부터는 다시 필요 없다
       score += 50000;
 
       document.getElementById('boss-bar-container').style.display = 'none';
@@ -2950,10 +3134,43 @@
           victoryAnim = requestAnimationFrame(victoryFrame);
         } else {
           shakeIntensity = 0;
-          showVictoryScreen();
+          showEpilogueSequence();
         }
       }
       victoryFrame();
+    }
+
+    // 🌌 최종 보스를 잡은 뒤: 도망친 잔당을 완전히 소탕하려다, 그들이 남긴 웜홀로 빨려 들어가는 짧은 막간극.
+    // 다음 침공의 불씨를 남기지 않으려는 선택이 결과적으로 미지의 곳으로 이어진다는 여운을 준다.
+    let epilogueTimers = [];
+    function showEpilogueSequence() {
+      const el = document.getElementById('epilogue-screen');
+      const wormhole = document.getElementById('ep-wormhole');
+      const ship = document.getElementById('ep-ship');
+      const lines = ['ep-line1', 'ep-line2', 'ep-line3', 'ep-line4'].map(id => document.getElementById(id));
+
+      // 재시작 등으로 이전 타이머가 남아있으면 정리
+      epilogueTimers.forEach(id => clearTimeout(id));
+      epilogueTimers = [];
+      lines.forEach(l => l.classList.remove('show'));
+      wormhole.classList.remove('spin');
+      ship.classList.remove('enter', 'suck');
+
+      el.classList.add('on');
+
+      const schedule = (fn, ms) => epilogueTimers.push(setTimeout(fn, ms));
+
+      schedule(() => lines[0].classList.add('show'), 300);
+      schedule(() => lines[1].classList.add('show'), 2000);
+      schedule(() => lines[2].classList.add('show'), 3800);
+      schedule(() => lines[3].classList.add('show'), 5500);
+      schedule(() => { wormhole.classList.add('spin'); playSound('powerup'); }, 5900);
+      schedule(() => ship.classList.add('enter'), 6700);
+      schedule(() => { ship.classList.add('suck'); playSound('shoot'); }, 7300);
+      schedule(() => {
+        el.classList.remove('on');
+        showVictoryScreen();
+      }, 8300);
     }
 
     function computeRank() {
@@ -3231,6 +3448,18 @@
       ctx.fillText(shipEmoji, 0, 0);
       ctx.restore();
 
+      // 지원 편대(2번기/3번기) 렌더링
+      if (wingmen.length > 0) {
+        ctx.save();
+        ctx.font = '20px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowColor = '#66ccff';
+        ctx.shadowBlur = 6;
+        wingmen.forEach(w => ctx.fillText('🚀', w.x, w.y));
+        ctx.restore();
+      }
+
       ctx.save();
       ctx.globalAlpha = 1.0;
       bullets.forEach(b => {
@@ -3258,9 +3487,45 @@
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillText('🌀', b.x, b.y);
+        } else if (b.type === 'BOOMERANG') {
+          ctx.font = '18px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.save();
+          ctx.translate(b.x, b.y);
+          ctx.rotate(b.travel * 0.35); // 날아가는 동안 빙글빙글 회전
+          ctx.fillText('🪃', 0, 0);
+          ctx.restore();
+        } else if (b.type === 'CHAIN') {
+          ctx.fillStyle = '#ffee55';
+          ctx.shadowColor = '#ffee55';
+          ctx.shadowBlur = 8;
+          ctx.fillRect(b.x - 2, b.y - 9, 4, 12);
+        } else if (b.type === 'ORBIT') {
+          ctx.fillStyle = '#66e0ff';
+          ctx.shadowColor = '#66e0ff';
+          ctx.shadowBlur = 10;
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, 7, 0, Math.PI * 2);
+          ctx.fill();
         }
       });
       ctx.restore();
+
+      // 레일건 섬광: 화면 위쪽(플레이어 앞쪽)으로만 뻗어나가는 빛줄기가 잠깐 남았다가 사라진다
+      // 🔧 [수정] 예전엔 CANVAS_HEIGHT 전체(플레이어 뒤쪽까지)를 그려서 배 뒤로도 빛줄기가 보이는 게 어색했다.
+      for (let ri = railgunFlashes.length - 1; ri >= 0; ri--) {
+        const fl = railgunFlashes[ri];
+        fl.life--;
+        if (fl.life <= 0) { railgunFlashes.splice(ri, 1); continue; }
+        ctx.save();
+        ctx.globalAlpha = fl.life / fl.maxLife;
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = '#88eaff';
+        ctx.shadowBlur = 20;
+        ctx.fillRect(fl.x - 8, 0, 16, fl.y);
+        ctx.restore();
+      }
 
       // 그리기 전에 fillStyle/shadow를 초기화해 앞서 그린 게 다음 탄에 번지지 않게 한다
       enemyBullets.forEach(eb => {
@@ -3641,6 +3906,13 @@
       document.getElementById('boss-intro').classList.remove('on');
       document.getElementById('hack-intro').classList.remove('on');
       document.getElementById('boss-callout').classList.remove('show');
+      // 재시작 시 에필로그 연출이 중간에 걸려있던 상태로 남지 않도록 정리
+      epilogueTimers.forEach(id => clearTimeout(id));
+      epilogueTimers = [];
+      document.getElementById('epilogue-screen').classList.remove('on');
+      document.getElementById('ep-wormhole').classList.remove('spin');
+      document.getElementById('ep-ship').classList.remove('enter', 'suck');
+      ['ep-line1', 'ep-line2', 'ep-line3', 'ep-line4'].forEach(id => document.getElementById(id).classList.remove('show'));
       score = 0;
       level = 1;
       enemiesKilled = 0;
@@ -3657,6 +3929,9 @@
       particles = [];
       explosions = [];
       buildings = [];
+      railgunFlashes = [];
+      wingmen = [];
+      finalBossReinforcementUsed = false;
       boss = null;
       resetInput();
       pendingGachaWeapon = null;
