@@ -891,142 +891,523 @@
     </style>
 
 
-    <style id="final-60-percent-tuning">
+    <style id="overall-60-percent-tuning">
         /* ==========================================
-           최종 크기 조정
-           - 현재 정사각형 카드 크기의 약 60%
-           - 분류 태그는 글자 크기에 맞게만 표시
+           전체 사이트 UI 크기 약 60% 조정
+           - 게임 카드는 130% 정사각형 크기 유지
+           - 헤더/필터/여백/부가 UI만 작게 조정
+           - 카드 안의 분류 태그는 글자 폭에 맞춤
            ========================================== */
 
-        .container {
-            width: min(576px, calc(100% - 20px));
-            max-width: 576px;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 8px;
+        body {
+            padding: 36px 12px 24px;
         }
 
-        .game-card {
-            padding: 10px;
-            border-radius: 11px;
+        .theme-selector {
+            top: 10px;
+            right: 12px;
         }
 
-        .game-card .icon {
-            font-size: 1.45rem;
+        .theme-btn {
+            padding: 4px 8px;
+            font-size: 0.66rem;
+        }
+
+        .decor-line {
+            font-size: 0.82rem;
+            letter-spacing: 4px;
             margin-bottom: 6px;
         }
 
-        .game-card h3 {
-            font-size: 0.70rem;
-            line-height: 1.28;
-            margin-bottom: 4px;
+        h1 {
+            font-size: 1.9rem;
+            margin-bottom: 6px;
         }
 
-        .game-card p {
-            font-size: 0.54rem;
-            line-height: 1.45;
+        .subtitle {
+            font-size: 0.68rem;
+            margin-bottom: 10px;
+        }
+
+        .site-intro {
+            max-width: 600px;
+            margin-bottom: 17px;
+            font-size: 0.58rem;
+            line-height: 1.55;
+        }
+
+        .category-nav {
+            max-width: 720px;
+            margin-bottom: 17px;
+            gap: 5px;
+        }
+
+        .category-btn {
+            padding: 5px 9px;
+            font-size: 0.62rem;
+        }
+
+        .section-title {
+            max-width: 960px;
+            margin-bottom: 6px;
+            font-size: 1rem;
+        }
+
+        .section-description {
+            max-width: 960px;
+            margin-bottom: 10px;
+            font-size: 0.6rem;
+        }
+
+        /* 카드 크기는 그대로 유지 */
+        .game-card {
+            padding: 17px;
         }
 
         .game-tag {
-            display: inline-block;
             width: max-content;
             max-width: 100%;
             align-self: flex-start;
-            margin-top: auto;
-            padding: 3px 5px;
-            border-radius: 6px;
-            font-size: 0.52rem;
-            line-height: 1.2;
             white-space: nowrap;
+            margin-top: auto;
+            padding: 4px 7px;
+            font-size: 0.67rem;
+            line-height: 1.2;
+        }
+
+        .feedback-section {
+            max-width: 960px;
+            margin-top: 22px;
+            padding-top: 13px;
+        }
+
+        .feedback-button {
+            padding: 7px 12px;
+            font-size: 0.68rem;
+        }
+
+        footer {
+            max-width: 960px;
+            margin-top: 14px;
+            font-size: 0.55rem;
         }
 
         @media (min-width: 601px) and (max-width: 1000px) {
-            .container {
-                width: min(520px, calc(100% - 20px));
-                max-width: 520px;
-                grid-template-columns: repeat(3, minmax(0, 1fr));
-                gap: 8px;
+            body {
+                padding: 30px 10px 22px;
             }
 
-            .game-card {
-                padding: 9px;
+            .theme-selector {
+                top: 8px;
+                right: 10px;
             }
 
-            .game-card .icon {
-                font-size: 1.3rem;
-                margin-bottom: 5px;
+            h1 {
+                font-size: 1.8rem;
             }
 
-            .game-card h3 {
-                font-size: 0.66rem;
+            .subtitle {
+                font-size: 0.65rem;
             }
 
-            .game-card p {
-                font-size: 0.50rem;
+            .site-intro {
+                font-size: 0.56rem;
             }
 
-            .game-tag {
-                font-size: 0.48rem;
+            .category-btn {
+                padding: 4px 8px;
+                font-size: 0.58rem;
+            }
+
+            .section-title {
+                font-size: 0.96rem;
+            }
+
+            .section-description {
+                font-size: 0.56rem;
+            }
+
+            .feedback-button {
+                font-size: 0.64rem;
             }
         }
 
         @media (max-width: 600px) {
+            body {
+                padding: 14px 6px 18px;
+            }
+
+            .theme-selector {
+                margin-bottom: 7px;
+            }
+
+            .theme-btn {
+                padding: 4px 7px;
+                font-size: 0.58rem;
+            }
+
+            .decor-line {
+                font-size: 0.68rem;
+                letter-spacing: 3px;
+            }
+
+            h1 {
+                font-size: 1.55rem;
+            }
+
+            .subtitle {
+                font-size: 0.58rem;
+                margin-bottom: 8px;
+            }
+
+            .site-intro {
+                margin-bottom: 12px;
+                font-size: 0.50rem;
+                line-height: 1.5;
+            }
+
+            .category-nav {
+                margin-bottom: 12px;
+                gap: 4px;
+            }
+
+            .category-btn {
+                padding: 4px 7px;
+                font-size: 0.53rem;
+            }
+
+            .section-title {
+                font-size: 0.9rem;
+                margin-bottom: 4px;
+            }
+
+            .section-description {
+                font-size: 0.50rem;
+                margin-bottom: 8px;
+            }
+
+            /* 모바일도 카드 크기는 기존 정사각형 카드 유지 */
+            .game-card {
+                padding: 12px;
+            }
+
+            .game-tag {
+                padding: 3px 5px;
+                font-size: 0.58rem;
+            }
+
+            .feedback-section {
+                margin-top: 18px;
+                padding-top: 11px;
+            }
+
+            .feedback-button {
+                padding: 6px 10px;
+                font-size: 0.58rem;
+            }
+
+            footer {
+                margin-top: 10px;
+                font-size: 0.48rem;
+            }
+        }
+
+        @media (max-width: 380px) {
+            h1 {
+                font-size: 1.4rem;
+            }
+
+            .site-intro {
+                font-size: 0.46rem;
+            }
+
+            .category-btn {
+                font-size: 0.50rem;
+            }
+
+            .section-title {
+                font-size: 0.84rem;
+            }
+
+            .section-description {
+                font-size: 0.46rem;
+            }
+        }
+    </style>
+
+
+    <style id="card-70-overall-110-final">
+        /* ==========================================
+           최종 조정
+           - 카드 가로/세로 크기: 기존 대비 약 70%
+           - 사이트 UI 전체: 직전 버전 대비 약 110%
+           - 카드 정사각형 유지
+           - 분류 태그는 글자 폭에 맞춤
+           ========================================== */
+
+        /* 전체 UI 약 10% 확대 */
+        body {
+            padding: 40px 13px 26px;
+        }
+
+        .theme-selector {
+            top: 11px;
+            right: 13px;
+        }
+
+        .theme-btn {
+            padding: 4px 9px;
+            font-size: 0.72rem;
+        }
+
+        .decor-line {
+            font-size: 0.90rem;
+            letter-spacing: 4px;
+            margin-bottom: 7px;
+        }
+
+        h1 {
+            font-size: 2.08rem;
+            margin-bottom: 7px;
+        }
+
+        .subtitle {
+            font-size: 0.75rem;
+            margin-bottom: 11px;
+        }
+
+        .site-intro {
+            max-width: 660px;
+            margin-bottom: 19px;
+            font-size: 0.64rem;
+            line-height: 1.58;
+        }
+
+        .category-nav {
+            max-width: 790px;
+            margin-bottom: 19px;
+            gap: 5px;
+        }
+
+        .category-btn {
+            padding: 5px 10px;
+            font-size: 0.68rem;
+        }
+
+        .section-title {
+            max-width: 960px;
+            margin-bottom: 7px;
+            font-size: 1.10rem;
+        }
+
+        .section-description {
+            max-width: 960px;
+            margin-bottom: 11px;
+            font-size: 0.66rem;
+        }
+
+        /* 카드 영역은 유지하되 카드 자체만 약 30% 축소 */
+        .container {
+            width: min(960px, 100%);
+            max-width: 960px;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .game-card {
+            width: 62%;
+            justify-self: center;
+            padding: 12px;
+            border-radius: 12px;
+            aspect-ratio: 1 / 1;
+        }
+
+        .game-card .icon {
+            font-size: 1.82rem;
+            margin-bottom: 8px;
+        }
+
+        .game-card h3 {
+            font-size: 0.88rem;
+            line-height: 1.32;
+            margin-bottom: 6px;
+        }
+
+        .game-card p {
+            font-size: 0.67rem;
+            line-height: 1.48;
+        }
+
+        .game-tag {
+            width: max-content;
+            max-width: 100%;
+            align-self: flex-start;
+            white-space: nowrap;
+            margin-top: auto;
+            padding: 3px 6px;
+            border-radius: 6px;
+            font-size: 0.60rem;
+            line-height: 1.15;
+        }
+
+        .feedback-section {
+            max-width: 960px;
+            margin-top: 24px;
+            padding-top: 14px;
+        }
+
+        .feedback-button {
+            padding: 7px 13px;
+            font-size: 0.72rem;
+        }
+
+        footer {
+            max-width: 960px;
+            margin-top: 15px;
+            font-size: 0.58rem;
+        }
+
+        @media (min-width: 601px) and (max-width: 1000px) {
+            body {
+                padding: 34px 11px 24px;
+            }
+
+            .container {
+                width: min(900px, 100%);
+                max-width: 900px;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 10px;
+            }
+
+            .game-card {
+                width: 62%;
+                padding: 10px;
+                border-radius: 11px;
+            }
+
+            .game-card .icon {
+                font-size: 1.64rem;
+                margin-bottom: 7px;
+            }
+
+            .game-card h3 {
+                font-size: 0.82rem;
+            }
+
+            .game-card p {
+                font-size: 0.62rem;
+            }
+
+            .game-tag {
+                font-size: 0.56rem;
+                padding: 3px 5px;
+            }
+
+            .section-title {
+                font-size: 1.05rem;
+            }
+
+            .section-description {
+                font-size: 0.62rem;
+            }
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 16px 7px 20px;
+            }
+
             .container {
                 width: 100%;
                 max-width: none;
                 grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 7px;
+                gap: 8px;
             }
 
             .game-card {
+                width: 62%;
+                justify-self: center;
                 padding: 9px;
                 border-radius: 10px;
             }
 
             .game-card .icon {
-                font-size: 1.35rem;
+                font-size: 1.42rem;
                 margin-bottom: 6px;
             }
 
             .game-card h3 {
-                font-size: 0.68rem;
+                font-size: 0.70rem;
                 line-height: 1.28;
+                margin-bottom: 4px;
             }
 
             .game-card p {
-                font-size: 0.52rem;
+                font-size: 0.54rem;
                 line-height: 1.42;
             }
 
             .game-tag {
                 width: max-content;
-                padding: 2px 5px;
-                font-size: 0.50rem;
+                padding: 3px 5px;
+                font-size: 0.52rem;
+            }
+
+            .decor-line {
+                font-size: 0.72rem;
+                letter-spacing: 3px;
+            }
+
+            h1 {
+                font-size: 1.70rem;
+            }
+
+            .subtitle {
+                font-size: 0.63rem;
+            }
+
+            .site-intro {
+                font-size: 0.55rem;
+            }
+
+            .category-btn {
+                padding: 4px 8px;
+                font-size: 0.58rem;
+            }
+
+            .section-title {
+                font-size: 0.98rem;
+            }
+
+            .section-description {
+                font-size: 0.55rem;
             }
         }
 
         @media (max-width: 380px) {
-            .container {
-                gap: 6px;
-            }
-
             .game-card {
+                width: 62%;
                 padding: 8px;
             }
 
             .game-card .icon {
-                font-size: 1.2rem;
+                font-size: 1.28rem;
             }
 
             .game-card h3 {
-                font-size: 0.62rem;
+                font-size: 0.64rem;
             }
 
             .game-card p {
-                font-size: 0.48rem;
+                font-size: 0.49rem;
             }
 
             .game-tag {
-                font-size: 0.46rem;
+                font-size: 0.48rem;
+            }
+
+            h1 {
+                font-size: 1.55rem;
             }
         }
     </style>
