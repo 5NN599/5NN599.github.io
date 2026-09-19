@@ -888,6 +888,87 @@
                 font-size: 0.56rem;
             }
         }
+
+        /* 카드 확대에 맞춘 내부 텍스트 크기 보정 */
+        .game-card .icon {
+            font-size: 2.45rem;
+            margin-bottom: 10px;
+        }
+
+        .game-card h3 {
+            font-size: 1.10rem;
+            line-height: 1.32;
+            margin-bottom: 7px;
+        }
+
+        .game-card p {
+            font-size: 0.86rem;
+            line-height: 1.50;
+        }
+
+        .game-tag {
+            font-size: 0.72rem;
+            padding: 4px 7px;
+            border-radius: 7px;
+        }
+
+        @media (min-width: 601px) and (max-width: 1000px) {
+            .game-card .icon {
+                font-size: 2.20rem;
+            }
+
+            .game-card h3 {
+                font-size: 1.02rem;
+            }
+
+            .game-card p {
+                font-size: 0.80rem;
+            }
+
+            .game-tag {
+                font-size: 0.68rem;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .game-card .icon {
+                font-size: 1.85rem;
+            }
+
+            .game-card h3 {
+                font-size: 0.88rem;
+                line-height: 1.30;
+            }
+
+            .game-card p {
+                font-size: 0.68rem;
+                line-height: 1.45;
+            }
+
+            .game-tag {
+                font-size: 0.62rem;
+                padding: 3px 6px;
+            }
+        }
+
+        @media (max-width: 380px) {
+            .game-card .icon {
+                font-size: 1.65rem;
+            }
+
+            .game-card h3 {
+                font-size: 0.82rem;
+            }
+
+            .game-card p {
+                font-size: 0.63rem;
+            }
+
+            .game-tag {
+                font-size: 0.58rem;
+            }
+        }
+
     </style>
 
 
@@ -2159,3 +2240,43 @@
 
 </body>
 </html>
+<style id="minig-final-card-adjustment">
+/* 최종 카드 조정: 카드 사이 여백 제거 + 현재 카드의 약 1.7배 */
+.container {
+    gap: 0 !important;
+}
+
+.game-card {
+    width: 100% !important;
+    justify-self: stretch !important;
+}
+
+@media (min-width: 601px) and (max-width: 1000px) {
+    .container {
+        gap: 0 !important;
+    }
+
+    .game-card {
+        width: 100% !important;
+        justify-self: stretch !important;
+    }
+}
+
+@media (max-width: 600px) {
+    .container {
+        gap: 0 !important;
+    }
+
+    .game-card {
+        width: 100% !important;
+        justify-self: stretch !important;
+    }
+}
+
+@media (max-width: 380px) {
+    .game-card {
+        width: 100% !important;
+        justify-self: stretch !important;
+    }
+}
+</style>
