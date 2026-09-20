@@ -1,895 +1,258 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>미니지 - 무료 미니게임 오락실 | 레트로 게임 모음</title>
-
-    <meta name="description" content="미니지에서 테트리스, 2048, 블랙잭, 체스, 부루마블, 레이싱, 리듬게임 등 다양한 무료 미니게임을 설치 없이 바로 즐겨보세요.">
-    <meta name="keywords" content="미니지, 미니게임, 무료게임, 온라인게임, 브라우저게임, 레트로게임, 오락실게임, 테트리스, 2048, 블랙잭, 체스, 부루마블, 레이싱, 리듬게임, 타이쿤">
-    <meta name="author" content="미니지">
-    <meta name="robots" content="index, follow, max-image-preview:large">
-    <meta name="googlebot" content="index, follow, max-image-preview:large">
-
-    <link rel="canonical" href="https://mini-g.kro.kr/">
-    <link rel="icon" type="image/png" href="./favicon.png">
-
-    <!-- Open Graph -->
-    <meta property="og:type" content="website">
-    <meta property="og:site_name" content="미니지">
-    <meta property="og:title" content="미니지 - 무료 미니게임 오락실">
-    <meta property="og:description" content="테트리스, 2048, 블랙잭, 체스, 부루마블, 레이싱, 리듬게임 등 다양한 무료 미니게임을 바로 플레이해보세요.">
-    <meta property="og:url" content="https://mini-g.kro.kr/">
-    <meta property="og:image" content="https://mini-g.kro.kr/favicon.png">
-    <meta property="og:locale" content="ko_KR">
-
-    <!-- Twitter / X -->
-    <meta name="twitter:card" content="summary">
-    <meta name="twitter:title" content="미니지 - 무료 미니게임 오락실">
-    <meta name="twitter:description" content="다양한 무료 미니게임과 레트로 게임을 설치 없이 바로 즐겨보세요.">
-    <meta name="twitter:image" content="https://mini-g.kro.kr/favicon.png">
-
-    <!-- WebSite 구조화 데이터 -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "WebSite",
-      "name": "미니지",
-      "alternateName": "미니지 오락실",
-      "url": "https://mini-g.kro.kr/",
-      "description": "다양한 무료 미니게임과 레트로 게임을 즐길 수 있는 온라인 게임 오락실",
-      "inLanguage": "ko-KR"
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>미니지 - 무료 미니게임 오락실</title>
+  <style>
+    /* 기본 리셋 및 폰트 설정 */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
-    </script>
 
-    <!-- 게임 목록 구조화 데이터 -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "ItemList",
-      "name": "미니지 미니게임 목록",
-      "url": "https://mini-g.kro.kr/",
-      "numberOfItems": 20,
-      "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "스네이크 게임", "url": "https://mini-g.kro.kr/snake/" },
-        { "@type": "ListItem", "position": 2, "name": "똥피하기", "url": "https://mini-g.kro.kr/dodge/" },
-        { "@type": "ListItem", "position": 3, "name": "벽돌깨기", "url": "https://mini-g.kro.kr/brick/" },
-        { "@type": "ListItem", "position": 4, "name": "틱택토", "url": "https://mini-g.kro.kr/tictactoe/" },
-        { "@type": "ListItem", "position": 5, "name": "카드 뒤집기", "url": "https://mini-g.kro.kr/card/" },
-        { "@type": "ListItem", "position": 6, "name": "공룡 달리기", "url": "https://mini-g.kro.kr/dino/" },
-        { "@type": "ListItem", "position": 7, "name": "행운의 동전", "url": "https://mini-g.kro.kr/gacha/" },
-        { "@type": "ListItem", "position": 8, "name": "50층 대모험", "url": "https://mini-g.kro.kr/jump/" },
-        { "@type": "ListItem", "position": 9, "name": "지구 방위대 최후의 함선 미니지호", "url": "https://mini-g.kro.kr/shoot/" },
-        { "@type": "ListItem", "position": 10, "name": "스페이스 타워디펜스", "url": "https://mini-g.kro.kr/defense/" },
-        { "@type": "ListItem", "position": 11, "name": "레트로 테트리스", "url": "https://mini-g.kro.kr/tetris/" },
-        { "@type": "ListItem", "position": 12, "name": "레트로 2048", "url": "https://mini-g.kro.kr/p2048/" },
-        { "@type": "ListItem", "position": 13, "name": "블리츠RTS", "url": "https://mini-g.kro.kr/rts/" },
-        { "@type": "ListItem", "position": 14, "name": "레트로 레이싱", "url": "https://mini-g.kro.kr/racing/" },
-        { "@type": "ListItem", "position": 15, "name": "클래식 블랙잭", "url": "https://mini-g.kro.kr/blackjack/" },
-        { "@type": "ListItem", "position": 16, "name": "미니 부루마블", "url": "https://mini-g.kro.kr/marble/" },
-        { "@type": "ListItem", "position": 17, "name": "커피숍 타이쿤", "url": "https://mini-g.kro.kr/tycoon/" },
-        { "@type": "ListItem", "position": 18, "name": "행성 채굴 시뮬레이터", "url": "https://mini-g.kro.kr/simulator/" },
-        { "@type": "ListItem", "position": 19, "name": "레트로 비트", "url": "https://mini-g.kro.kr/rhythm/" },
-        { "@type": "ListItem", "position": 20, "name": "아케이드 체스", "url": "https://mini-g.kro.kr/chess/" }
-      ]
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: #f8f9fa;
+      color: #333;
+      line-height: 1.5;
     }
-    </script>
 
-    <style>
-        :root {
-            --bg-color: #f8f9fa;
-            --text-color: #333;
-            --card-bg: #fff;
-            --card-border: #e9ecef;
-            --title-color: #222;
-            --sub-color: #666;
-            --accent-color: #ff6b6b;
-            --filter-bg: #ffffff;
-        }
+    /* 상단 테마 변경 버튼 */
+    .theme-selector {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      padding: 12px 20px;
+      font-size: 0.85rem;
+    }
 
-        [data-theme="cream"] {
-            --bg-color: #fff8ed;
-            --text-color: #51463b;
-            --card-bg: #fffdf8;
-            --card-border: #eadfce;
-            --title-color: #40352b;
-            --sub-color: #756858;
-            --accent-color: #d89b5b;
-            --filter-bg: #fffaf2;
-        }
+    .theme-selector label {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
 
-        [data-theme="dark"] {
-            --bg-color: #0d1117;
-            --text-color: #c9d1d9;
-            --card-bg: #161b22;
-            --card-border: #30363d;
-            --title-color: #58a6ff;
-            --sub-color: #8b949e;
-            --accent-color: #58a6ff;
-            --filter-bg: #161b22;
-        }
+    /* 메인 메인 컨테이너 - 적절한 너비 제한 및 중앙 정렬 */
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 10px 20px 40px;
+    }
 
-        * {
-            box-sizing: border-box;
-        }
+    /* 헤더 영역 컴팩트하게 조정 */
+    header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
 
-        html {
-            scroll-behavior: smooth;
-        }
+    .logo-area {
+      font-size: 1.8rem;
+      font-weight: bold;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
 
-        body {
-            text-align: center;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
-            padding: 40px 20px;
-            margin: 0;
-            transition: background-color 0.3s ease, color 0.3s ease;
-        }
+    .sub-title {
+      font-size: 0.9rem;
+      color: #666;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
 
-        /* 상단 테마 선택 버튼 */
-        .theme-selector {
-            position: absolute;
-            top: 15px;
-            right: 20px;
-        }
+    .description {
+      font-size: 0.85rem;
+      color: #777;
+      max-width: 600px;
+      margin: 0 auto;
+      word-break: keep-all;
+    }
 
-        .theme-btn {
-            padding: 6px 12px;
-            margin-left: 4px;
-            border: 1px solid var(--card-border);
-            background-color: var(--card-bg);
-            color: var(--text-color);
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 0.8rem;
-        }
+    /* 카테고리 필터 버튼 */
+    .filter-group {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 20px 0 28px;
+    }
 
-        .theme-btn:hover {
-            border-color: var(--accent-color);
-        }
+    .filter-btn {
+      border: 1px solid #e0e0e0;
+      background-color: #fff;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
 
-        /* 헤더 영역 */
-        header {
-            max-width: 800px;
-            margin: 0 auto 24px auto;
-        }
+    .filter-btn.active {
+      background-color: #ff6b6b;
+      color: white;
+      border-color: #ff6b6b;
+      font-weight: bold;
+    }
 
-        .decor-line {
-            color: var(--accent-color);
-            font-size: 1rem;
-            letter-spacing: 4px;
-            margin-bottom: 8px;
-        }
+    /* 섹션 타이틀 */
+    .section-title {
+      font-size: 1.15rem;
+      font-weight: bold;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
 
-        h1 {
-            color: var(--title-color);
-            font-size: 2.2rem;
-            margin: 0 0 8px 0;
-            font-weight: 800;
-        }
+    .section-desc {
+      font-size: 0.8rem;
+      color: #888;
+      margin-bottom: 16px;
+      margin-top: -10px;
+    }
 
-        .subtitle {
-            color: var(--sub-color);
-            font-size: 0.95rem;
-            margin-bottom: 12px;
-        }
+    /* 게임 카드 그리드 배치 (PC기준 4열 배치로 조밀하게) */
+    .game-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      gap: 16px;
+    }
 
-        .site-intro {
-            color: var(--sub-color);
-            font-size: 0.88rem;
-            line-height: 1.6;
-            margin: 0 auto;
-        }
+    /* 게임 카드 디자인 축소 및 깔끔한 배치 */
+    .game-card {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      border: 1px solid #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      cursor: pointer;
+    }
 
-        /* 카테고리 네비게이션 */
-        .category-nav {
-            max-width: 960px;
-            margin: 0 auto 28px auto;
-            display: flex;
-            justify-content: center;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
+    .game-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
 
-        .category-btn {
-            border: 1px solid var(--card-border);
-            background: var(--filter-bg);
-            color: var(--text-color);
-            padding: 7px 15px;
-            border-radius: 999px;
-            cursor: pointer;
-            font-size: 0.85rem;
-            transition: 0.2s ease;
-        }
+    .card-icon {
+      font-size: 2.2rem;
+      margin-bottom: 10px;
+    }
 
-        .category-btn:hover,
-        .category-btn.active {
-            background: var(--accent-color);
-            color: #fff;
-            border-color: var(--accent-color);
-        }
+    .card-title {
+      font-size: 1rem;
+      font-weight: bold;
+      margin-bottom: 6px;
+      color: #222;
+    }
 
-        /* 섹션 제목 및 설명 */
-        .section-title {
-            max-width: 960px;
-            margin: 0 auto 6px auto;
-            text-align: left;
-            color: var(--title-color);
-            font-size: 1.25rem;
-        }
+    .card-desc {
+      font-size: 0.8rem;
+      color: #666;
+      line-height: 1.4;
+      margin-bottom: 14px;
+      flex-grow: 1;
+      word-break: keep-all;
+    }
 
-        .section-description {
-            max-width: 960px;
-            margin: 0 auto 20px auto;
-            text-align: left;
-            color: var(--sub-color);
-            font-size: 0.85rem;
-        }
-
-        /* 게임 카드 컨테이너 Grid */
-        .container {
-            max-width: 960px;
-            margin: 0 auto;
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 16px;
-        }
-
-        /* 개별 게임 카드 */
-        .game-card {
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-            aspect-ratio: 1 / 1;
-            width: 100%;
-            padding: 18px;
-            background-color: var(--card-bg);
-            border-radius: 14px;
-            border: 1px solid var(--card-border);
-            text-align: left;
-            text-decoration: none;
-            color: inherit;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
-            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-            overflow: hidden;
-        }
-
-        .game-card:hover {
-            transform: translateY(-5px);
-            border-color: var(--accent-color);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
-        }
-
-        .game-card.hidden {
-            display: none;
-        }
-
-        .game-card .icon {
-            font-size: 2.2rem;
-            line-height: 1;
-            margin-bottom: 10px;
-            display: block;
-        }
-
-        .game-card h3 {
-            margin: 0 0 6px 0;
-            color: var(--title-color);
-            font-size: 1.05rem;
-            font-weight: 800;
-            line-height: 1.3;
-        }
-
-        .game-card p {
-            margin: 0;
-            color: var(--sub-color);
-            font-size: 0.78rem;
-            line-height: 1.45;
-            display: -webkit-box;
-            -webkit-line-clamp: 3;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-
-        .game-tag {
-            align-self: flex-start;
-            margin-top: auto;
-            padding: 3px 7px;
-            border-radius: 6px;
-            background: var(--bg-color);
-            color: var(--sub-color);
-            font-size: 0.68rem;
-            white-space: nowrap;
-        }
-
-        /* 의견 보내기 섹션 */
-        .feedback-section {
-            max-width: 960px;
-            margin: 35px auto 0 auto;
-            padding-top: 20px;
-            border-top: 1px solid var(--card-border);
-        }
-
-        .feedback-button {
-            border: 1px solid var(--card-border);
-            background: var(--card-bg);
-            color: var(--text-color);
-            padding: 9px 18px;
-            border-radius: 999px;
-            cursor: pointer;
-            font-size: 0.85rem;
-            font-weight: 700;
-            transition: 0.2s ease;
-        }
-
-        .feedback-button:hover {
-            border-color: var(--accent-color);
-            color: var(--accent-color);
-            transform: translateY(-1px);
-        }
-
-        /* 모달 스타일 */
-        .feedback-modal {
-            position: fixed;
-            inset: 0;
-            z-index: 1000;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            background: rgba(0, 0, 0, 0.55);
-        }
-
-        .feedback-modal.open {
-            display: flex;
-        }
-
-        .feedback-modal-content {
-            width: min(480px, 100%);
-            max-height: calc(100vh - 40px);
-            overflow-y: auto;
-            padding: 24px;
-            background: var(--card-bg);
-            color: var(--text-color);
-            border: 1px solid var(--card-border);
-            border-radius: 16px;
-            box-shadow: 0 18px 50px rgba(0, 0, 0, 0.22);
-            text-align: left;
-        }
-
-        .feedback-modal-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            margin-bottom: 16px;
-        }
-
-        .feedback-modal-header h2 {
-            margin: 0;
-            color: var(--title-color);
-            font-size: 1.2rem;
-        }
-
-        .feedback-close {
-            width: 32px;
-            height: 32px;
-            padding: 0;
-            margin: 0;
-            border: 1px solid var(--card-border);
-            background: var(--card-bg);
-            color: var(--text-color);
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.95rem;
-            font-weight: 700;
-        }
-
-        .feedback-close:hover {
-            border-color: var(--accent-color);
-        }
-
-        .feedback-form {
-            display: grid;
-            gap: 12px;
-        }
-
-        .feedback-form label {
-            display: grid;
-            gap: 6px;
-            color: var(--title-color);
-            font-size: 0.85rem;
-            font-weight: 700;
-        }
-
-        .feedback-form select,
-        .feedback-form textarea {
-            width: 100%;
-            border: 1px solid var(--card-border);
-            background: var(--filter-bg);
-            color: var(--text-color);
-            border-radius: 8px;
-            padding: 10px 12px;
-            font-size: 0.88rem;
-            outline: none;
-        }
-
-        .feedback-form select:focus,
-        .feedback-form textarea:focus {
-            border-color: var(--accent-color);
-        }
-
-        .feedback-form textarea {
-            min-height: 130px;
-            resize: vertical;
-            line-height: 1.5;
-        }
-
-        .feedback-info {
-            display: flex;
-            justify-content: space-between;
-            gap: 10px;
-            color: var(--sub-color);
-            font-size: 0.75rem;
-        }
-
-        .feedback-notice {
-            margin: 0;
-            color: var(--sub-color);
-            font-size: 0.75rem;
-            line-height: 1.4;
-        }
-
-        .feedback-submit {
-            margin: 0;
-            border: 1px solid var(--accent-color);
-            background: var(--accent-color);
-            color: #fff;
-            padding: 10px 16px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.88rem;
-            font-weight: 800;
-        }
-
-        .feedback-submit:hover {
-            filter: brightness(0.95);
-        }
-
-        .feedback-submit:disabled {
-            opacity: 0.6;
-            cursor: wait;
-        }
-
-        .feedback-status {
-            min-height: 20px;
-            margin: 0;
-            color: var(--sub-color);
-            text-align: center;
-            font-size: 0.8rem;
-            font-weight: 700;
-        }
-
-        footer {
-            max-width: 960px;
-            margin: 25px auto 0 auto;
-            color: var(--sub-color);
-            font-size: 0.8rem;
-            line-height: 1.6;
-            opacity: 0.75;
-        }
-
-        /* 미디어 쿼리 - 태블릿 및 소형 화면 (3열) */
-        @media (max-width: 900px) {
-            .container {
-                grid-template-columns: repeat(3, 1fr);
-                gap: 14px;
-            }
-        }
-
-        /* 미디어 쿼리 - 모바일 화면 (2열) */
-        @media (max-width: 600px) {
-            body {
-                padding: 25px 12px;
-            }
-
-            .theme-selector {
-                position: static;
-                margin-bottom: 15px;
-            }
-
-            h1 {
-                font-size: 1.7rem;
-            }
-
-            .subtitle {
-                font-size: 0.85rem;
-            }
-
-            .site-intro {
-                font-size: 0.8rem;
-            }
-
-            .container {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 10px;
-            }
-
-            .game-card {
-                padding: 12px;
-                border-radius: 10px;
-            }
-
-            .game-card .icon {
-                font-size: 1.7rem;
-                margin-bottom: 6px;
-            }
-
-            .game-card h3 {
-                font-size: 0.88rem;
-                margin-bottom: 4px;
-            }
-
-            .game-card p {
-                font-size: 0.68rem;
-                line-height: 1.35;
-                -webkit-line-clamp: 2;
-            }
-
-            .game-tag {
-                font-size: 0.6rem;
-                padding: 2px 5px;
-            }
-        }
-    </style>
+    .card-tag {
+      align-self: flex-start;
+      background-color: #f1f3f5;
+      color: #495057;
+      font-size: 0.72rem;
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+  </style>
 </head>
-
 <body>
 
-    <div class="theme-selector">
-        <button class="theme-btn" onclick="setTheme('white')">⚪ 하양</button>
-        <button class="theme-btn" onclick="setTheme('cream')">🟡 크림</button>
-        <button class="theme-btn" onclick="setTheme('dark')">⚫ 다크</button>
-    </div>
+  <!-- 테마 선택 영역 -->
+  <div class="theme-selector">
+    <label><input type="radio" name="theme" checked> 하양</label>
+    <label><input type="radio" name="theme"> 크림</label>
+    <label><input type="radio" name="theme"> 다크</label>
+  </div>
 
+  <div class="container">
+    <!-- 헤더 영역 -->
     <header>
-        <div class="decor-line">✦ 🌟 ✦ 🎈 ✦ 🌟 ✦</div>
-        <h1>✨ 미니지 ✨</h1>
-        <p class="subtitle">무료 미니게임 · 레트로 게임 · 브라우저 게임</p>
-        <p class="site-intro">
-            미니지는 설치 없이 브라우저에서 바로 즐길 수 있는 다양한 미니게임을 모아놓은 온라인 오락실입니다.
-            퍼즐, 액션, 보드게임, 전략게임, 레이싱 등 여러 장르의 게임을 간편하게 플레이해보세요.
-        </p>
+      <div class="logo-area">
+        ✨ 미니지 ✨
+      </div>
+      <div class="sub-title">무료 미니게임 · 레트로 게임 · 브라우저 게임</div>
+      <p class="description">
+        미니지는 설치 없이 브라우저에서 바로 즐길 수 있는 온라인 오락실입니다. 다양한 장르의 게임을 간편하게 플레이해보세요.
+      </p>
     </header>
 
-    <nav class="category-nav" aria-label="게임 장르 선택">
-        <button class="category-btn active" data-filter="all">전체</button>
-        <button class="category-btn" data-filter="action">⚡ 액션</button>
-        <button class="category-btn" data-filter="puzzle">🧩 퍼즐</button>
-        <button class="category-btn" data-filter="board">🎲 보드</button>
-        <button class="category-btn" data-filter="strategy">⚔️ 전략</button>
-        <button class="category-btn" data-filter="simulation">🌌 시뮬레이션</button>
-    </nav>
-
-    <section aria-labelledby="games-title">
-        <h2 id="games-title" class="section-title">🎮 전체 미니게임</h2>
-        <p class="section-description">다양한 장르의 게임을 선택해서 바로 플레이해보세요.</p>
-
-        <main class="container">
-            <a class="game-card" data-category="puzzle" href="./snake/">
-                <span class="icon">🐍</span>
-                <h3>스네이크 게임</h3>
-                <p>방향키로 뱀을 움직여 사과를 먹어보세요. 몸집이 커질수록 난이도가 상승합니다!</p>
-                <span class="game-tag">퍼즐</span>
-            </a>
-
-            <a class="game-card" data-category="action" href="./dodge/">
-                <span class="icon">💩</span>
-                <h3>똥피하기</h3>
-                <p>하늘에서 떨어지는 장애물을 좌우로 피하며 끝까지 버텨보세요!</p>
-                <span class="game-tag">액션</span>
-            </a>
-
-            <a class="game-card" data-category="action" href="./brick/">
-                <span class="icon">🧱</span>
-                <h3>벽돌깨기</h3>
-                <p>패들을 움직여 공을 튕겨내고 모든 벽돌을 부숴보세요!</p>
-                <span class="game-tag">액션</span>
-            </a>
-
-            <a class="game-card" data-category="board" href="./tictactoe/">
-                <span class="icon">❌</span>
-                <h3>틱택토</h3>
-                <p>컴퓨터 AI와 대결하며 먼저 3줄을 완성해 승리를 차지하세요.</p>
-                <span class="game-tag">보드</span>
-            </a>
-
-            <a class="game-card" data-category="puzzle" href="./card/">
-                <span class="icon">🃏</span>
-                <h3>카드 뒤집기</h3>
-                <p>같은 그림의 카드를 찾아 뒤집는 기억력 테스트 게임입니다.</p>
-                <span class="game-tag">퍼즐</span>
-            </a>
-
-            <a class="game-card" data-category="action" href="./dino/">
-                <span class="icon">🦖</span>
-                <h3>공룡 달리기</h3>
-                <p>점프하며 선인장 장애물을 피하고 최대한 멀리 달려보세요!</p>
-                <span class="game-tag">액션</span>
-            </a>
-
-            <a class="game-card" data-category="puzzle" href="./gacha/">
-                <span class="icon">🪙</span>
-                <h3>행운의 동전</h3>
-                <p>앞면일까 뒷면일까? 오늘의 행운을 시험해보세요.</p>
-                <span class="game-tag">퍼즐</span>
-            </a>
-
-            <a class="game-card" data-category="action" href="./jump/">
-                <span class="icon">🏃</span>
-                <h3>50층 대모험</h3>
-                <p>가시를 피하고 상자를 향해 50개의 스테이지를 돌파하세요!</p>
-                <span class="game-tag">액션</span>
-            </a>
-
-            <a class="game-card" data-category="action" href="./shoot/">
-                <span class="icon">🛸</span>
-                <h3>지구 방위대 최후의 함선 '미니지호'</h3>
-                <p>우주선을 조종하여 적의 탄막을 피하고 거대 보스를 격추하세요!</p>
-                <span class="game-tag">액션</span>
-            </a>
-
-            <a class="game-card" data-category="strategy" href="./defense/">
-                <span class="icon">🛡️</span>
-                <h3>스페이스 타워디펜스</h3>
-                <p>전략적으로 포탑을 배치해 밀려오는 적 부대를 막아내세요!</p>
-                <span class="game-tag">전략</span>
-            </a>
-
-            <a class="game-card" data-category="puzzle" href="./tetris/">
-                <span class="icon">🧱</span>
-                <h3>레트로 테트리스</h3>
-                <p>블록을 빈틈없이 쌓아 줄을 완성하고 최고 점수에 도전하세요!</p>
-                <span class="game-tag">퍼즐</span>
-            </a>
-
-            <a class="game-card" data-category="puzzle" href="./p2048/">
-                <span class="icon">🔢</span>
-                <h3>레트로 2048</h3>
-                <p>같은 숫자의 타일을 합쳐 2048을 만들어보세요!</p>
-                <span class="game-tag">퍼즐</span>
-            </a>
-
-            <a class="game-card" data-category="strategy" href="./rts/">
-                <span class="icon">⚔️</span>
-                <h3>블리츠RTS</h3>
-                <p>자원을 채취하고 병력을 생산하여 적 기지를 무너뜨리세요!</p>
-                <span class="game-tag">전략</span>
-            </a>
-
-            <a class="game-card" data-category="action" href="./racing/">
-                <span class="icon">🏎️</span>
-                <h3>레트로 레이싱</h3>
-                <p>차량을 피하고 추월하며 최대 주행 거리에 도전하세요!</p>
-                <span class="game-tag">액션</span>
-            </a>
-
-            <a class="game-card" data-category="board" href="./blackjack/">
-                <span class="icon">🂡</span>
-                <h3>클래식 블랙잭</h3>
-                <p>딜러와 카드 승부를 펼치며 21에 도전해보세요.</p>
-                <span class="game-tag">보드</span>
-            </a>
-
-            <a class="game-card" data-category="board" href="./marble/">
-                <span class="icon">🎲</span>
-                <h3>미니 부루마블</h3>
-                <p>도시를 매입하고 건물을 건설하며 보드판을 점령해보세요!</p>
-                <span class="game-tag">보드</span>
-            </a>
-
-            <a class="game-card" data-category="simulation" href="./tycoon/">
-                <span class="icon">☕</span>
-                <h3>커피숍 타이쿤</h3>
-                <p>손님의 주문을 처리하고 매장을 성장시키는 경영 게임입니다.</p>
-                <span class="game-tag">시뮬레이션</span>
-            </a>
-
-            <a class="game-card" data-category="simulation" href="./simulator/">
-                <span class="icon">🌌</span>
-                <h3>행성 채굴 시뮬레이터</h3>
-                <p>우주 자원을 채굴하고 장비를 업그레이드하며 기지를 성장시키세요.</p>
-                <span class="game-tag">시뮬레이션</span>
-            </a>
-
-            <a class="game-card" data-category="action" href="./rhythm/">
-                <span class="icon">🎧</span>
-                <h3>레트로 비트</h3>
-                <p>음악의 비트에 맞춰 내려오는 노트를 정확하게 입력해보세요!</p>
-                <span class="game-tag">액션</span>
-            </a>
-
-            <a class="game-card" data-category="board" href="./chess/">
-                <span class="icon">♟️</span>
-                <h3>아케이드 체스</h3>
-                <p>AI와 8×8 전술 보드에서 대결하며 상대 킹을 체크메이트하세요!</p>
-                <span class="game-tag">보드</span>
-            </a>
-        </main>
-    </section>
-
-    <section class="feedback-section" aria-label="미니지 의견 보내기">
-        <button type="button" class="feedback-button" id="feedback-open">💬 의견 보내기</button>
-    </section>
-
-    <footer>
-        <p>미니지는 브라우저에서 바로 즐길 수 있는 다양한 미니게임을 제공하는 온라인 오락실입니다.</p>
-        <p>© 미니지 All Rights Reserved.</p>
-    </footer>
-
-    <div class="feedback-modal" id="feedback-modal" role="dialog" aria-modal="true" aria-labelledby="feedback-title">
-        <div class="feedback-modal-content">
-            <div class="feedback-modal-header">
-                <h2 id="feedback-title">💬 미니지에 의견 보내기</h2>
-                <button type="button" class="feedback-close" id="feedback-close" aria-label="닫기">✕</button>
-            </div>
-
-            <form class="feedback-form" id="feedback-form">
-                <label for="feedback-category">
-                    의견 종류
-                    <select id="feedback-category" name="category" required>
-                        <option value="게임 오류">게임 오류</option>
-                        <option value="게임 의견">게임 의견</option>
-                        <option value="새로운 게임 아이디어">새로운 게임 아이디어</option>
-                        <option value="사이트 의견">사이트 의견</option>
-                        <option value="기타">기타</option>
-                    </select>
-                </label>
-
-                <label for="feedback-message">
-                    의견 내용
-                    <textarea id="feedback-message" name="message" maxlength="2000" placeholder="게임 오류나 불편한 점, 새로운 게임 아이디어 등을 적어주세요." required></textarea>
-                </label>
-
-                <div class="feedback-info">
-                    <span>최대 2000자</span>
-                    <span id="feedback-count">0 / 2000</span>
-                </div>
-
-                <input type="hidden" name="source" value="mini-g.kro.kr">
-
-                <p class="feedback-notice">개인정보(이름, 전화번호, 주소 등)는 입력하지 말아주세요.</p>
-
-                <button type="submit" class="feedback-submit" id="feedback-submit">의견 보내기</button>
-
-                <p class="feedback-status" id="feedback-status" aria-live="polite"></p>
-            </form>
-        </div>
+    <!-- 카테고리 필터 -->
+    <div class="filter-group">
+      <button class="filter-btn active">전체</button>
+      <button class="filter-btn">⚡ 액션</button>
+      <button class="filter-btn">🧩 퍼즐</button>
+      <button class="filter-btn">🎲 보드</button>
+      <button class="filter-btn">⚔️ 전략</button>
+      <button class="filter-btn">🌏 시뮬레이션</button>
     </div>
 
-    <script>
-        function setTheme(theme) {
-            if (theme === 'white') {
-                document.documentElement.removeAttribute('data-theme');
-            } else {
-                document.documentElement.setAttribute('data-theme', theme);
-            }
-            localStorage.setItem('minig-theme', theme);
-        }
+    <!-- 콘텐츠 영역 -->
+    <main>
+      <div class="section-title">🎮 전체 미니게임</div>
+      <div class="section-desc">다양한 장르의 게임을 선택해서 바로 플레이해보세요.</div>
 
-        const savedTheme = localStorage.getItem('minig-theme');
-        if (savedTheme) {
-            setTheme(savedTheme);
-        }
+      <!-- 게임 목록 그리드 -->
+      <div class="game-grid">
+        <!-- 스네이크 게임 -->
+        <div class="game-card">
+          <div>
+            <div class="card-icon">🐍</div>
+            <div class="card-title">스네이크 게임</div>
+            <div class="card-desc">방향키로 뱀을 움직여 사과를 먹어보세요. 몸집이 커질수록 난이도가 상승합니다!</div>
+          </div>
+          <span class="card-tag">퍼즐</span>
+        </div>
 
-        const filterButtons = document.querySelectorAll('.category-btn');
-        const gameCards = document.querySelectorAll('.game-card');
+        <!-- 똥피하기 -->
+        <div class="game-card">
+          <div>
+            <div class="card-icon">💩</div>
+            <div class="card-title">똥피하기</div>
+            <div class="card-desc">하늘에서 떨어지는 장애물을 좌우로 피하며 끝까지 버텨보세요!</div>
+          </div>
+          <span class="card-tag">액션</span>
+        </div>
 
-        filterButtons.forEach(function(button) {
-            button.addEventListener('click', function() {
-                const filter = this.dataset.filter;
+        <!-- 벽돌깨기 -->
+        <div class="game-card">
+          <div>
+            <div class="card-icon">🧱</div>
+            <div class="card-title">벽돌깨기</div>
+            <div class="card-desc">패들을 움직여 공을 튕겨내고 모든 벽돌을 부숴보세요!</div>
+          </div>
+          <span class="card-tag">액션</span>
+        </div>
 
-                filterButtons.forEach(function(btn) {
-                    btn.classList.remove('active');
-                });
-                this.classList.add('active');
+        <!-- 틱택토 -->
+        <div class="game-card">
+          <div>
+            <div class="card-icon">❌</div>
+            <div class="card-title">틱택토</div>
+            <div class="card-desc">컴퓨터 AI와 대결하며 먼저 3줄을 완성해 승리를 차지하세요.</div>
+          </div>
+          <span class="card-tag">보드</span>
+        </div>
+      </div>
+    </main>
+  </div>
 
-                gameCards.forEach(function(card) {
-                    const category = card.dataset.category;
-                    if (filter === 'all' || category === filter) {
-                        card.classList.remove('hidden');
-                    } else {
-                        card.classList.add('hidden');
-                    }
-                });
-            });
-        });
-
-        /* 의견 보내기 관련 스크립트 */
-        const feedbackOpen = document.getElementById('feedback-open');
-        const feedbackModal = document.getElementById('feedback-modal');
-        const feedbackClose = document.getElementById('feedback-close');
-        const feedbackForm = document.getElementById('feedback-form');
-        const feedbackMessage = document.getElementById('feedback-message');
-        const feedbackCount = document.getElementById('feedback-count');
-        const feedbackStatus = document.getElementById('feedback-status');
-        const feedbackSubmit = document.getElementById('feedback-submit');
-
-        const FORM_ENDPOINT = 'https://formspree.io/f/mjykveqr';
-
-        function updateFeedbackCount() {
-            feedbackCount.textContent = feedbackMessage.value.length + ' / 2000';
-        }
-
-        function openFeedbackModal() {
-            feedbackModal.classList.add('open');
-            feedbackStatus.textContent = '';
-            document.body.style.overflow = 'hidden';
-
-            setTimeout(function() {
-                feedbackMessage.focus();
-            }, 0);
-        }
-
-        function closeFeedbackModal() {
-            feedbackModal.classList.remove('open');
-            document.body.style.overflow = '';
-        }
-
-        feedbackOpen.addEventListener('click', openFeedbackModal);
-        feedbackClose.addEventListener('click', closeFeedbackModal);
-        feedbackMessage.addEventListener('input', updateFeedbackCount);
-
-        feedbackModal.addEventListener('click', function(event) {
-            if (event.target === feedbackModal) {
-                closeFeedbackModal();
-            }
-        });
-
-        document.addEventListener('keydown', function(event) {
-            if (event.key === 'Escape' && feedbackModal.classList.contains('open')) {
-                closeFeedbackModal();
-            }
-        });
-
-        feedbackForm.addEventListener('submit', async function(event) {
-            event.preventDefault();
-
-            if (FORM_ENDPOINT.includes('YOUR_FORM_ID')) {
-                feedbackStatus.textContent = 'Formspree 연결 주소를 설정해주세요.';
-                return;
-            }
-
-            feedbackSubmit.disabled = true;
-            feedbackStatus.textContent = '의견을 보내는 중...';
-
-            try {
-                const response = await fetch(FORM_ENDPOINT, {
-                    method: 'POST',
-                    body: new FormData(feedbackForm),
-                    headers: {
-                        Accept: 'application/json'
-                    }
-                });
-
-                if (!response.ok) {
-                    throw new Error('전송 실패');
-                }
-
-                feedbackStatus.textContent = '의견이 전송되었습니다. 감사합니다!';
-                feedbackForm.reset();
-                updateFeedbackCount();
-
-                setTimeout(closeFeedbackModal, 1200);
-            } catch (error) {
-                feedbackStatus.textContent = '전송에 실패했습니다. 잠시 후 다시 시도해주세요.';
-            } finally {
-                feedbackSubmit.disabled = false;
-            }
-        });
-
-        updateFeedbackCount();
-    </script>
 </body>
 </html>
