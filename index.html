@@ -123,26 +123,26 @@
             background-color: var(--bg-color);
             color: var(--text-color);
             font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
-            padding: 40px 16px 30px;
+            padding: 40px 24px;
             margin: 0;
             transition: background-color 0.3s ease, color 0.3s ease;
         }
 
         .theme-selector {
             position: absolute;
-            top: 16px;
-            right: 20px;
+            top: 20px;
+            right: 24px;
         }
 
         .theme-btn {
-            padding: 6px 12px;
-            margin-left: 4px;
+            padding: 8px 16px;
+            margin-left: 6px;
             border: 1px solid var(--card-border);
             background-color: var(--card-bg);
             color: var(--text-color);
             border-radius: 20px;
             cursor: pointer;
-            font-size: 0.80rem;
+            font-size: 0.90rem;
             font-weight: 600;
         }
 
@@ -152,50 +152,50 @@
 
         .decor-line {
             color: var(--accent-color);
-            font-size: 1.05rem;
-            letter-spacing: 4px;
-            margin-bottom: 8px;
+            font-size: 1.2rem;
+            letter-spacing: 6px;
+            margin-bottom: 10px;
         }
 
         h1 {
             color: var(--title-color);
-            font-size: 2.30rem;
-            margin: 0 0 8px 0;
+            font-size: 2.80rem;
+            margin: 0 0 10px 0;
             font-weight: 800;
         }
 
         .subtitle {
             color: var(--sub-color);
-            font-size: 0.95rem;
-            margin-bottom: 12px;
+            font-size: 1.10rem;
+            margin-bottom: 14px;
             font-weight: 600;
         }
 
         .site-intro {
-            max-width: 680px;
-            margin: 0 auto 22px auto;
+            max-width: 800px;
+            margin: 0 auto 28px auto;
             color: var(--sub-color);
-            font-size: 0.88rem;
-            line-height: 1.6;
+            font-size: 0.98rem;
+            line-height: 1.65;
         }
 
         .category-nav {
-            max-width: 800px;
-            margin: 0 auto 24px auto;
+            max-width: 1200px;
+            margin: 0 auto 32px auto;
             display: flex;
             justify-content: center;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 10px;
         }
 
         .category-btn {
             border: 1px solid var(--card-border);
             background: var(--filter-bg);
             color: var(--text-color);
-            padding: 6px 14px;
+            padding: 8px 18px;
             border-radius: 999px;
             cursor: pointer;
-            font-size: 0.85rem;
+            font-size: 0.95rem;
             font-weight: 600;
             transition: 0.2s ease;
         }
@@ -208,42 +208,42 @@
         }
 
         .section-title {
-            max-width: 1000px;
-            margin: 0 auto 6px auto;
+            max-width: 1200px;
+            margin: 0 auto 8px auto;
             text-align: left;
             color: var(--title-color);
-            font-size: 1.25rem;
+            font-size: 1.50rem;
             font-weight: 800;
         }
 
         .section-description {
-            max-width: 1000px;
-            margin: 0 auto 16px auto;
+            max-width: 1200px;
+            margin: 0 auto 20px auto;
             text-align: left;
             color: var(--sub-color);
-            font-size: 0.85rem;
+            font-size: 0.95rem;
         }
 
-        /* 100% 표준 화면 배율 최적화 카드 그리드 */
+        /* 1200px 확대 적용 카드 그리드 */
         .container {
-            width: min(1000px, 100%);
-            max-width: 1000px;
+            width: min(1200px, 100%);
+            max-width: 1200px;
             margin: 0 auto;
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 16px;
+            gap: 20px;
         }
 
         .game-card {
             width: 100%;
             aspect-ratio: 1 / 1;
-            padding: 16px;
+            padding: 20px;
             margin: 0;
             display: flex;
             flex-direction: column;
             justify-content: flex-start;
             background-color: var(--card-bg);
-            border-radius: 12px;
+            border-radius: 16px;
             border: 1px solid var(--card-border);
             color: inherit;
             text-decoration: none;
@@ -263,15 +263,15 @@
         }
 
         .game-card .icon {
-            font-size: 2.20rem;
+            font-size: 2.80rem;
             line-height: 1;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
         }
 
         .game-card h3 {
-            margin: 0 0 6px 0;
+            margin: 0 0 8px 0;
             color: var(--title-color);
-            font-size: 1.05rem;
+            font-size: 1.20rem;
             line-height: 1.30;
             font-weight: 800;
         }
@@ -279,8 +279,8 @@
         .game-card p {
             margin: 0;
             color: var(--sub-color);
-            font-size: 0.82rem;
-            line-height: 1.45;
+            font-size: 0.92rem;
+            line-height: 1.50;
             display: -webkit-box;
             -webkit-line-clamp: 3;
             -webkit-box-orient: vertical;
@@ -293,29 +293,29 @@
             align-self: flex-start;
             white-space: nowrap;
             margin-top: auto;
-            padding: 3px 8px;
+            padding: 4px 10px;
             border-radius: 6px;
             background: var(--bg-color);
             color: var(--sub-color);
-            font-size: 0.70rem;
+            font-size: 0.80rem;
             font-weight: 600;
             line-height: 1.20;
         }
 
         footer {
-            max-width: 1000px;
-            margin: 30px auto 0 auto;
+            max-width: 1200px;
+            margin: 40px auto 0 auto;
             color: var(--sub-color);
-            font-size: 0.78rem;
+            font-size: 0.88rem;
             line-height: 1.6;
             opacity: 0.85;
         }
 
         /* 의견 보내기 */
         .feedback-section {
-            max-width: 1000px;
-            margin: 30px auto 0 auto;
-            padding-top: 18px;
+            max-width: 1200px;
+            margin: 40px auto 0 auto;
+            padding-top: 24px;
             border-top: 1px solid var(--card-border);
         }
 
@@ -323,10 +323,10 @@
             border: 1px solid var(--card-border);
             background: var(--card-bg);
             color: var(--text-color);
-            padding: 8px 18px;
+            padding: 10px 22px;
             border-radius: 999px;
             cursor: pointer;
-            font-size: 0.85rem;
+            font-size: 0.95rem;
             font-weight: 700;
             transition: 0.2s ease;
         }
@@ -353,10 +353,10 @@
         }
 
         .feedback-modal-content {
-            width: min(480px, 100%);
+            width: min(500px, 100%);
             max-height: calc(100vh - 40px);
             overflow-y: auto;
-            padding: 24px;
+            padding: 26px;
             background: var(--card-bg);
             color: var(--text-color);
             border: 1px solid var(--card-border);
@@ -370,18 +370,18 @@
             align-items: center;
             justify-content: space-between;
             gap: 12px;
-            margin-bottom: 16px;
+            margin-bottom: 18px;
         }
 
         .feedback-modal-header h2 {
             margin: 0;
             color: var(--title-color);
-            font-size: 1.20rem;
+            font-size: 1.30rem;
         }
 
         .feedback-close {
-            width: 32px;
-            height: 32px;
+            width: 34px;
+            height: 34px;
             padding: 0;
             margin: 0;
             border: 1px solid var(--card-border);
@@ -389,7 +389,7 @@
             color: var(--text-color);
             border-radius: 8px;
             cursor: pointer;
-            font-size: 1rem;
+            font-size: 1.1rem;
             font-weight: 700;
         }
 
@@ -399,14 +399,14 @@
 
         .feedback-form {
             display: grid;
-            gap: 12px;
+            gap: 14px;
         }
 
         .feedback-form label {
             display: grid;
             gap: 6px;
             color: var(--title-color);
-            font-size: 0.85rem;
+            font-size: 0.90rem;
             font-weight: 700;
         }
 
@@ -418,7 +418,7 @@
             color: var(--text-color);
             border-radius: 8px;
             padding: 10px 12px;
-            font-size: 0.88rem;
+            font-size: 0.92rem;
             outline: none;
         }
 
@@ -428,9 +428,9 @@
         }
 
         .feedback-form textarea {
-            min-height: 130px;
+            min-height: 140px;
             resize: vertical;
-            line-height: 1.45;
+            line-height: 1.5;
         }
 
         .feedback-info {
@@ -438,13 +438,13 @@
             justify-content: space-between;
             gap: 10px;
             color: var(--sub-color);
-            font-size: 0.75rem;
+            font-size: 0.80rem;
         }
 
         .feedback-notice {
             margin: 0;
             color: var(--sub-color);
-            font-size: 0.75rem;
+            font-size: 0.80rem;
             line-height: 1.4;
         }
 
@@ -453,10 +453,10 @@
             border: 1px solid var(--accent-color);
             background: var(--accent-color);
             color: #fff;
-            padding: 10px 14px;
+            padding: 12px 16px;
             border-radius: 8px;
             cursor: pointer;
-            font-size: 0.90rem;
+            font-size: 0.95rem;
             font-weight: 800;
         }
 
@@ -474,96 +474,96 @@
             margin: 0;
             color: var(--sub-color);
             text-align: center;
-            font-size: 0.80rem;
+            font-size: 0.85rem;
             font-weight: 700;
         }
 
         /* 반응형 디바이스 대응 */
         @media (min-width: 601px) and (max-width: 900px) {
             body {
-                padding: 30px 14px 20px;
+                padding: 30px 16px 20px;
             }
 
             .container {
-                width: min(780px, 100%);
+                width: min(840px, 100%);
                 grid-template-columns: repeat(3, minmax(0, 1fr));
-                gap: 12px;
+                gap: 14px;
             }
 
             .game-card {
-                padding: 14px;
+                padding: 16px;
             }
 
             .game-card .icon {
-                font-size: 2.0rem;
+                font-size: 2.3rem;
             }
 
             .game-card h3 {
-                font-size: 0.98rem;
+                font-size: 1.05rem;
             }
 
             .game-card p {
-                font-size: 0.78rem;
+                font-size: 0.84rem;
             }
         }
 
         @media (max-width: 600px) {
             body {
-                padding: 20px 10px 20px;
+                padding: 20px 12px 20px;
             }
 
             .theme-selector {
                 position: static;
-                margin-bottom: 12px;
+                margin-bottom: 14px;
             }
 
             .container {
                 width: 100%;
                 grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 10px;
+                gap: 12px;
             }
 
             .game-card {
-                padding: 12px;
-                border-radius: 10px;
+                padding: 14px;
+                border-radius: 12px;
             }
 
             .game-card .icon {
-                font-size: 1.80rem;
-                margin-bottom: 6px;
+                font-size: 2.0rem;
+                margin-bottom: 8px;
             }
 
             .game-card h3 {
-                font-size: 0.90rem;
+                font-size: 0.95rem;
                 line-height: 1.25;
-                margin-bottom: 4px;
+                margin-bottom: 6px;
             }
 
             .game-card p {
-                font-size: 0.72rem;
-                line-height: 1.4;
+                font-size: 0.78rem;
+                line-height: 1.40;
             }
 
             .game-tag {
-                padding: 2px 6px;
-                font-size: 0.65rem;
+                padding: 3px 8px;
+                font-size: 0.70rem;
             }
 
             h1 {
-                font-size: 1.80rem;
+                font-size: 2.0rem;
             }
 
             .subtitle {
-                font-size: 0.85rem;
+                font-size: 0.92rem;
             }
 
             .site-intro {
-                font-size: 0.78rem;
+                font-size: 0.82rem;
             }
 
             .category-btn {
-                padding: 5px 10px;
-                font-size: 0.78rem;
+                padding: 6px 12px;
+                font-size: 0.82rem;
             }
         }
     </style>
