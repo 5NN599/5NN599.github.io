@@ -1383,15 +1383,16 @@
     ];
     let currentWeapon = WEAPONS[0];
     let pendingGachaWeapon = null;
+    const RAIL_MUZZLE_OFFSET = 16; // 레일건 빔이 플레이어 함체 중심이 아니라 기수 앞에서 끊기도록
 
     // 관통 레이저는 잡몹에게는 겹치는 동안 매 프레임 지속 피해를 줘서 강력하지만,
     // 그 힘을 보스전까지 그대로 가져가면 보스 체력이 순식간에 녹으므로 배율로 감쇄한다.
     const LASER_BOSS_MULT = 0.12;
 
     const shopUpgrades = {
-      atkLv: 1, atkCost: 100, maxAtkLv: 10,
-      luckLv: 1, luckCost: 150, maxLuckLv: 10,
-      shieldLv: 1, shieldCost: 200, maxShieldLv: 10
+      atkLv: 1, atkCost: 100, maxAtkLv: 20,
+      luckLv: 1, luckCost: 150, maxLuckLv: 20,
+      shieldLv: 1, shieldCost: 200, maxShieldLv: 20
     };
 
     const player = {
@@ -1559,12 +1560,16 @@
     ];
     // 최종 보스 전용 패턴
     const FINAL_PATTERNS = [
-      'eyebeam',     // 예고 후 발사되는 거대 안광 빔
-      'gravity',     // 중력장으로 플레이어를 끌어당김
-      'hivewave',    // 하이브 지원군 대량 소환
-      'doublespiral', // 정/역방향 이중 나선
-      'meteor',      // 상단 전역에서 떨어지는 대형 낙하탄 + 착탄 시 폭발
-      'overload'     // 페이즈 막바지에만 등장하는 전방위+조준 복합 융단폭격
+      'eyebeam',       // 예고 후 발사되는 거대 안광 빔
+      'gravity',       // 중력장으로 플레이어를 끌어당김
+      'hivewave',      // 하이브 지원군 대량 소환
+      'doublespiral',  // 정/역방향 이중 나선
+      'meteor',        // 상단 전역에서 떨어지는 대형 낙하탄 + 착탄 시 폭발
+      'overload',      // 페이즈 막바지에만 등장하는 전방위+조준 복합 융단폭격
+      'clones',        // 좌·중·우 세 방향에서 동시에 조준탄이 날아오는 분신 협공
+      'voidrift',      // 화면 곳곳에 열리는 균열에서 안으로 빨려드는 탄환 클러스터
+      'mirrorbarrage', // 보스와 반대편 거울 위치에서 동시에 협공
+      'hunterswarm'    // 대량의 유도탄이 한꺼번에 쏟아지는 추적 군단
     ];
 
     // 스테이지별로 쓸 수 있는 패턴 (진행할수록 늘어남)
@@ -1630,9 +1635,9 @@
 
     // 최종 보스 본체 생성 (해킹 연출이 끝난 뒤 호출된다)
     function createFinalBoss(bossLevel) {
-      // 최종 보스 체력. "더더더" 늘려달라는 요청으로 한 차례 대폭 상향했고,
-      // 이번엔 "하이브가 약한 느낌" 피드백으로 그 값의 2.5배를 추가 적용했다.
-      const finalHp = (9500 + bossLevel * 70) * 2.5;
+      // 최종 보스 체력. "더더더" 늘려달라는 요청으로 한 차례 대폭 상향(×2.5)했고,
+      // 이번 요청으로 그 결과값에 다시 ×2를 적용한다 (원래 기준으로는 총 ×5).
+      const finalHp = (9500 + bossLevel * 70) * 2.5 * 2;
       boss = {
         isFinal: true,
         name: '하이브 마인드',
@@ -1667,9 +1672,9 @@
       if (boss.isFinal) {
         // 최종 보스는 페이즈별 패턴 풀에서 뽑되, 고유 패턴 비중을 높게
         const pools = {
-          1: ['ring', 'aimed', 'spiral', 'eyebeam', 'hivewave', 'wall', 'meteor'],
-          2: ['doublespiral', 'eyebeam', 'gravity', 'aimed', 'cross', 'hivewave', 'rain', 'charge', 'meteor'],
-          3: ['eyebeam', 'doublespiral', 'gravity', 'hivewave', 'rain', 'wall', 'cross', 'charge', 'homing', 'meteor', 'overload', 'overload']
+          1: ['ring', 'aimed', 'spiral', 'eyebeam', 'hivewave', 'wall', 'meteor', 'clones', 'mirrorbarrage'],
+          2: ['doublespiral', 'eyebeam', 'gravity', 'aimed', 'cross', 'hivewave', 'rain', 'charge', 'meteor', 'clones', 'voidrift', 'mirrorbarrage', 'hunterswarm'],
+          3: ['eyebeam', 'doublespiral', 'gravity', 'hivewave', 'rain', 'wall', 'cross', 'charge', 'homing', 'meteor', 'overload', 'overload', 'voidrift', 'mirrorbarrage', 'hunterswarm', 'clones']
         };
         const pool = pools[boss.phase] || pools[3];
         if (boss.patternQueue.length === 0) {
@@ -2006,6 +2011,68 @@
             });
           }
         }
+
+      } else if (mode === 'clones') {
+        // 최종 보스 고유: 좌·중·우 세 지점에서 동시에 조준탄이 날아오는 분신 협공
+        if (boss.modeTimer === 1) showBossCallout('분신 협공 — 세 방향 동시 사격');
+        if (boss.shootTimer >= Math.max(18, Math.round(30 / E))) {
+          boss.shootTimer = 0;
+          [-70, 0, 70].forEach(off => {
+            const ox = boss.x + off;
+            const angle = Math.atan2(player.y - boss.y, player.x - ox);
+            enemyBullets.push({
+              x: ox, y: boss.y + 20,
+              vx: Math.cos(angle) * 3.4 * E, vy: Math.sin(angle) * 3.4 * E,
+              radius: 4.0, color: '#ff8844'
+            });
+          });
+        }
+
+      } else if (mode === 'voidrift') {
+        // 최종 보스 고유: 화면 곳곳에 균열이 열리고, 그 안으로 빨려드는 탄환 클러스터가 생긴다
+        if (boss.modeTimer === 1) showBossCallout('공허의 균열이 열린다...');
+        if (boss.shootTimer >= Math.max(45, Math.round(75 / E))) {
+          boss.shootTimer = 0;
+          const cx = 60 + Math.random() * (CANVAS_WIDTH - 120);
+          const cy = 140 + Math.random() * 160;
+          const arms = 6;
+          for (let i = 0; i < arms; i++) {
+            const a = (Math.PI * 2 / arms) * i;
+            enemyBullets.push({
+              x: cx + Math.cos(a) * 46, y: cy + Math.sin(a) * 46,
+              vx: -Math.cos(a) * 1.3 * E, vy: -Math.sin(a) * 1.3 * E,
+              radius: 4.0, color: '#aa44ff'
+            });
+          }
+        }
+
+      } else if (mode === 'mirrorbarrage') {
+        // 최종 보스 고유: 보스와 화면 반대편 거울 위치에서 동시에 협공한다
+        if (boss.modeTimer === 1) showBossCallout('거울 탄막 — 좌우 협공');
+        if (boss.shootTimer >= Math.max(14, Math.round(22 / E))) {
+          boss.shootTimer = 0;
+          const mirrorX = CANVAS_WIDTH - boss.x;
+          const angle = Math.atan2(player.y - boss.y, player.x - boss.x);
+          bossShot(angle, 3.6 * E, 4.0, { color: '#44ffaa' });
+          const mAngle = Math.atan2(player.y - boss.y, player.x - mirrorX);
+          enemyBullets.push({
+            x: mirrorX, y: boss.y + 20,
+            vx: Math.cos(mAngle) * 3.6 * E, vy: Math.sin(mAngle) * 3.6 * E,
+            radius: 4.0, color: '#44ffaa'
+          });
+        }
+
+      } else if (mode === 'hunterswarm') {
+        // 최종 보스 고유: 대량의 유도탄이 한꺼번에 쏟아지는 추적 군단 (일반 homing 패턴의 강화판)
+        if (boss.modeTimer === 1) showBossCallout('추적 군단 발사!');
+        if (boss.shootTimer >= Math.max(50, Math.round(85 / E))) {
+          boss.shootTimer = 0;
+          for (let i = 0; i < 6; i++) {
+            const a = Math.PI / 2 + (i - 2.5) * 0.32;
+            bossShot(a, 1.6, 4.5, { homing: 220, turn: 0.03, color: '#ff66ff' });
+          }
+          playSound('shoot');
+        }
       }
     }
 
@@ -2220,11 +2287,13 @@
             const railX = player.x;
             const railW = 16;
             const railPower = 9 * atkMult;
-            railgunFlashes.push({ x: railX, y: player.y, life: 10, maxLife: 10 });
+            // 🔧 [수정] 예전엔 빔의 아래쪽 끝이 플레이어 중심(player.y)까지 내려와서 함체 절반이
+            // 빛줄기에 걸쳐 보였다. 기체 코앞(RAIL_MUZZLE_OFFSET)에서 끊어 "앞으로만" 나가는 것처럼 보이게 한다.
+            const railMuzzleY = player.y - RAIL_MUZZLE_OFFSET;
+            railgunFlashes.push({ x: railX, y: railMuzzleY, life: 10, maxLife: 10 });
             for (let ei = enemies.length - 1; ei >= 0; ei--) {
               const e = enemies[ei];
-              // 🔧 [수정] 시각적으로 플레이어보다 위쪽으로만 빔이 나가므로, 판정도 앞쪽(위)에 있는 적만 맞도록 제한
-              if (e.y <= player.y && Math.abs(e.x - railX) < railW / 2 + e.w / 2) {
+              if (e.y <= railMuzzleY && Math.abs(e.x - railX) < railW / 2 + e.w / 2) {
                 e.hp -= railPower;
                 createExplosion(e.x, e.y, 10);
                 if (e.hp <= 0) {
@@ -3258,6 +3327,14 @@
       // 🔧 [수정] 가챠 중/이미 열린 상태에서 중복 호출 차단 (루프 이중 실행 원인)
       if (gameState === 'GACHA' || gameState === 'PAUSED' ||
           gameState === 'GAMEOVER' || gameState === 'VICTORY' || gameState === 'INTRO') return;
+
+      // 하이브 마인드 본전 중에는 상점을 열어 게임을 멈추는 방식으로 공격을 무력화(사실상 무적)하는
+      // 것을 막기 위해, "시스템 해킹으로 접속이 차단됐다"는 연출과 함께 접속을 거부한다.
+      if (boss && boss.isFinal) {
+        showBossCallout('⚠ 시스템 해킹 감지 — 연구소 접속 차단됨', 1800);
+        playSound('shoot');
+        return;
+      }
 
       if (gameState === 'PLAYING') {
         previousState = 'PLAYING';
