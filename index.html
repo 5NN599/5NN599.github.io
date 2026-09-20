@@ -30,6 +30,9 @@
     <meta name="twitter:description" content="다양한 무료 미니게임과 레트로 게임을 설치 없이 바로 즐겨보세요.">
     <meta name="twitter:image" content="https://mini-g.kro.kr/favicon.png">
 
+    <!-- Google reCAPTCHA v3 API (36번째 줄: YOUR_RECAPTCHA_SITE_KEY를 v3 사이트 키로 수정하세요) -->
+    <script src="https://www.google.com/recaptcha/api.js?render=YOUR_RECAPTCHA_SITE_KEY"></script>
+
     <!-- WebSite 구조화 데이터 -->
     <script type="application/ld+json">
     {
@@ -224,7 +227,6 @@
             font-size: 0.95rem;
         }
 
-        /* 1200px 확대 적용 카드 그리드 */
         .container {
             width: min(1200px, 100%);
             max-width: 1200px;
@@ -776,6 +778,9 @@
                     <textarea id="feedback-message" name="message" maxlength="2000" placeholder="게임 오류나 불편한 점, 새로운 게임 아이디어 등을 적어주세요." required></textarea>
                 </label>
 
+                <!-- reCAPTCHA v3 토큰 전달용 Hidden Input (311번째 줄) -->
+                <input type="hidden" name="g-recaptcha-response" id="g-recaptcha-response">
+
                 <div class="feedback-info">
                     <span>최대 2000자</span>
                     <span id="feedback-count">0 / 2000</span>
@@ -876,7 +881,7 @@
             }
         });
 
-        feedbackForm.addEventListener('submit', async function(event) {
+        feedbackForm.addEventListener('submit', function(event) {
             event.preventDefault();
 
             if (FORM_ENDPOINT.includes('YOUR_FORM_ID')) {
@@ -884,32 +889,49 @@
                 return;
             }
 
-            feedbackSubmit.disabled = true;
-            feedbackStatus.textContent = '의견을 보내는 중...';
-
-            try {
-                const response = await fetch(FORM_ENDPOINT, {
-                    method: 'POST',
-                    body: new FormData(feedbackForm),
-                    headers: {
-                        'Accept': 'application/json'
-                    }
-                });
-
-                if (!response.ok) {
-                    throw new Error('전송 실패');
-                }
-
-                feedbackStatus.textContent = '의견이 전송되었습니다. 감사합니다!';
-                feedbackForm.reset();
-                updateFeedbackCount();
-
-                setTimeout(closeFeedbackModal, 1200);
-            } catch (error) {
-                feedbackStatus.textContent = '전송에 실패했습니다. 잠시 후 다시 시도해주세요.';
-            } finally {
-                feedbackSubmit.disabled = false;
+            if (typeof grecaptcha === 'undefined') {
+                feedbackStatus.textContent = 'reCAPTCHA 로드에 실패했습니다.';
+                return;
             }
+
+            feedbackSubmit.disabled = true;
+            feedbackStatus.textContent = '보안 인증 확인 중...';
+
+            // 389번째 줄: YOUR_RECAPTCHA_SITE_KEY를 v3 사이트 키로 수정하세요
+            grecaptcha.ready(function() {
+                grecaptcha.execute('YOUR_RECAPTCHA_SITE_KEY', { action: 'submit' }).then(async function(token) {
+                    document.getElementById('g-recaptcha-response').value = token;
+
+                    feedbackStatus.textContent = '의견을 보내는 중...';
+
+                    try {
+                        const response = await fetch(FORM_ENDPOINT, {
+                            method: 'POST',
+                            body: new FormData(feedbackForm),
+                            headers: {
+                                'Accept': 'application/json'
+                            }
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('전송 실패');
+                        }
+
+                        feedbackStatus.textContent = '의견이 전송되었습니다. 감사합니다!';
+                        feedbackForm.reset();
+                        updateFeedbackCount();
+
+                        setTimeout(closeFeedbackModal, 1200);
+                    } catch (error) {
+                        feedbackStatus.textContent = '전송에 실패했습니다. 잠시 후 다시 시도해주세요.';
+                    } finally {
+                        feedbackSubmit.disabled = false;
+                    }
+                }).catch(function() {
+                    feedbackStatus.textContent = '보안 인증 실패. 다시 시도해 주세요.';
+                    feedbackSubmit.disabled = false;
+                });
+            });
         });
 
         updateFeedbackCount();
