@@ -336,7 +336,7 @@
       opacity: 0;
       pointer-events: none;
       z-index: 40;
-      transition: opacity 0.5s ease-in-out;
+      transition: opacity 0.2s ease-out;
       display: none;
       flex-direction: column;
       justify-content: center;
@@ -488,7 +488,7 @@
       align-items: center;
       gap: 6px;
       pointer-events: none;
-      background: radial-gradient(circle at 50% 35%, rgba(0,70,30,0.55), rgba(0,0,0,0.92));
+      background: radial-gradient(circle at 50% 35%, rgba(0,70,30,0.96), rgba(0,0,0,0.98));
     }
     #boss-intro.on { display: flex; }
     #boss-intro .bi-eye {
@@ -570,7 +570,7 @@
       overflow: hidden;
       text-align: center;
       padding: 0 26px;
-      background: radial-gradient(circle at 50% 38%, rgba(20,25,55,0.92), rgba(0,0,0,0.97));
+      background: radial-gradient(circle at 50% 38%, rgba(20,25,55,0.97), rgba(0,0,0,0.99));
     }
     #epilogue-screen.on { display: flex; }
     #epilogue-screen .ep-line {
@@ -2954,13 +2954,12 @@
         initCraters();
         startBGM();
         fadeScreen.style.opacity = '0';
-        // 🔧 [수정] 예전엔 여기서 곧바로 상점을 열었는데, fade-screen이 z-index가 더 높은 채로
-        // 0.5초간 투명해지는 중이라 그 위에 상점 화면이 겹쳐 보여 "화면이 반투명하다"는
-        // 현상이 생겼다. 검은 화면이 완전히 걷힌 뒤에야 상점을 연다.
+        // 🔧 [수정] 검은 화면이 반투명하게 겹쳐 보이는 구간을 최대한 줄이기 위해
+        // 크로스페이드 시간을 0.5s → 0.2s로 단축했고, 완전히 걷힌 뒤에야 상점을 연다.
         setTimeout(() => {
           fadeScreen.style.display = 'none';
           openShop();
-        }, 500);
+        }, 200);
       }, durationMs);
     }
 
@@ -3474,10 +3473,7 @@
       }
 
       buildings.forEach(b => {
-        ctx.font = '30px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(b.emoji, b.x, b.y);
+        drawEntityEmoji(b.emoji, b.x, b.y, '30px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Segoe UI Symbol",sans-serif');
       });
 
       explosions.forEach(exp => {
@@ -3486,7 +3482,7 @@
         ctx.beginPath();
         ctx.arc(exp.x, exp.y, exp.radius, 0, Math.PI * 2);
         ctx.fill();
-        ctx.font = '24px sans-serif';
+        ctx.font = '24px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Segoe UI Symbol",sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText('💥', exp.x, exp.y);
@@ -3509,32 +3505,17 @@
       }
 
       if (currentWeapon.type === 'DRONE') {
-        ctx.font = '14px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('🛰️', -22, 0);
-        ctx.fillText('🛰️', 22, 0);
+        drawEntityEmoji('🛰️', -22, 0, '14px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Segoe UI Symbol",sans-serif');
+        drawEntityEmoji('🛰️', 22, 0, '14px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Segoe UI Symbol",sans-serif');
       }
 
-      ctx.shadowColor = '#00ffcc';
-      ctx.shadowBlur = 6;
-      ctx.font = '26px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
       const shipEmoji = player.superMode ? '🔥' : '🚀';
-      ctx.fillText(shipEmoji, 0, 0);
+      drawEntityEmoji(shipEmoji, 0, 0, '26px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Segoe UI Symbol",sans-serif');
       ctx.restore();
 
       // 지원 편대(2번기/3번기) 렌더링
       if (wingmen.length > 0) {
-        ctx.save();
-        ctx.font = '20px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.shadowColor = '#66ccff';
-        ctx.shadowBlur = 6;
-        wingmen.forEach(w => ctx.fillText('🚀', w.x, w.y));
-        ctx.restore();
+        wingmen.forEach(w => drawEntityEmoji('🚀', w.x, w.y, '20px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Segoe UI Symbol",sans-serif'));
       }
 
       ctx.save();
@@ -3546,12 +3527,12 @@
           ctx.fillStyle = b.type === 'DRONE_SHOT' ? '#00ffaa' : '#00ffff';
           ctx.fillRect(b.x - 2, b.y - 8, 4, 10);
         } else if (b.type === 'MISSILE') {
-          ctx.font = '16px sans-serif';
+          ctx.font = '16px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Segoe UI Symbol",sans-serif';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillText('🚀', b.x, b.y);
         } else if (b.type === 'MINE') {
-          ctx.font = '16px sans-serif';
+          ctx.font = '16px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Segoe UI Symbol",sans-serif';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillText('💣', b.x, b.y);
@@ -3560,12 +3541,12 @@
           ctx.shadowColor = '#ff00aa';
           ctx.fillRect(b.x - 4, 0, 8, b.y);
         } else if (b.type === 'BLACKHOLE') {
-          ctx.font = '24px sans-serif';
+          ctx.font = '24px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Segoe UI Symbol",sans-serif';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillText('🌀', b.x, b.y);
         } else if (b.type === 'BOOMERANG') {
-          ctx.font = '18px sans-serif';
+          ctx.font = '18px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Segoe UI Symbol",sans-serif';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.save();
@@ -3622,14 +3603,17 @@
       enemies.forEach(e => {
         ctx.save();
         ctx.globalAlpha = e.alpha !== undefined ? e.alpha : 1.0;
+        drawEntityEmoji(e.emoji, e.x, e.y, '24px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Segoe UI Symbol",sans-serif');
         if (e.pType === 'turret' && e.settled) {
+          ctx.save();
           ctx.shadowColor = '#ff5533';
           ctx.shadowBlur = 10;
+          ctx.font = '24px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Segoe UI Symbol",sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(e.emoji, e.x, e.y);
+          ctx.restore();
         }
-        ctx.font = '24px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(e.emoji, e.x, e.y);
         ctx.restore();
       });
 
@@ -3694,7 +3678,7 @@
               ctx.arc(m.x, CANVAS_HEIGHT - 40, 30, 0, Math.PI * 2);
               ctx.fill();
             } else {
-              ctx.font = '26px sans-serif';
+              ctx.font = '26px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Segoe UI Symbol",sans-serif';
               ctx.textAlign = 'center';
               ctx.textBaseline = 'middle';
               ctx.fillText('☄️', m.x, m.y);
@@ -3716,6 +3700,13 @@
         } else if (saturnMode) {
           ctx.shadowColor = '#aa00ff';
           ctx.shadowBlur = 15;
+        } else if (moonMode) {
+          // 🔧 [수정] 달 스테이지 보스만 발광 케이스가 빠져 있어서 유독 흐릿하게(반투명한 것처럼) 보였다
+          ctx.shadowColor = '#9fc9ff';
+          ctx.shadowBlur = 14;
+        } else {
+          ctx.shadowColor = '#ffffff';
+          ctx.shadowBlur = 10;
         }
 
         if (boss.isFinal) {
@@ -3735,13 +3726,25 @@
           if (boss.invulnTimer > 0 && Math.floor(boss.invulnTimer / 4) % 2 === 0) {
             ctx.globalAlpha = 0.45;
           }
-          ctx.font = '96px sans-serif';
+          ctx.font = '96px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Segoe UI Symbol",sans-serif';
         } else {
-          ctx.font = '54px sans-serif';
+          ctx.font = '54px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Segoe UI Symbol",sans-serif';
         }
 
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
+        // 검은 윤곽선을 먼저 깔아 어떤 배경에서도 또렷하게 보이도록 한다 (색 발광은 그대로 유지)
+        const bossFont = boss.isFinal ? '96px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Segoe UI Symbol",sans-serif'
+                                      : '54px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Segoe UI Symbol",sans-serif';
+        const savedShadowColor = ctx.shadowColor, savedShadowBlur = ctx.shadowBlur, savedAlpha = ctx.globalAlpha;
+        ctx.font = bossFont;
+        ctx.shadowColor = 'rgba(0,0,0,0.9)';
+        ctx.shadowBlur = 4;
+        const bOffs = [[-2, 0], [2, 0], [0, -2], [0, 2], [-1.4, -1.4], [1.4, -1.4], [-1.4, 1.4], [1.4, 1.4]];
+        bOffs.forEach(([ox, oy]) => ctx.fillText(boss.emoji, boss.x + ox, boss.y + oy));
+        ctx.shadowColor = savedShadowColor;
+        ctx.shadowBlur = savedShadowBlur;
+        ctx.globalAlpha = savedAlpha;
         ctx.fillText(boss.emoji, boss.x, boss.y);
         ctx.restore();
 
@@ -3763,15 +3766,20 @@
 
       items.forEach(item => {
         ctx.save();
-        ctx.font = 'bold 16px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
         if (item.label) {
           ctx.fillStyle = item.type === 'SUPER_CAPSULE' ? '#ffcc00' : (item.type === 'DMG_BOOST' ? '#ff4444' : '#00ffcc');
+          ctx.shadowColor = 'rgba(0,0,0,0.9)';
+          ctx.shadowBlur = 3;
+          ctx.font = 'bold 16px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Segoe UI Symbol",sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          const offs = [[-1.2, 0], [1.2, 0], [0, -1.2], [0, 1.2]];
+          offs.forEach(([ox, oy]) => ctx.fillText(item.label, item.x + ox, item.y + oy));
+          ctx.shadowColor = '#ffffff';
+          ctx.shadowBlur = 6;
           ctx.fillText(item.label, item.x, item.y);
         } else {
-          ctx.font = '20px sans-serif';
-          ctx.fillText(item.emoji, item.x, item.y);
+          drawEntityEmoji(item.emoji, item.x, item.y, '20px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Segoe UI Symbol",sans-serif');
         }
         ctx.restore();
       });
@@ -3779,7 +3787,7 @@
       particles.forEach(p => {
         ctx.save();
         ctx.globalAlpha = Math.max(0, p.alpha);
-        ctx.font = `${Math.floor(p.size)}px sans-serif`;
+        ctx.font = `${Math.floor(p.size)}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Segoe UI Symbol",sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText('💥', p.x, p.y);
@@ -3794,6 +3802,28 @@
       document.getElementById('level-val').innerText = level;
       document.getElementById('points-val').innerText = shopPoints;
       document.getElementById('weapon-val').innerText = currentWeapon.emoji;
+    }
+
+    // 🔧 [수정] 실제 문제 원인: 캐릭터/적/아이템은 색 이모지(ctx.fillText)로 그리는데,
+    // 흰색 발광(shadowBlur)만으로는 지구의 짙은 남색 배경에서는 대비가 잘 나오지만
+    // 달/화성처럼 채도가 낮은 회색·갈색 배경에서는 흰 발광과 배경이 톤이 비슷해서
+    // 거의 안 보이고, 그 결과 "반투명해 보인다"는 착시가 생겼다(실제 픽셀 알파는 항상 255였음,
+    // playwright로 직접 렌더링해서 픽셀 단위로 확인함).
+    // 배경이 무슨 색이든 항상 또렷하게 보이도록, 옅은 흰색 발광 대신 진한 검은 윤곽선을
+    // 8방향으로 먼저 찍고 그 위에 본 이모지를 그리는 방식으로 바꾼다.
+    function drawEntityEmoji(emoji, x, y, fontSpec) {
+      ctx.save();
+      ctx.font = fontSpec;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.shadowColor = 'rgba(0,0,0,0.9)';
+      ctx.shadowBlur = 3;
+      const offs = [[-1.4, 0], [1.4, 0], [0, -1.4], [0, 1.4], [-1, -1], [1, -1], [-1, 1], [1, 1]];
+      offs.forEach(([ox, oy]) => ctx.fillText(emoji, x + ox, y + oy));
+      ctx.shadowColor = '#ffffff';
+      ctx.shadowBlur = 8;
+      ctx.fillText(emoji, x, y);
+      ctx.restore();
     }
 
     function createExplosion(x, y, startSize = 16) {
