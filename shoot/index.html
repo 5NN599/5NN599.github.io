@@ -795,6 +795,15 @@
       </div>
     </div>
 
+    <!-- 🛠 디버그 전용: 물결(`) 키 5연타로 디버그 모드를 켠 뒤 M키로 열리는 무기 선택 메뉴 -->
+    <div id="debug-weapon-menu" class="modal" style="display:none;">
+      <div class="modal-content">
+        <h3>🛠 디버그: 무기 선택</h3>
+        <div id="debug-weapon-list" style="display:flex; flex-direction:column; gap:6px; max-height:60vh; overflow-y:auto;"></div>
+        <button onclick="closeDebugWeaponMenu()">닫기 (M)</button>
+      </div>
+    </div>
+
     <div id="shopModal" class="modal">
       <div class="modal-content">
         <h3>🛒 전술 강화 연구소</h3>
@@ -889,6 +898,19 @@
     const ctx = canvas.getContext('2d');
     const CANVAS_WIDTH = 360;
     const CANVAS_HEIGHT = 500;
+
+    // 🔧 [수정] 진짜 원인 발견: 캔버스 실제 해상도가 360x500 고정이었는데, 스마트폰/레티나
+    // 디스플레이(devicePixelRatio 2~3)에서는 브라우저가 이 저해상도 비트맵을 물리 픽셀 수에
+    // 맞춰 늘려 그리면서 전체적으로 흐릿하게 보였다(특히 이목구비가 있는 작은 이모지에서 두드러짐).
+    // 백업 스토어 해상도만 배율만큼 키우고, 이후 모든 그리기 좌표는 기존 360x500 그대로 쓰도록
+    // ctx.scale로 보정한다 — 게임 로직/좌표 계산에는 전혀 영향 없다.
+    const DPR = Math.min(window.devicePixelRatio || 1, 3); // 과도한 배율(폴더블 등)은 3배로 상한
+    canvas.width = CANVAS_WIDTH * DPR;
+    canvas.height = CANVAS_HEIGHT * DPR;
+    canvas.style.width = CANVAS_WIDTH + 'px';
+    canvas.style.height = CANVAS_HEIGHT + 'px';
+    ctx.scale(DPR, DPR);
+
     // 우주 배경은 테마 영향을 받지 않는 고정 색상
     const SPACE_BG = '#0b1020';
 
@@ -1459,7 +1481,11 @@
         { offsetX: 46, offsetY: 14, x: player.x + 46, y: player.y + 14, shootTimer: 0, power: 1.1 }
       ];
 
-      enemyBullets = []; // 화면을 정리해 숨 돌릴 틈을 준다
+      // 🔧 [수정] 예전엔 여기서 enemyBullets = []로 화면을 정리했는데, 이 함수는 플레이어가
+      // 적 탄환에 맞아 죽는 순간(enemyBullets를 순회하는 충돌 루프 한복판)에 damagePlayer()를 통해
+      // 호출된다. 배열을 통째로 새로 갈아치우면 그 루프가 다음 반복에서 존재하지 않는 총알을
+      // 참조하다 멈추는 문제("하이브 마인드에서 죽었을 때 멈춘다")가 있었다. 무적 시간(150프레임)만으로도
+      // 충분한 숨돌릴 틈이 되므로 화면 정리는 생략한다.
       showBossCallout('🚀 지원 편대 도착! 2번기·3번기 전투 합류', 2600);
       flashEffect = 14;
     }
@@ -2185,6 +2211,9 @@
     function update() {
       if (gameState !== 'PLAYING') return;
 
+      // 🛠 디버그 모드: 포인트를 매 프레임 채워 넣어 사실상 무한으로 만든다 (상점에서 써도 바로 채워짐)
+      if (debugModeEnabled) shopPoints = 999999999;
+
       if (flashEffect > 0) flashEffect--;
       if (player.invuln > 0) player.invuln--;
 
@@ -2453,6 +2482,7 @@
       }
 
       for (let index = enemyBullets.length - 1; index >= 0; index--) {
+        if (index >= enemyBullets.length) break; // 방어적 가드: 이 프레임 중 배열이 통째로 바뀌었다면 즉시 중단
         const eb = enemyBullets[index];
 
         // 유도탄: 제한 시간 동안만 플레이어를 추적하고 이후엔 직진
@@ -2677,7 +2707,11 @@
                   }
                 }
               }
-              enemies = enemies.filter(en => en.hp > 0 || en === e); // 연쇄로 죽은 적 정리 (본체는 아래에서 처리)
+              // 🔧 [수정] 여기서 enemies = enemies.filter(...)로 배열을 통째로 새로 만들면,
+              // 지금 이 코드를 실행 중인 바깥쪽 for(eIdx...) 루프의 인덱스가 낡은 배열 기준이라
+              // 다음 반복에서 엉뚱한(혹은 범위를 벗어난 undefined) 적을 가리키게 되어 죽는 경우가 있었다
+              // ("라이트닝 쓸 때 가끔 멈춘다"는 버그의 원인). 배열을 새로 만들지 않고, 죽은 적은 위쪽의
+              // "e.hp <= 0" 가드가 자기 차례가 왔을 때 안전하게 정리하도록 그대로 둔다.
               bullets.splice(bIdx, 1);
             } else {
               // 관통 레이저(LASER)·궤도 플라즈마(ORBIT)는 splice하지 않아 스치는 동안 지속 피해를 준다
@@ -3767,16 +3801,17 @@
       items.forEach(item => {
         ctx.save();
         if (item.label) {
+          ctx.beginPath();
+          ctx.arc(item.x, item.y, 12, 0, Math.PI * 2);
+          const grad = ctx.createRadialGradient(item.x, item.y, 3, item.x, item.y, 12);
+          grad.addColorStop(0, 'rgba(0,0,0,0.5)');
+          grad.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = grad;
+          ctx.fill();
           ctx.fillStyle = item.type === 'SUPER_CAPSULE' ? '#ffcc00' : (item.type === 'DMG_BOOST' ? '#ff4444' : '#00ffcc');
-          ctx.shadowColor = 'rgba(0,0,0,0.9)';
-          ctx.shadowBlur = 3;
           ctx.font = 'bold 16px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Segoe UI Symbol",sans-serif';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          const offs = [[-1.2, 0], [1.2, 0], [0, -1.2], [0, 1.2]];
-          offs.forEach(([ox, oy]) => ctx.fillText(item.label, item.x + ox, item.y + oy));
-          ctx.shadowColor = '#ffffff';
-          ctx.shadowBlur = 6;
           ctx.fillText(item.label, item.x, item.y);
         } else {
           drawEntityEmoji(item.emoji, item.x, item.y, '20px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Segoe UI Symbol",sans-serif');
@@ -3794,6 +3829,8 @@
         ctx.restore();
       });
 
+      if (debugModeEnabled) renderDebugHitboxes();
+
       ctx.restore();
 
       document.getElementById('hp-val').innerText = Math.ceil(player.hp);
@@ -3804,24 +3841,79 @@
       document.getElementById('weapon-val').innerText = currentWeapon.emoji;
     }
 
-    // 🔧 [수정] 실제 문제 원인: 캐릭터/적/아이템은 색 이모지(ctx.fillText)로 그리는데,
-    // 흰색 발광(shadowBlur)만으로는 지구의 짙은 남색 배경에서는 대비가 잘 나오지만
-    // 달/화성처럼 채도가 낮은 회색·갈색 배경에서는 흰 발광과 배경이 톤이 비슷해서
-    // 거의 안 보이고, 그 결과 "반투명해 보인다"는 착시가 생겼다(실제 픽셀 알파는 항상 255였음,
-    // playwright로 직접 렌더링해서 픽셀 단위로 확인함).
-    // 배경이 무슨 색이든 항상 또렷하게 보이도록, 옅은 흰색 발광 대신 진한 검은 윤곽선을
-    // 8방향으로 먼저 찍고 그 위에 본 이모지를 그리는 방식으로 바꾼다.
+    // 🔧 [수정] 방사형 그림자 방식은 이미 어두운 배경 위에 검은 반투명 원을 하나 더 깔아서
+    // 오히려 더 탁하고 뿌옇게 보였다(사용자 피드백: "색도 약간 빠지고"). 대신 이모지 색은
+    // 그대로 살리면서, 아주 얇은(오프셋 0.8px) 검은 윤곽선 4방향 + 약한 흰 발광만 남겨
+    // 어떤 배경에서도 경계만 깔끔하게 잡히도록 한다.
+    // 🛠 디버그용 히트박스 시각화. 실제 충돌 판정에 쓰이는 것과 같은 반경/치수로 그려서
+    // 눈에 보이는 이모지 크기와 실제 판정 범위가 다를 수 있다는 걸 바로 확인할 수 있게 한다.
+    function renderDebugHitboxes() {
+      ctx.save();
+      ctx.lineWidth = 1;
+      ctx.globalAlpha = 0.9;
+
+      // 플레이어: 아이템 판정(원)과 몸통 충돌(사각형) 둘 다 실제 판정식 그대로 표시
+      ctx.strokeStyle = '#00ff00';
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, player.w / 2, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = '#00ffaa';
+      ctx.strokeRect(player.x - player.w / 2.4, player.y - player.h / 2.4, (player.w / 2.4) * 2, (player.h / 2.4) * 2);
+
+      // 적: e.w/2 + 10 (총알 피격 판정)
+      ctx.strokeStyle = '#ff3355';
+      enemies.forEach(e => {
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, e.w / 2 + 10, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+
+      // 보스: boss.w/2 + 10
+      if (boss) {
+        ctx.strokeStyle = '#ff9900';
+        ctx.beginPath();
+        ctx.arc(boss.x, boss.y, boss.w / 2 + 10, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // 아이템: player.w/2 + item.w/2 중 item.w/2 부분
+      ctx.strokeStyle = '#ffff00';
+      items.forEach(item => {
+        ctx.beginPath();
+        ctx.arc(item.x, item.y, item.w / 2, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+
+      // 플레이어 총알
+      ctx.strokeStyle = '#00ccff';
+      bullets.forEach(b => {
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.radius || 6, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+
+      // 적 총알: eb.radius + player.w/3 중 eb.radius 부분(순수 총알 크기)
+      ctx.strokeStyle = '#ff66ff';
+      enemyBullets.forEach(eb => {
+        ctx.beginPath();
+        ctx.arc(eb.x, eb.y, eb.radius, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+
+      ctx.restore();
+    }
+
     function drawEntityEmoji(emoji, x, y, fontSpec) {
       ctx.save();
       ctx.font = fontSpec;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.shadowColor = 'rgba(0,0,0,0.9)';
-      ctx.shadowBlur = 3;
-      const offs = [[-1.4, 0], [1.4, 0], [0, -1.4], [0, 1.4], [-1, -1], [1, -1], [-1, 1], [1, 1]];
+      ctx.shadowColor = 'rgba(0,0,0,0.75)';
+      ctx.shadowBlur = 1.5;
+      const offs = [[-0.8, 0], [0.8, 0], [0, -0.8], [0, 0.8]];
       offs.forEach(([ox, oy]) => ctx.fillText(emoji, x + ox, y + oy));
       ctx.shadowColor = '#ffffff';
-      ctx.shadowBlur = 8;
+      ctx.shadowBlur = 3;
       ctx.fillText(emoji, x, y);
       ctx.restore();
     }
@@ -3852,6 +3944,119 @@
       }
     }
 
+    // 🛠 디버그 모드 잠금 해제: 실수로 눌려서 활성화되지 않도록, 특정 키를 짧은 시간 안에
+    // 5번 연속으로 눌러야 켜지고, 다시 5번 누르면 꺼진다. 켜져 있을 때만 아래 디버그 기능들이 동작한다.
+    let debugModeEnabled = false;
+    let debugUnlockCount = 0;
+    let debugUnlockLastTime = 0;
+    const DEBUG_UNLOCK_KEY = 'Backquote'; // 물결(`) 키 — 일반 플레이 중에는 전혀 쓰이지 않는 키
+    const DEBUG_UNLOCK_COUNT = 5;
+    const DEBUG_UNLOCK_WINDOW_MS = 1500;
+
+    function handleDebugUnlockKey() {
+      const now = Date.now();
+      if (now - debugUnlockLastTime > DEBUG_UNLOCK_WINDOW_MS) debugUnlockCount = 0;
+      debugUnlockLastTime = now;
+      debugUnlockCount++;
+      if (debugUnlockCount >= DEBUG_UNLOCK_COUNT) {
+        debugUnlockCount = 0;
+        debugModeEnabled = !debugModeEnabled;
+        showBossCallout(debugModeEnabled ? '🛠 디버그 모드 ON' : '🛠 디버그 모드 OFF', 1500);
+        if (!debugModeEnabled) closeDebugWeaponMenu();
+      }
+    }
+
+    // 🛠 디버그용 스테이지 단축 이동 (숫자키 1~6). 버그 재현을 빠르게 하기 위한 용도로,
+    // 정식 플레이 흐름(레벨업/보스 킬수 등)을 건너뛰고 즉시 해당 스테이지로 순간이동한다.
+    const DEBUG_STAGE_KEYS = {
+      Digit1: { name: '지구',    level: 1  },
+      Digit2: { name: '달',      level: 11, flag: 'moonMode' },
+      Digit3: { name: '화성',    level: 31, flag: 'marsMode' },
+      Digit4: { name: '목성',    level: 51, flag: 'jupiterMode' },
+      Digit5: { name: '토성',    level: 71, flag: 'saturnMode' },
+      Digit6: { name: '외계 본진(하이브 마인드)', level: 91, flag: 'alienHomeMode', spawnBossNow: true }
+    };
+    function debugJumpToStage(code) {
+      if (!debugModeEnabled) return;
+      const target = DEBUG_STAGE_KEYS[code];
+      if (!target || (gameState !== 'PLAYING' && gameState !== 'PAUSED')) return;
+
+      moonMode = marsMode = jupiterMode = saturnMode = alienHomeMode = false;
+      if (target.flag === 'moonMode') moonMode = true;
+      else if (target.flag === 'marsMode') marsMode = true;
+      else if (target.flag === 'jupiterMode') jupiterMode = true;
+      else if (target.flag === 'saturnMode') saturnMode = true;
+      else if (target.flag === 'alienHomeMode') alienHomeMode = true;
+
+      level = target.level;
+      boss = null;
+      bossSpawned = false;
+      finalBossReinforcementUsed = false;
+      wingmen = [];
+      enemiesKilled = 0;
+      enemies = [];
+      enemyBullets = [];
+      bullets = [];
+      railgunFlashes = [];
+      initCraters();
+      startBGM();
+      showBossCallout(`🛠 디버그 이동: ${target.name}`, 1400);
+
+      if (target.spawnBossNow) {
+        setTimeout(() => spawnBoss(), 150); // 콜아웃이 한 번 보이고 나서 바로 보스전 시작
+      }
+    }
+
+    // 🛠 디버그용 무기 선택 메뉴 (M). 12종 무기 전체를 목록으로 띄워서 클릭 한 번으로 바꿀 수 있다.
+    function toggleDebugWeaponMenu() {
+      if (!debugModeEnabled || gameState !== 'PLAYING') return;
+      const menu = document.getElementById('debug-weapon-menu');
+      if (menu.style.display === 'flex') {
+        closeDebugWeaponMenu();
+        return;
+      }
+      const list = document.getElementById('debug-weapon-list');
+      list.innerHTML = '';
+      WEAPONS.forEach(w => {
+        const btn = document.createElement('button');
+        btn.textContent = `${w.emoji} ${w.name}`;
+        btn.onclick = () => selectDebugWeapon(w.type);
+        list.appendChild(btn);
+      });
+      menu.style.display = 'flex';
+    }
+    function closeDebugWeaponMenu() {
+      document.getElementById('debug-weapon-menu').style.display = 'none';
+    }
+    function selectDebugWeapon(type) {
+      const w = WEAPONS.find(w => w.type === type);
+      if (w) {
+        currentWeapon = w;
+        showBossCallout(`🛠 디버그: ${w.name} 장착`, 1000);
+      }
+      closeDebugWeaponMenu();
+    }
+
+    // 🛠 디버그용 즉사 단축키 (K). 무적 상태를 강제로 풀고 damagePlayer를 큰 값으로 호출해서
+    // "사망 시 멈춘다"는 버그를 실제 피격으로 기다릴 필요 없이 바로 재현할 수 있게 한다.
+    // 하이브전 중 한 번 누르면 1차 사망(지원군 도착), 지원군 도착 후 다시 누르면 2차 사망(진짜 게임오버).
+    function debugKillPlayer() {
+      if (!debugModeEnabled || gameState !== 'PLAYING') return;
+      player.superMode = false;
+      player.invuln = 0;
+      showBossCallout('🛠 디버그: 즉사 트리거', 1000);
+      damagePlayer(9999);
+    }
+
+    // 🛠 디버그용 보스 즉사 단축키 (L). 보스가 있으면 체력을 0으로 만들고 격파 처리를 그대로 호출한다.
+    function debugKillBoss() {
+      if (!debugModeEnabled || gameState !== 'PLAYING' || !boss) return;
+      boss.invulnTimer = 0;
+      boss.intro = false;
+      boss.hp = 0;
+      checkBossDefeat();
+    }
+
     window.addEventListener('keydown', e => {
       keys[e.code] = true;
       initAudio();
@@ -3860,6 +4065,13 @@
       }
       if (e.code === 'Space' && gameState === 'INTRO' && introIdx >= introText.length) {
         startGame();
+      }
+      if (e.code === DEBUG_UNLOCK_KEY) handleDebugUnlockKey();
+      if (debugModeEnabled) {
+        if (DEBUG_STAGE_KEYS[e.code]) debugJumpToStage(e.code);
+        if (e.code === 'KeyK') debugKillPlayer();
+        if (e.code === 'KeyL') debugKillBoss();
+        if (e.code === 'KeyM') toggleDebugWeaponMenu();
       }
     });
 
@@ -4052,6 +4264,7 @@
       document.getElementById('weaponModal').style.display = 'none';
       document.getElementById('gacha-decline-btn').style.display = 'none';
       document.getElementById('shopModal').style.display = 'none';
+      document.getElementById('debug-weapon-menu').style.display = 'none';
       document.getElementById('fade-screen').style.display = 'none';
       resumeLoop();
     }
