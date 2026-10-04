@@ -375,7 +375,7 @@
       for(const e of entities){
         if(!isStaticGroundBlocker(e)) continue;
         if(e.id===ignoreId || e.id===allowTargetId) continue;
-        if(Math.hypot(e.x-p.x,e.y-p.y) < (e.radius||18)+16) return true;
+        if(Math.hypot(e.x-p.x,e.y-p.y) < (e.radius||18)+28) return true;
       }
       return false;
     }
@@ -398,7 +398,7 @@
       const startKey=sc+','+sr, targetKey=tc+','+tr;
       const open=[{c:sc,r:sr,g:0,f:0}];
       const parent=new Map(),gScore=new Map([[startKey,0]]),closed=new Set();
-      const dirs=[[1,0,1],[-1,0,1],[0,1,1],[0,-1,1],[1,1,1.414],[-1,1,1.414],[1,-1,1.414],[-1,-1,1.414]];
+      const dirs=[[1,0,1],[-1,0,1],[0,1,1],[0,-1,1]];
       const h=(c,r)=>Math.hypot(tc-c,tr-r);
       let found=false, expansions=0;
 
@@ -418,6 +418,18 @@
           if(closed.has(nk)) continue;
           const allowTarget=(nc===tc&&nr===tr&&targetEntity)?targetEntity.id:null;
           if(groundCellBlocked(nc,nr,unit?.id||null,allowTarget)) continue;
+
+          // 대각선으로 건물/HQ 모서리를 비집고 통과하는 현상을 막는다.
+          // 양쪽 직교 칸 중 하나라도 막혀 있으면 해당 대각 이동을 금지한다.
+          if (dc !== 0 && dr !== 0) {
+            const sideACol = cur.c + dc;
+            const sideARow = cur.r;
+            const sideBCol = cur.c;
+            const sideBRow = cur.r + dr;
+            if (groundCellBlocked(sideACol, sideARow, unit?.id||null, null)) continue;
+            if (groundCellBlocked(sideBCol, sideBRow, unit?.id||null, null)) continue;
+          }
+
           const a=cellCenter(cur.c,cur.r),b=cellCenter(nc,nr);
           if(!canGroundStep(a.x,a.y,b.x,b.y)) continue;
           const ng=(gScore.get(key)??Infinity)+cost;
@@ -440,6 +452,41 @@
 
     function moveUnitToward(unit,targetX,targetY,targetEntity=null){
       if(!unit || unit.speed<=0) return true;
+
+      // 유닛이 건물/HQ 충돌권 안쪽으로 들어간 경우,
+      // 먼저 건물에서 바깥쪽으로 탈출시킨 뒤 정상 경로를 계산한다.
+      // 이 처리가 없으면 HQ 근처에서 A*의 시작 셀이 모두 막혀 SCV가 영구 정지할 수 있다.
+      if (!isAirUnit(unit)) {
+        const blocker = entities.find(e => {
+          if (!isStaticGroundBlocker(e) || e.id === unit.id) return false;
+          if (targetEntity && e.id === targetEntity.id) return false;
+          const safeRadius = (e.radius || 18) + (unit.radius || 12) + 18;
+          return Math.hypot(e.x - unit.x, e.y - unit.y) < safeRadius;
+        });
+
+        if (blocker) {
+          const dx = unit.x - blocker.x;
+          const dy = unit.y - blocker.y;
+          const d = Math.hypot(dx, dy) || 1;
+          const safeRadius = (blocker.radius || 18) + (unit.radius || 12) + 20;
+          const ex = blocker.x + (dx / d) * safeRadius;
+          const ey = blocker.y + (dy / d) * safeRadius;
+          const edx = ex - unit.x;
+          const edy = ey - unit.y;
+          const ed = Math.hypot(edx, edy);
+
+          if (ed > 1) {
+            const step = Math.min(unit.speed, ed);
+            unit.x += edx / ed * step;
+            unit.y += edy / ed * step;
+            unit.pathQueue = [];
+            unit.pathTargetKey = null;
+            unit.pathBlockedTicks = 0;
+            return false;
+          }
+        }
+      }
+
       if(isAirUnit(unit)){
         const dx=targetX-unit.x,dy=targetY-unit.y,d=Math.hypot(dx,dy);
         if(d<=unit.speed+1){unit.x=targetX;unit.y=targetY;return true;}
@@ -448,7 +495,7 @@
 
       let gx=targetX,gy=targetY;
       if(targetEntity && isStaticGroundBlocker(targetEntity)){
-        const p=nearestApproachPoint(unit,targetEntity,14);
+        const p=nearestApproachPoint(unit,targetEntity,6);
         if(p){gx=p.x;gy=p.y;}
       }
 
@@ -460,7 +507,7 @@
       const nx=unit.x+dx/d*unit.speed, ny=unit.y+dy/d*unit.speed;
       const directBlock=!canGroundStep(unit.x,unit.y,nx,ny)||entities.some(e=>{
         if(!isStaticGroundBlocker(e)||e.id===unit.id||(targetEntity&&e.id===targetEntity.id)) return false;
-        return Math.hypot(e.x-nx,e.y-ny)<(e.radius||18)+10;
+        return Math.hypot(e.x-nx,e.y-ny)<(e.radius||18)+28;
       });
 
       if(!directBlock){
@@ -473,14 +520,21 @@
         unit.pathQueue=findGroundPath(unit.x,unit.y,gx,gy,unit,targetEntity);
         unit.pathTargetKey=key;unit.pathBlockedTicks=0;
       }
-      if(!unit.pathQueue?.length){unit.pathBlockedTicks=(unit.pathBlockedTicks||0)+1;return false;}
+      if(!unit.pathQueue?.length){
+        unit.pathBlockedTicks=(unit.pathBlockedTicks||0)+1;
+        if (unit.pathBlockedTicks >= 6) {
+          unit.pathTargetKey = null;
+          unit.pathBlockedTicks = 0;
+        }
+        return false;
+      }
 
       const wp=unit.pathQueue[0], wx=wp.x-unit.x,wy=wp.y-unit.y,wd=Math.hypot(wx,wy);
       if(wd<=unit.speed+2){unit.x=wp.x;unit.y=wp.y;unit.pathQueue.shift();return false;}
       const sx=unit.x+wx/wd*unit.speed,sy=unit.y+wy/wd*unit.speed;
       const blocked=!canGroundStep(unit.x,unit.y,sx,sy)||entities.some(e=>{
         if(!isStaticGroundBlocker(e)||e.id===unit.id||(targetEntity&&e.id===targetEntity.id)) return false;
-        return Math.hypot(e.x-sx,e.y-sy)<(e.radius||18)+10;
+        return Math.hypot(e.x-sx,e.y-sy)<(e.radius||18)+28;
       });
       if(blocked){unit.pathQueue=[];unit.pathBlockedTicks=(unit.pathBlockedTicks||0)+1;}
       else {unit.x=sx;unit.y=sy;unit.pathBlockedTicks=0;}
@@ -1006,8 +1060,10 @@
     }
 
     // SCV 최적 자원 분산 알고리즘 (특정 자원에 채굴자가 몰리지 않게 할당)
-    const MINERAL_WORKER_CAP = 2;
-    const GAS_WORKER_CAP = 3;
+    // 자원당 "적정 인원"이지 hard cap이 아니다.
+    // 3기 이상도 채굴할 수 있지만 효율이 떨어지도록 처리한다.
+    const MINERAL_WORKER_PREFERRED = 2;
+    const GAS_WORKER_PREFERRED = 3;
 
     function resourceWorkerCount(res, except=null) {
       return entities.filter(e =>
@@ -1016,22 +1072,26 @@
     }
 
     function resourceWorkerCap(res) {
-      return res && res.type === 'resource_gas' ? GAS_WORKER_CAP : MINERAL_WORKER_CAP;
+      return res && res.type === 'resource_gas' ? GAS_WORKER_PREFERRED : MINERAL_WORKER_PREFERRED;
     }
 
     function chooseBestResourceForSCV(scv, baseX, baseY, maxDist=380) {
       const candidates=entities.filter(r=>
         (r.type==='resource_min' || (r.type==='resource_gas' && r.hasRefinery)) &&
         r.amount>0 &&
-        Math.hypot(r.x-baseX,r.y-baseY)<=maxDist &&
-        resourceWorkerCount(r,scv)<resourceWorkerCap(r)
+        Math.hypot(r.x-baseX,r.y-baseY)<=maxDist
       );
 
       let best=null, bestScore=Infinity;
       candidates.forEach(res=>{
         const miners=resourceWorkerCount(res,scv);
         const dist=Math.hypot(res.x-scv.x,res.y-scv.y);
-        const score=dist + miners*600;
+        const preferred = resourceWorkerCap(res);
+        const saturationPenalty =
+          miners < preferred
+            ? miners * 320
+            : preferred * 320 + Math.pow(miners - preferred + 1, 2) * 900;
+        const score=dist + saturationPenalty;
         if(score<bestScore){bestScore=score;best=res;}
       });
       return best;
@@ -1039,8 +1099,7 @@
 
     function assignBaseResource(scv, baseX, baseY, maxDist=300) {
       const res=chooseBestResourceForSCV(scv,baseX,baseY,maxDist) || assignBestResource(scv);
-      scv.assignedRes=res||null;
-      return scv.assignedRes;
+      return setSCVResourceTarget(scv, res);
     }
 
     function nearestFriendlyHQ(faction,x,y){
@@ -1057,25 +1116,22 @@
       const base=nearestFriendlyHQ(scv.faction,scv.x,scv.y);
       if(!base){scv.assignedRes=null;scv.assignedBaseId=null;return null;}
       const res=chooseBestResourceForSCV(scv,base.x,base.y,420) || assignBestResource(scv);
-      scv.assignedRes=res||null;
       scv.assignedBaseId=res?base.id:null;
-      return res;
+      return setSCVResourceTarget(scv, res);
     }
 
     function assignEnemyBaseResource(scv) {
       const base=nearestFriendlyHQ('enemy',scv.x,scv.y);
       if(!base){scv.assignedRes=null;scv.assignedBaseId=null;return null;}
       const res=chooseBestResourceForSCV(scv,base.x,base.y,420) || assignBestResource(scv);
-      scv.assignedRes=res||null;
       scv.assignedBaseId=res?base.id:null;
-      return res;
+      return setSCVResourceTarget(scv, res);
     }
 
     function assignBestResource(scv) {
       const candidates=entities.filter(r=>
         (r.type==='resource_min' || (r.type==='resource_gas' && r.hasRefinery)) &&
-        r.amount>0 &&
-        resourceWorkerCount(r,scv)<resourceWorkerCap(r)
+        r.amount>0
       );
 
       let best=null,bestScore=Infinity;
@@ -1086,6 +1142,21 @@
         if(score<bestScore){bestScore=score;best=res;}
       });
       return best;
+    }
+
+    function setSCVResourceTarget(scv, res, stateOverride=null) {
+      if (!scv) return null;
+      scv.assignedRes = res || null;
+      scv.mineTargetId = res ? res.id : null;
+      scv.mineState = res
+        ? (stateOverride || (scv.cargo ? 'toBase' : 'toResource'))
+        : 'idle';
+      scv.mineTimer = 0;
+      scv.mineStuckTicks = 0;
+      scv.pathQueue = [];
+      scv.pathTargetKey = null;
+      scv.pathBlockedTicks = 0;
+      return scv.assignedRes;
     }
 
     canvas.addEventListener('mousedown', (e) => {
@@ -1152,20 +1223,27 @@
                 unit.moveTarget={x:targetRepairBuilding.x,y:targetRepairBuilding.y};unit.moveTargetEntityId=targetRepairBuilding.id;
                 unit.pathQueue=[];unit.pathTargetKey=null;
               } else if (targetRes) {
-                if(resourceWorkerCount(targetRes,unit)>=resourceWorkerCap(targetRes)){
-                  showToast(`⛏️ 이 자원은 최대 ${resourceWorkerCap(targetRes)}기의 SCV만 채굴할 수 있습니다.`);
-                  return;
-                }
+                // 자원에 SCV 수를 제한하지 않는다.
+                // 여러 SCV가 같은 자원을 캐도 정상적으로 채굴하며,
+                // 초과 인원은 채굴 효율만 조금 낮아진다.
                 unit.isManualMove = false;
                 unit.moveTarget = null;
+                unit.moveTargetEntityId = null;
                 unit.assignedRes = targetRes;
+                unit.mineTargetId = targetRes.id;
+                unit.mineState = unit.cargo ? 'toBase' : 'toResource';
+                unit.mineTimer = 0;
                 unit.repairingTargetId = null;
               } else {
                 unit.isManualMove = true;
                 unit.moveTarget = { x: worldX + offsetX, y: worldY + offsetY };
                 unit.moveTargetEntityId = null;
-                unit.pathQueue=[];unit.pathTargetKey=null;
+                unit.pathQueue = [];
+                unit.pathTargetKey = null;
                 unit.assignedRes = null;
+                unit.mineTargetId = null;
+                unit.mineState = unit.cargo ? 'toBase' : 'idle';
+                unit.mineTimer = 0;
                 unit.repairingTargetId = null;
               }
             } else {
@@ -1520,13 +1598,15 @@
         hp: 100, maxHp: 100, speed: 0, radius: 15, emoji: '🛸',
         cooldown: 0, cooldownMax: 40, attackRange: 0, damage: 10,
         splash: false, splashRadius: 0, isHealer: false,
-        cargo: null, mineTimer: 0, moveTarget: null, forcedTarget: null,
+        cargo: null, cargoAmount: 0, mineTimer: 0, mineState: 'idle',
+        mineTargetId: null, moveTarget: null, moveTargetEntityId: null, forcedTarget: null,
         isUnderConstruction: false, buildProgress: 0, buildMaxTime: 0, constructionHP: 0, builderSCVId: null,
         productionQueue: [], isBuildingSCV: false, buildingTargetId: null, isManualMove: false, assignedRes: null,
         repairingTargetId: null,
         assignedBaseId: null,
         playerOrder: 'none', playerOrderTarget: null,
         pathQueue: [], pathTargetKey: null, pathBlockedTicks: 0, moveTargetEntityId: null,
+        mineStuckTicks: 0,
         amount: 0, maxAmount: 0
       };
 
@@ -1792,7 +1872,7 @@
       );
       for (let i=0;i<5;i++) {
         const scv=spawnEntity('scv','player',pX-50+(i*22),pY-60);
-        scv.assignedRes=assignResourceForNearestBase(scv);
+        setSCVResourceTarget(scv, assignResourceForNearestBase(scv), 'toResource');
       }
 
       // 적 시작 자원 및 정제소
@@ -1807,7 +1887,7 @@
       if(eGas){eGas.hasRefinery=true;spawnEntity('refinery','enemy',eGas.x,eGas.y);}
       for(let i=0;i<5;i++){
         const scv=spawnEntity('scv','enemy',eX-50+(i*22),eY+60);
-        scv.assignedRes=assignEnemyBaseResource(scv);
+        setSCVResourceTarget(scv, assignEnemyBaseResource(scv), 'toResource');
       }
 
       spawnMapResources(selectedMap);
@@ -2247,6 +2327,7 @@
           e.type === 'scv' &&
           !e.isBuildingSCV &&
           !e.isManualMove &&
+          !e.cargo &&
           e.assignedRes !== gasNode
         );
 
@@ -2257,10 +2338,8 @@
           )
           .slice(0, desired - gasMiners.length)
           .forEach(scv => {
-            scv.assignedRes = gasNode;
             scv.assignedBaseId = refinery.id;
-            scv.mineTimer = 0;
-            scv.cargo = null;
+            setSCVResourceTarget(scv, gasNode, 'toResource');
           });
       }
     }
@@ -2768,6 +2847,26 @@
       }
     }
 
+    function getMiningEfficiency(res, scv) {
+      if (!res || !scv) return 1;
+
+      const otherWorkers = resourceWorkerCount(res, scv);
+      const workers = otherWorkers + 1;
+      const preferred = resourceWorkerCap(res);
+
+      if (workers <= preferred) {
+        // 적정 인원 구간에서는 거의 정상 속도.
+        return preferred === 2
+          ? (workers === 1 ? 1.0 : 0.92)
+          : (workers === 1 ? 1.0 : workers === 2 ? 0.96 : 0.90);
+      }
+
+      // 그 이상은 자원 지점에서 대기/경로 충돌이 발생해 효율이 감소하지만
+      // 절대로 채굴이 완전히 멈추지는 않는다.
+      const extra = workers - preferred;
+      return Math.max(0.28, 0.92 / (1 + extra * 0.55));
+    }
+
     function updateGameLogic() {
       if (!gameStarted || gameOver) return;
 
@@ -2795,9 +2894,11 @@
               ent.y + ent.radius + 15
             );
             if (produced.type === 'scv' && produced.faction === 'enemy') {
-              assignEnemyBaseResource(produced);
+              const r = assignEnemyBaseResource(produced);
+              setSCVResourceTarget(produced, r, 'toResource');
             } else if (produced.type === 'scv' && produced.faction === 'player') {
-              assignBaseResource(produced, 350, WORLD_H - 350, 320);
+              const r = assignResourceForNearestBase(produced);
+              setSCVResourceTarget(produced, r, 'toResource');
             }
             ent.productionQueue.shift();
             playSound('produce', ent.x, ent.y);
@@ -2805,80 +2906,302 @@
         }
 
         if (ent.type === 'scv') {
+          // =====================================================
+          // SCV 상태 머신
+          // idle -> toResource -> mining -> toBase -> toResource
+          // 건설/수리는 채굴보다 항상 우선한다.
+          // =====================================================
+
           if (ent.isBuildingSCV && ent.buildingTargetId) {
-            const b=entities.find(e=>e.id===ent.buildingTargetId && e.faction===ent.faction);
-            if(b && b.isUnderConstruction){
-              const dist=Math.hypot(b.x-ent.x,b.y-ent.y);
-              if(dist>b.radius+10){
-                moveUnitToward(ent,b.x,b.y,b);
-              }else{
-                createSparks(ent.x,ent.y);
-                b.buildProgress=Math.min(b.buildMaxTime,b.buildProgress+1);
-                b.constructionHP=b.buildProgress;
-                b.hp=Math.max(1,Math.floor((b.buildProgress/Math.max(1,b.buildMaxTime))*b.maxHp));
-                if(b.buildProgress>=b.buildMaxTime){
-                  b.isUnderConstruction=false;b.constructionHP=0;b.builderPaused=false;b.hp=b.maxHp;b.builderSCVId=null;
-                  ent.isBuildingSCV=false;ent.buildingTargetId=null;ent.repairingTargetId=null;ent.isManualMove=false;ent.moveTarget=null;ent.moveTargetEntityId=null;ent.pathQueue=[];
-                  if(ent.faction==='player') assignResourceForNearestBase(ent); else assignEnemyBaseResource(ent);
+            const b = entities.find(e =>
+              e.id === ent.buildingTargetId &&
+              e.faction === ent.faction &&
+              e.isUnderConstruction
+            );
+
+            if (!b) {
+              ent.isBuildingSCV = false;
+              ent.buildingTargetId = null;
+              ent.repairingTargetId = null;
+            } else {
+              const dist = Math.hypot(b.x - ent.x, b.y - ent.y);
+
+              if (dist > b.radius + 10) {
+                moveUnitToward(ent, b.x, b.y, b);
+              } else {
+                createSparks(ent.x, ent.y);
+
+                b.buildProgress = Math.min(
+                  b.buildMaxTime,
+                  b.buildProgress + 1
+                );
+                b.constructionHP = b.buildProgress;
+                b.hp = Math.max(
+                  1,
+                  Math.floor(
+                    (b.buildProgress / Math.max(1, b.buildMaxTime)) * b.maxHp
+                  )
+                );
+
+                if (b.buildProgress >= b.buildMaxTime) {
+                  b.isUnderConstruction = false;
+                  b.constructionHP = 0;
+                  b.builderPaused = false;
+                  b.hp = b.maxHp;
+                  b.builderSCVId = null;
+
+                  ent.isBuildingSCV = false;
+                  ent.buildingTargetId = null;
+                  ent.repairingTargetId = null;
+                  ent.isManualMove = false;
+                  ent.moveTarget = null;
+                  ent.moveTargetEntityId = null;
+                  ent.pathQueue = [];
+                  ent.pathTargetKey = null;
+
+                  const next = ent.faction === 'enemy'
+                    ? assignEnemyBaseResource(ent)
+                    : assignResourceForNearestBase(ent);
+
+                  setSCVResourceTarget(ent, next, next ? 'toResource' : 'idle');
+
                   showToast('🏗️ 건물 건설 완료!');
                 }
               }
-            }else{
-              ent.isBuildingSCV=false;ent.buildingTargetId=null;
             }
-          } else if (ent.repairingTargetId) { // 건설 이어짓기 / 완공 건물 수리 우선
-            const target=entities.find(e=>e.id===ent.repairingTargetId && e.faction===ent.faction && e.hp>0 && (e.isUnderConstruction || e.hp<e.maxHp));
-            if(!target){
-              ent.repairingTargetId=null;ent.moveTarget=null;ent.moveTargetEntityId=null;ent.pathQueue=[];
-            }else if(target.isUnderConstruction){
-              const dist=Math.hypot(target.x-ent.x,target.y-ent.y);
-              if(dist>target.radius+14){
-                moveUnitToward(ent,target.x,target.y,target);
-              }else{
-                ent.isBuildingSCV=true;ent.buildingTargetId=target.id;ent.repairingTargetId=null;ent.isManualMove=false;ent.moveTarget=null;ent.moveTargetEntityId=null;ent.pathQueue=[];
-                target.builderSCVId=ent.id;target.builderPaused=false;
+
+          } else if (ent.repairingTargetId) {
+            // 건설 이어짓기 / 완공 건물 수리
+            const target = entities.find(e =>
+              e.id === ent.repairingTargetId &&
+              e.faction === ent.faction &&
+              e.hp > 0 &&
+              (e.isUnderConstruction || e.hp < e.maxHp)
+            );
+
+            if (!target) {
+              ent.repairingTargetId = null;
+              ent.moveTarget = null;
+              ent.moveTargetEntityId = null;
+              ent.pathQueue = [];
+              ent.pathTargetKey = null;
+            } else if (target.isUnderConstruction) {
+              const dist = Math.hypot(target.x - ent.x, target.y - ent.y);
+
+              if (dist > target.radius + 14) {
+                moveUnitToward(ent, target.x, target.y, target);
+              } else {
+                ent.isBuildingSCV = true;
+                ent.buildingTargetId = target.id;
+                ent.repairingTargetId = null;
+                ent.isManualMove = false;
+                ent.moveTarget = null;
+                ent.moveTargetEntityId = null;
+                ent.pathQueue = [];
+                ent.pathTargetKey = null;
+
+                target.builderSCVId = ent.id;
+                target.builderPaused = false;
               }
-            }else{
-              const dist=Math.hypot(target.x-ent.x,target.y-ent.y);
-              if(dist>target.radius+16){
-                moveUnitToward(ent,target.x,target.y,target);
-              }else{
-                target.hp=Math.min(target.maxHp,target.hp+2);createSparks(ent.x,ent.y);
-                if(target.hp>=target.maxHp){ent.repairingTargetId=null;ent.moveTarget=null;ent.moveTargetEntityId=null;ent.pathQueue=[];assignResourceForNearestBase(ent);}
+            } else {
+              const dist = Math.hypot(target.x - ent.x, target.y - ent.y);
+
+              if (dist > target.radius + 16) {
+                moveUnitToward(ent, target.x, target.y, target);
+              } else {
+                target.hp = Math.min(target.maxHp, target.hp + 2);
+                createSparks(ent.x, ent.y);
+
+                if (target.hp >= target.maxHp) {
+                  ent.repairingTargetId = null;
+                  ent.moveTarget = null;
+                  ent.moveTargetEntityId = null;
+                  ent.pathQueue = [];
+                  ent.pathTargetKey = null;
+
+                  const next = ent.faction === 'enemy'
+                    ? assignEnemyBaseResource(ent)
+                    : assignResourceForNearestBase(ent);
+
+                  setSCVResourceTarget(ent, next, next ? 'toResource' : 'idle');
+                }
               }
             }
-          } else if (!ent.isManualMove) {
-            const nearestBase=nearestFriendlyHQ(ent.faction,ent.x,ent.y);
-            if(!ent.cargo){
-              const badAssignment=!ent.assignedRes||ent.assignedRes.amount<=0||!entities.includes(ent.assignedRes)||resourceWorkerCount(ent.assignedRes,ent)>=resourceWorkerCap(ent.assignedRes);
-              if(badAssignment){if(ent.faction==='enemy') assignEnemyBaseResource(ent); else assignResourceForNearestBase(ent);}
-              if(ent.assignedRes && ent.assignedRes.amount>0){
-                const res=ent.assignedRes,dist=Math.hypot(res.x-ent.x,res.y-ent.y);
-                if(dist>res.radius+5) moveUnitToward(ent,res.x,res.y,res);
-                else{
-                  ent.mineTimer++;
-                  if(ent.mineTimer>=40){
-                    ent.cargo=res.resType;res.amount=Math.max(0,res.amount-8);ent.mineTimer=0;
-                    if(res.amount<=0) ent.assignedRes=null;
-                    playSound('mine',ent.x,ent.y);
+
+          // 자동 채굴 중 자원 목표를 잃으면 다음 프레임에 재할당되도록
+          // mineTargetId/assignedRes를 일관되게 유지한다.
+          } else if (ent.isManualMove) {
+            // 수동 이동 중에는 자동 채굴로 끌고 가지 않는다.
+            // 화물을 들고 있으면 목적지 도착 후 가까운 기지로 자동 반납한다.
+            if (ent.moveTarget) {
+              const dist = Math.hypot(
+                ent.moveTarget.x - ent.x,
+                ent.moveTarget.y - ent.y
+              );
+
+              const targetEntity = ent.moveTargetEntityId
+                ? entities.find(e => e.id === ent.moveTargetEntityId && e.hp > 0)
+                : null;
+
+              if (dist > 3) {
+                moveUnitToward(
+                  ent,
+                  ent.moveTarget.x,
+                  ent.moveTarget.y,
+                  targetEntity
+                );
+              } else {
+                ent.moveTarget = null;
+                ent.moveTargetEntityId = null;
+                ent.pathQueue = [];
+                ent.pathTargetKey = null;
+
+                if (ent.cargo) {
+                  ent.isManualMove = false;
+                  ent.mineState = 'toBase';
+                } else {
+                  ent.mineState = 'idle';
+                }
+              }
+            }
+
+          } else {
+            // ---------------------------------------------------
+            // 자동 채굴
+            // ---------------------------------------------------
+            let res = null;
+
+            if (ent.mineTargetId) {
+              res = entities.find(e =>
+                e.id === ent.mineTargetId &&
+                (e.type === 'resource_min' ||
+                 (e.type === 'resource_gas' && e.hasRefinery)) &&
+                e.amount > 0
+              ) || null;
+            }
+
+            // 기존 할당이 없어졌거나, 자원이 고갈/소진되었거나,
+            // 다른 SCV가 먼저 슬롯을 차지했다면 새 자원을 선택한다.
+            const invalid =
+              !res ||
+              !ent.assignedRes ||
+              ent.assignedRes.id !== res.id;
+
+            if (invalid || ent.mineState === 'idle') {
+              const next = ent.faction === 'enemy'
+                ? assignEnemyBaseResource(ent)
+                : assignResourceForNearestBase(ent);
+
+              res = next || null;
+              ent.mineTargetId = res ? res.id : null;
+              ent.mineState = res
+                ? (ent.cargo ? 'toBase' : 'toResource')
+                : 'idle';
+              ent.mineTimer = 0;
+            }
+
+            if (ent.cargo) {
+              // ===============================================
+              // 광물/가스 반납
+              // ===============================================
+              const base = nearestFriendlyHQ(ent.faction, ent.x, ent.y);
+
+              if (!base) {
+                ent.mineState = 'toBase';
+              } else {
+                const dist = Math.hypot(base.x - ent.x, base.y - ent.y);
+
+                if (dist > base.radius + 7) {
+                  ent.mineState = 'toBase';
+                  moveUnitToward(ent, base.x, base.y, base);
+                } else {
+                  const amount = ent.cargoAmount || 8;
+
+                  if (ent.cargo === 'min') {
+                    if (ent.faction === 'player') {
+                      resources.min += amount;
+                    } else {
+                      resources.enemyMin += amount * currentDifficulty.aiGatherRate;
+                    }
+                  } else if (ent.cargo === 'gas') {
+                    if (ent.faction === 'player') {
+                      resources.gas += amount;
+                    } else {
+                      resources.enemyGas += amount * currentDifficulty.aiGatherRate;
+                    }
+                  }
+
+                  ent.cargo = null;
+                  ent.cargoAmount = 0;
+                  ent.mineTimer = 0;
+
+                  const next = ent.faction === 'enemy'
+                    ? assignEnemyBaseResource(ent)
+                    : assignResourceForNearestBase(ent);
+
+                  ent.assignedRes = next || null;
+                  ent.mineTargetId = next ? next.id : null;
+                  ent.mineState = next ? 'toResource' : 'idle';
+                }
+              }
+
+            } else if (res) {
+              // ===============================================
+              // 자원으로 이동 → 채취
+              // ===============================================
+              const dist = Math.hypot(res.x - ent.x, res.y - ent.y);
+
+              if (dist > res.radius + 6) {
+                ent.mineState = 'toResource';
+                const beforeX = ent.x;
+                const beforeY = ent.y;
+                moveUnitToward(ent, res.x, res.y, res);
+                const moved = Math.hypot(ent.x - beforeX, ent.y - beforeY);
+                if (moved < 0.05) {
+                  ent.mineStuckTicks = (ent.mineStuckTicks || 0) + 1;
+                } else {
+                  ent.mineStuckTicks = 0;
+                }
+
+                // 30틱마다 막힌 경로를 강제로 재계산하고, 오래 막히면 가까운
+                // 다른 자원으로 재배정한다. 자원 채굴이 영구 정지하지 않게 한다.
+                if (ent.mineStuckTicks > 0 && ent.mineStuckTicks % 30 === 0) {
+                  ent.pathQueue = [];
+                  ent.pathTargetKey = null;
+                  ent.pathBlockedTicks = 0;
+                }
+                if (ent.mineStuckTicks >= 150) {
+                  const fallback = ent.faction === 'enemy'
+                    ? assignEnemyBaseResource(ent)
+                    : assignResourceForNearestBase(ent);
+                  if (!fallback || fallback === res) {
+                    setSCVResourceTarget(ent, res, 'toResource');
+                  }
+                  ent.mineStuckTicks = 0;
+                }
+              } else {
+                ent.mineStuckTicks = 0;
+                ent.mineState = 'mining';
+                ent.mineTimer += getMiningEfficiency(res, ent);
+
+                if (ent.mineTimer >= 40) {
+                  const gathered = 8;
+
+                  res.amount = Math.max(0, res.amount - gathered);
+                  ent.cargo = res.resType;
+                  ent.cargoAmount = gathered;
+                  ent.mineTimer = 0;
+                  ent.mineState = 'toBase';
+
+                  playSound('mine', ent.x, ent.y);
+
+                  if (res.amount <= 0) {
+                    ent.assignedRes = null;
+                    ent.mineTargetId = null;
                   }
                 }
               }
-            }else if(nearestBase){
-              const hq=nearestBase,dist=Math.hypot(hq.x-ent.x,hq.y-ent.y);
-              if(dist>hq.radius+5) moveUnitToward(ent,hq.x,hq.y,hq);
-              else{
-                if(ent.cargo==='min') { if(ent.faction==='player') resources.min+=10; else resources.enemyMin+=10*currentDifficulty.aiGatherRate; }
-                else if(ent.cargo==='gas') { if(ent.faction==='player') resources.gas+=8; else resources.enemyGas+=8*currentDifficulty.aiGatherRate; }
-                ent.cargo=null;ent.mineTimer=0;
-                if(ent.faction==='player') assignResourceForNearestBase(ent); else assignEnemyBaseResource(ent);
-              }
-            }else{ent.cargo=null;ent.assignedRes=null;ent.assignedBaseId=null;}
-          } else if (ent.moveTarget) {
-            const dist=Math.hypot(ent.moveTarget.x-ent.x,ent.moveTarget.y-ent.y);
-            const targetEntity=ent.moveTargetEntityId?entities.find(e=>e.id===ent.moveTargetEntityId && e.hp>0):null;
-            if(dist>3) moveUnitToward(ent,ent.moveTarget.x,ent.moveTarget.y,targetEntity);
-            else {ent.moveTarget=null;ent.moveTargetEntityId=null;}
+            }
           }
         }
 
