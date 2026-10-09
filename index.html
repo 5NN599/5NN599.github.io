@@ -744,7 +744,60 @@
             </a>
         </main>
     </section>
+<!-- 패밀리 사이트 전용 배너 섹션 (게임 목록과 확실히 구분되는 가로 띠 형태) -->
+<section style="max-width: 1200px; margin: 60px auto 30px auto; padding: 24px; background: rgba(0, 0, 0, 0.03); border: 1px solid rgba(150, 150, 150, 0.15); border-radius: 20px;">
+  
+  <div style="margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
+    <h2 style="font-size: 1.15rem; font-weight: 800; color: var(--title-color); display: flex; align-items: center; gap: 8px; margin: 0;">
+      🌐 미니지 패밀리 프로젝트
+    </h2>
+    <span style="font-size: 0.8rem; color: var(--sub-color); font-weight: 600;">외부 사이트 바로가기</span>
+  </div>
 
+  <div style="display: flex; flex-direction: column; gap: 12px;">
+    
+    <!-- 이모지 RPG 가로 배너 -->
+    <a href="https://emoji-rpg.kro.kr" target="_blank" rel="noopener noreferrer" 
+       style="display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; background: var(--card-bg); border: 1px solid rgba(150, 150, 150, 0.2); border-radius: 14px; text-decoration: none; transition: transform 0.2s, box-shadow 0.2s;"
+       onmouseover="this.style.transform='translateX(4px)'; this.style.boxShadow='0 4px 14px rgba(0,0,0,0.08)';"
+       onmouseout="this.style.transform='none'; this.style.boxShadow='none';">
+      <div style="display: flex; align-items: center; gap: 16px; flex: 1; min-width: 0;">
+        <span style="font-size: 2rem; flex-shrink: 0;">⚔️</span>
+        <div style="min-width: 0;">
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <strong style="font-size: 1.05rem; font-weight: 800; color: var(--title-color);">이모지 RPG</strong>
+            <span style="font-size: 0.75rem; padding: 2px 8px; background: rgba(0, 0, 0, 0.06); border-radius: 10px; color: var(--sub-color); font-weight: 600;">emoji-rpg.kro.kr</span>
+          </div>
+          <p style="font-size: 0.88rem; color: var(--sub-color); margin: 4px 0 0 0; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            이모지로 즐기는 레트로 픽셀 어드벤처! 캐릭터를 육성하고 던전을 탐험해 보세요.
+          </p>
+        </div>
+      </div>
+      <span style="font-size: 0.88rem; font-weight: 700; color: var(--accent-color); white-space: nowrap; margin-left: 16px; flex-shrink: 0;">이동하기 ↗</span>
+    </a>
+
+    <!-- NEON-SWARM 가로 배너 -->
+    <a href="https://neon-swarm.kro.kr" target="_blank" rel="noopener noreferrer" 
+       style="display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; background: var(--card-bg); border: 1px solid rgba(150, 150, 150, 0.2); border-radius: 14px; text-decoration: none; transition: transform 0.2s, box-shadow 0.2s;"
+       onmouseover="this.style.transform='translateX(4px)'; this.style.boxShadow='0 4px 14px rgba(0,0,0,0.08)';"
+       onmouseout="this.style.transform='none'; this.style.boxShadow='none';">
+      <div style="display: flex; align-items: center; gap: 16px; flex: 1; min-width: 0;">
+        <span style="font-size: 2rem; flex-shrink: 0;">👾</span>
+        <div style="min-width: 0;">
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <strong style="font-size: 1.05rem; font-weight: 800; color: var(--title-color);">NEON-SWARM</strong>
+            <span style="font-size: 0.75rem; padding: 2px 8px; background: rgba(0, 0, 0, 0.06); border-radius: 10px; color: var(--sub-color); font-weight: 600;">neon-swarm.kro.kr</span>
+          </div>
+          <p style="font-size: 0.88rem; color: var(--sub-color); margin: 4px 0 0 0; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            끝없이 몰려오는 네온 군집 속에서 버텨라! 무기를 강화하는 생존 슈팅.
+          </p>
+        </div>
+      </div>
+      <span style="font-size: 0.88rem; font-weight: 700; color: var(--accent-color); white-space: nowrap; margin-left: 16px; flex-shrink: 0;">이동하기 ↗</span>
+    </a>
+
+  </div>
+</section>
     <section class="feedback-section" aria-label="미니지 의견 보내기">
         <button type="button" class="feedback-button" id="feedback-open">💬 의견 보내기</button>
     </section>
