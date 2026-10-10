@@ -532,11 +532,42 @@
     }
 
     /* 보스 패턴 예고 문구 */
+    /* 🚀 하이브전 지원 편대 연출용 자막 */
+    #reinforce-banner {
+      position: absolute;
+      top: 33%;
+      left: 0;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 0 18px;
+      text-align: center;
+      z-index: 36;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.35s ease-out;
+    }
+    #reinforce-banner.on { opacity: 1; }
+    #reinforce-banner .rb-title {
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      text-shadow: 0 0 10px rgba(0,0,0,0.9), 0 0 18px currentColor;
+    }
+    #reinforce-banner .rb-sub {
+      margin-top: 6px;
+      font-size: 11.5px;
+      line-height: 1.6;
+      color: #e8f2ff;
+      text-shadow: 0 0 8px rgba(0,0,0,0.95);
+    }
+
     #boss-callout {
       position: absolute;
       top: 46%;
       left: 0;
       width: 100%;
+      box-sizing: border-box;
+      padding: 0 14px;
       text-align: center;
       z-index: 14;
       color: #ffdd55;
@@ -767,6 +798,7 @@
     </div>
 
     <div id="boss-callout"></div>
+    <div id="reinforce-banner"><div class="rb-title"></div><div class="rb-sub"></div></div>
 
     <div id="epilogue-screen">
       <div class="ep-fleet" id="ep-fleet">
@@ -1440,6 +1472,7 @@
       player.superMode = false;
       player.superTimer = 0;
       player.invuln = 0;
+      player.hidden = false;
       player.lastShot = 0;
       tempDmgBoost = 1.0;
       currentWeapon = WEAPONS[0];
@@ -1447,9 +1480,12 @@
 
     // 🔧 [수정] 피격 처리 일원화 (게임오버 판정 누락 방지)
     function damagePlayer(amount) {
+      // 지원 편대 연출 등 PLAYING이 아닐 때 같은 프레임의 나머지 충돌이 추가 피해/게임오버를 일으키지 않도록 막는다
+      if (gameState !== 'PLAYING') return;
       if (player.superMode || player.invuln > 0) return;
       player.hp -= amount;
-      player.invuln = 45;
+      // 하이브전에서는 피격 후 무적을 짧게 줄여, 탄막 사이로 그냥 비비고 지나가는 플레이를 어렵게 한다
+      player.invuln = (boss && boss.isFinal) ? 14 : 45;
       flashEffect = 5;
       createExplosion(player.x, player.y, 14);
       if (player.hp <= 0) {
@@ -1465,29 +1501,114 @@
       }
     }
 
-    // 하이브전 전멸 직전 지원군 도착: 플레이어는 새 기체로 복귀하고,
-    // 2번기·3번기는 알아서 보스를 계속 공격하는 자동 전투기로 합류한다.
+    // 하이브전 전멸 직전 지원 편대 연출.
+    // 예전엔 죽는 순간 아무 설명 없이 비행기 두 대가 갑자기 붙어서 "왜 살아났는지" 알 수 없었다.
+    // 이제 ① 기체 격추 폭발 → ② 본부 긴급 통신(왜 오는지) → ③ 지원 편대가 아래에서 날아 들어오며 합류
+    // → ④ 조작 복귀 순서로 약 3초간 보여준다. 이 동안 게임은 멈춰 있고(REINFORCE_SEQ) 보스도 정지한다.
+    let reinforceAnim = null;
+    function setReinforceBanner(title, sub, color) {
+      const el = document.getElementById('reinforce-banner');
+      if (!title) { el.classList.remove('on'); return; }
+      el.querySelector('.rb-title').textContent = title;
+      el.querySelector('.rb-title').style.color = color || '#fff';
+      el.querySelector('.rb-sub').textContent = sub || '';
+      el.classList.add('on');
+    }
+    function cancelReinforcementSequence() {
+      if (reinforceAnim !== null) { cancelAnimationFrame(reinforceAnim); reinforceAnim = null; }
+      setReinforceBanner(null);
+      player.hidden = false;
+    }
+
     function triggerFinalBossReinforcements() {
-      createExplosion(player.x, player.y, 24);
-      playSound('explosion');
+      // damagePlayer()는 적 탄환 충돌 루프 한복판에서 호출되므로 여기서 enemyBullets 등
+      // 배열을 새로 갈아치우면 안 된다(예전 "하이브전 사망 시 멈춤" 원인). 배열 정리는 연출 첫 프레임에서 한다.
+      gameState = 'REINFORCE_SEQ';
+      stopLoop();
+      resetInput();
+      stopBeamSounds();
+      player.hp = 0;
+      player.hidden = true;
+      player.beamActive = false; player.beamTime = 0; player.chargeTime = 0;
+      wingmen = [];
 
-      player.hp = Math.ceil(player.maxHp * 0.6);
-      player.invuln = 150; // 도착 직후 잠깐 무적으로 숨 돌릴 틈을 준다
-      player.x = CANVAS_WIDTH / 2;
-      player.y = CANVAS_HEIGHT - 70;
+      const ex = player.x, ey = player.y;
+      const H = CANVAS_HEIGHT, cx = CANVAS_WIDTH / 2, destY = H - 70;
+      const ease = k => 1 - Math.pow(1 - k, 3);
+      let t = 0;
 
-      wingmen = [
-        { offsetX: -46, offsetY: 14, x: player.x - 46, y: player.y + 14, shootTimer: 0, power: 1.1 },
-        { offsetX: 46, offsetY: 14, x: player.x + 46, y: player.y + 14, shootTimer: 0, power: 1.1 }
-      ];
-
-      // 🔧 [수정] 예전엔 여기서 enemyBullets = []로 화면을 정리했는데, 이 함수는 플레이어가
-      // 적 탄환에 맞아 죽는 순간(enemyBullets를 순회하는 충돌 루프 한복판)에 damagePlayer()를 통해
-      // 호출된다. 배열을 통째로 새로 갈아치우면 그 루프가 다음 반복에서 존재하지 않는 총알을
-      // 참조하다 멈추는 문제("하이브 마인드에서 죽었을 때 멈춘다")가 있었다. 무적 시간(150프레임)만으로도
-      // 충분한 숨돌릴 틈이 되므로 화면 정리는 생략한다.
-      showBossCallout('🚀 지원 편대 도착! 2번기·3번기 전투 합류', 2600);
       flashEffect = 14;
+      shakeIntensity = 9;
+      playSound('explosion');
+      for (let i = 0; i < 14; i++) {
+        createExplosion(ex + (Math.random() - 0.5) * 44, ey + (Math.random() - 0.5) * 44, 18 + Math.random() * 20);
+      }
+      setReinforceBanner('⚠ 기체 격추', '실드가 모두 소진되었다…', '#ff6666');
+
+      function frame() {
+        t++;
+        if (t === 1) enemyBullets.length = 0; // 연출 시작과 함께 화면 정리 (충돌 루프 밖이라 안전)
+
+        if (t < 50 && t % 8 === 0) {
+          createExplosion(ex + (Math.random() - 0.5) * 36, ey + (Math.random() - 0.5) * 36, 14 + Math.random() * 16);
+        }
+        if (t === 60) {
+          setReinforceBanner('📡 본부 긴급 통신', '지원 편대 3기 긴급 출격! 1번기는 직접 조종, 2·3번기는 자동으로 보스를 공격한다', '#7fd0ff');
+          playTone(660, audioCtx ? audioCtx.currentTime : 0, 0.12, 'square', 0.05);
+          if (audioCtx) playTone(880, audioCtx.currentTime + 0.14, 0.12, 'square', 0.05);
+        }
+        if (t === 100) {
+          player.hidden = false;
+          player.x = cx; player.y = H + 40;
+          wingmen = [
+            { offsetX: -46, offsetY: 14, x: cx - 140, y: H + 60, shootTimer: 0, power: 1.1 },
+            { offsetX: 46, offsetY: 14, x: cx + 140, y: H + 60, shootTimer: 0, power: 1.1 }
+          ];
+          setReinforceBanner('🚀 지원 편대 합류', '지원은 이번 한 번뿐이다. 끝까지 버텨라!', '#7dffb0');
+          playSound('powerup');
+          if (audioCtx) {
+            const n = audioCtx.currentTime;
+            playTone(392, n, 0.15, 'triangle', 0.06);
+            playTone(523, n + 0.14, 0.15, 'triangle', 0.06);
+            playTone(659, n + 0.28, 0.3, 'triangle', 0.06);
+          }
+        }
+        if (t >= 100 && t <= 170) {
+          const k = ease((t - 100) / 70);
+          player.x = cx;
+          player.y = (H + 40) + (destY - (H + 40)) * k;
+          wingmen.forEach((w, i) => {
+            const sx = cx + (i === 0 ? -140 : 140), sy = H + 60;
+            w.x = sx + (cx + w.offsetX - sx) * k;
+            w.y = sy + (destY + w.offsetY - sy) * k;
+          });
+          if (t % 3 === 0) createExplosion(player.x, player.y + 16, 6);
+        }
+
+        // 연출 중에도 파티클/화면 효과는 계속 흘러가도록 직접 갱신
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const pt = particles[i];
+          pt.x += pt.vx; pt.y += pt.vy; pt.size += 0.5; pt.alpha -= 0.02;
+          if (pt.alpha <= 0) particles.splice(i, 1);
+        }
+        if (flashEffect > 0) flashEffect--;
+        shakeIntensity = Math.max(0, shakeIntensity - 0.3);
+        render();
+
+        if (t < 195) {
+          reinforceAnim = requestAnimationFrame(frame);
+        } else {
+          reinforceAnim = null;
+          setReinforceBanner(null);
+          player.hp = Math.ceil(player.maxHp * 0.6);
+          player.invuln = 70; // 조작이 돌아온 직후 잠깐만 숨 돌릴 틈
+          player.x = cx; player.y = destY;
+          flashEffect = 8;
+          gameState = 'PLAYING';
+          resumeLoop();
+        }
+      }
+      reinforceAnim = requestAnimationFrame(frame);
     }
 
     const stars = Array.from({ length: 25 }, () => ({
@@ -1518,6 +1639,19 @@
     let explosions = [];
     let buildings = [];
     let railgunFlashes = []; // 레일건이 발사할 때 그려지는 순간 섬광 이펙트
+
+    // ⚡ 하이브전 "무장 강제 초기화" 이후 10초 뒤 열리는 시스템 비상 기능.
+    // 기본 레이저로 고정된 걸 그냥 심심하게 두지 않기 위해, 공격 버튼을 짧게 연타하면
+    // 평소처럼 기본 레이저가, 꾹 눌러서 충전하면 강력한 관통빔이 나가도록 한다.
+    let emergencyBeamUnlocked = false;
+    let emergencySystemTimerStart = 0;
+    const EMERGENCY_UNLOCK_DELAY_MS = 10000;
+    const EMERGENCY_HOLD_THRESHOLD = 8;   // 이 프레임 수까지는 그냥 탭으로 취급 (평소처럼 연사)
+    const EMERGENCY_CHARGE_FRAMES = 82;   // 이후 추가로 더 눌러야 완전 충전 (총 약 1.5초 홀드)
+    const EMERGENCY_BEAM_COOLDOWN_FRAMES = 600; // 빔이 끝난 뒤 다시 충전할 수 있기까지 약 10초
+    const EMERGENCY_BEAM_MAX_FRAMES = 300; // 충전 후 버튼을 누르고 있는 동안 최대 5초(60fps 기준) 지속
+    const EMERGENCY_BEAM_DPF = 6;          // 프레임당 피해(× atkMult). 보스 피해 감쇄 없이 그대로 들어간다
+    const EMERGENCY_BEAM_WIDTH = 24;
     let wingmen = []; // 하이브전 지원 편대(2번기/3번기) - 격추당했을 때 한 번 지원군을 부를 수 있다
     let finalBossReinforcementUsed = false;
     let boss = null;
@@ -1533,6 +1667,24 @@
     // 화성부터는 자리를 잡고 계속 쏘는 고정 포대(터렛)가 등장한다
     function turretsUnlocked() {
       return marsMode || jupiterMode || saturnMode || alienHomeMode;
+    }
+
+    // 하이브전 "터렛 대량 투하" 패턴용: 일반 스폰 제한(boss 존재 시 중단)과 무관하게 터렛을 직접 생성한다
+    function spawnTurret(x, y, fireInterval) {
+      enemies.push({
+        x: x, baseX: x, y: y, w: 26, h: 26, emoji: '📡', pType: 'turret',
+        hp: 5, speed: 1.0 + Math.random() * 0.5, vx: 0, vy: 1.5,
+        time: 0, shootTimer: Math.floor(Math.random() * 20), state: 0, alpha: 1.0, radius: 60,
+        fireInterval: fireInterval
+      });
+    }
+    function spawnTurretRow(count, shift) {
+      if (enemies.filter(e => e.pType === 'turret').length > 14) return; // 화면이 터렛으로 뒤덮이는 것 방지
+      for (let i = 0; i < count; i++) {
+        const x = (CANVAS_WIDTH / (count + 1)) * (i + 1) + shift;
+        spawnTurret(Math.max(20, Math.min(CANVAS_WIDTH - 20, x)), -20 - Math.random() * 25, 34);
+      }
+      playSound('powerup');
     }
 
     function spawnEnemy() {
@@ -1595,7 +1747,8 @@
       'clones',        // 좌·중·우 세 방향에서 동시에 조준탄이 날아오는 분신 협공
       'voidrift',      // 화면 곳곳에 열리는 균열에서 안으로 빨려드는 탄환 클러스터
       'mirrorbarrage', // 보스와 반대편 거울 위치에서 동시에 협공
-      'hunterswarm'    // 대량의 유도탄이 한꺼번에 쏟아지는 추적 군단
+      'hunterswarm',   // 대량의 유도탄이 한꺼번에 쏟아지는 추적 군단
+      'turretstorm'    // 화면 위에서 터렛을 대량으로 투하해 지나가며 포화를 퍼붓는다
     ];
 
     // 스테이지별로 쓸 수 있는 패턴 (진행할수록 늘어남)
@@ -1617,6 +1770,10 @@
         playSystemHackSequence(() => {
           createFinalBoss(bossLevel);
           showHiveMindReveal();
+          // 무장이 기본 레이저로 묶인 지금부터 카운트를 시작해, 10초 뒤 비상 기능을 연다
+          emergencyBeamUnlocked = false;
+          emergencySystemTimerStart = Date.now();
+          player.beamCooldown = 0;
         });
         return;
       }
@@ -1698,9 +1855,9 @@
       if (boss.isFinal) {
         // 최종 보스는 페이즈별 패턴 풀에서 뽑되, 고유 패턴 비중을 높게
         const pools = {
-          1: ['ring', 'aimed', 'spiral', 'eyebeam', 'hivewave', 'wall', 'meteor', 'clones', 'mirrorbarrage'],
-          2: ['doublespiral', 'eyebeam', 'gravity', 'aimed', 'cross', 'hivewave', 'rain', 'charge', 'meteor', 'clones', 'voidrift', 'mirrorbarrage', 'hunterswarm'],
-          3: ['eyebeam', 'doublespiral', 'gravity', 'hivewave', 'rain', 'wall', 'cross', 'charge', 'homing', 'meteor', 'overload', 'overload', 'voidrift', 'mirrorbarrage', 'hunterswarm', 'clones']
+          1: ['ring', 'aimed', 'spiral', 'eyebeam', 'hivewave', 'wall', 'meteor', 'clones', 'mirrorbarrage', 'turretstorm'],
+          2: ['doublespiral', 'eyebeam', 'gravity', 'aimed', 'cross', 'hivewave', 'rain', 'charge', 'meteor', 'clones', 'voidrift', 'mirrorbarrage', 'hunterswarm', 'turretstorm'],
+          3: ['eyebeam', 'doublespiral', 'gravity', 'hivewave', 'rain', 'wall', 'cross', 'charge', 'homing', 'meteor', 'overload', 'overload', 'voidrift', 'mirrorbarrage', 'hunterswarm', 'clones', 'turretstorm', 'turretstorm']
         };
         const pool = pools[boss.phase] || pools[3];
         if (boss.patternQueue.length === 0) {
@@ -2088,6 +2245,17 @@
           });
         }
 
+      } else if (mode === 'turretstorm') {
+        // 최종 보스 고유: 터렛 대량 투하. 두 차례에 걸쳐 가로줄로 터렛이 쏟아져 내려오며
+        // 각자 화면에 들어오는 즉시 사격을 시작한다. 보스 본체는 가벼운 조준탄으로 압박만 유지.
+        if (boss.modeTimer === 1) showBossCallout('터렛 대량 투하!');
+        if (boss.modeTimer === 20) spawnTurretRow(boss.phase >= 3 ? 7 : 6, 0);
+        if (boss.modeTimer === 100) spawnTurretRow(boss.phase >= 3 ? 6 : 5, 20);
+        if (boss.shootTimer >= 50) {
+          boss.shootTimer = 0;
+          bossShot(Math.atan2(player.y - boss.y, player.x - boss.x), 3.4 * E, 3.8, { color: '#ff8844' });
+        }
+
       } else if (mode === 'hunterswarm') {
         // 최종 보스 고유: 대량의 유도탄이 한꺼번에 쏟아지는 추적 군단 (일반 homing 패턴의 강화판)
         if (boss.modeTimer === 1) showBossCallout('추적 군단 발사!');
@@ -2146,9 +2314,15 @@
       return f;
     }
 
-    function damageBoss(amount) {
+    function damageBoss(amount, ignoreMitigation) {
       if (!boss) return;
       if (boss.intro || boss.invulnTimer > 0) return;
+      if (ignoreMitigation) {
+        // 비상 관통빔처럼 "감쇄 없이 그대로" 들어가야 하는 지속 피해용 (페이즈 전환 무적은 그대로 존중)
+        boss.hp -= amount;
+        if (boss.isFinal) updateFinalBossPhase();
+        return;
+      }
       // power=1(무강화+기본무기)이면 원래 데미지 그대로, 강해질수록 감쇄되지만
       // 아무리 강해져도 최소 45%는 들어가게 하한선을 둬서 보스가 아예 안 죽는 일은 없게 한다.
       const mitigation = Math.max(0.45, 1 / playerPowerFactor());
@@ -2214,7 +2388,15 @@
       // 🛠 디버그 모드: 포인트를 매 프레임 채워 넣어 사실상 무한으로 만든다 (상점에서 써도 바로 채워짐)
       if (debugModeEnabled) shopPoints = 999999999;
 
+      // ⚡ 하이브전 무장 초기화 10초 후, 비상 관통빔 기능을 한 번만 개방한다
+      if (!emergencyBeamUnlocked && emergencySystemTimerStart > 0 &&
+          alienHomeMode && boss && boss.isFinal &&
+          Date.now() - emergencySystemTimerStart >= EMERGENCY_UNLOCK_DELAY_MS) {
+        announceEmergencyBeam();
+      }
+
       if (flashEffect > 0) flashEffect--;
+      if (shakeIntensity > 0) shakeIntensity = Math.max(0, shakeIntensity - 0.4);
       if (player.invuln > 0) player.invuln--;
 
       if (player.superTimer > 0) {
@@ -2260,7 +2442,55 @@
       // 레일건처럼 위력이 큰 대신 느리게 쏘는 무기를 위한 배율 (없으면 1배, 기존 무기는 영향 없음)
       const delay = (player.superMode ? player.shootDelay * 0.5 : player.shootDelay) * (currentWeapon.fireRateMult || 1);
 
-      if ((keys['Space'] || keys['KeyZ'] || touchFire) && now - player.lastShot > delay) {
+      // ⚡ 비상 관통빔: 무장이 기본 레이저로 묶인 하이브전에서만 작동. 버튼을 꾹 누르면 충전 후 발사,
+      // 짧게 연타하면 지금처럼 평소 기본 레이저가 나간다.
+      const fireHeld = keys['Space'] || keys['KeyZ'] || touchFire;
+      const emergencyEligible = emergencyBeamUnlocked && alienHomeMode && boss && boss.isFinal && currentWeapon.type === 'NORMAL';
+
+      // 재사용 대기시간: 빔이 한 번 나간 뒤에는 쿨타임이 끝나야 다시 충전할 수 있다
+      if (player.beamCooldown > 0) {
+        player.beamCooldown--;
+        if (player.beamCooldown === 0 && emergencyEligible) showBossCallout('⚡ 비상 관통빔 재충전 완료', 1200);
+      }
+      const beamReady = !(player.beamCooldown > 0);
+
+      if (emergencyEligible && fireHeld && (player.beamActive || beamReady)) {
+        if (player.beamActive) {
+          // 발사 중: 버튼을 누르고 있는 동안 최대 5초까지 기체에서 계속 이어서 나간다
+          player.beamTime++;
+          tickEmergencyBeam(atkMult);
+          if (player.beamTime >= EMERGENCY_BEAM_MAX_FRAMES) {
+            stopBeamSound(true);
+            player.beamActive = false;
+            player.beamTime = 0;
+            player.chargeTime = 0;
+            player.beamCooldown = EMERGENCY_BEAM_COOLDOWN_FRAMES;
+          }
+        } else {
+          player.chargeTime = (player.chargeTime || 0) + 1;
+          if (player.chargeTime === EMERGENCY_HOLD_THRESHOLD) startChargeSound();
+          if (player.chargeTime >= EMERGENCY_HOLD_THRESHOLD + EMERGENCY_CHARGE_FRAMES) {
+            stopChargeSound();
+            startBeamSound();
+            player.beamActive = true;
+            player.beamTime = 0;
+            player.chargeTime = 0;
+            flashEffect = 8;
+            playSound('nuke');
+          }
+        }
+      } else {
+        player.chargeTime = 0;
+        stopChargeSound();
+        // 발사 도중에 버튼을 놓거나 상황이 바뀌어 끊겨도 쿨타임은 똑같이 적용된다
+        if (player.beamActive) { player.beamCooldown = EMERGENCY_BEAM_COOLDOWN_FRAMES; stopBeamSound(true); }
+        player.beamActive = false;
+        player.beamTime = 0;
+      }
+      const isCharging = emergencyEligible && fireHeld && (player.beamActive || (beamReady && player.chargeTime >= EMERGENCY_HOLD_THRESHOLD));
+
+      // 충전/발사 중에는 평소 연사를 멈춘다. 짧게 연타하면 isCharging이 되지 않아 기본 레이저가 나간다.
+      if (!isCharging && (keys['Space'] || keys['KeyZ'] || touchFire) && now - player.lastShot > delay) {
         player.lastShot = now;
 
         if (currentWeapon.type === 'NUKE') {
@@ -2624,14 +2854,12 @@
             }
           }
         } else if (e.pType === 'turret') {
-          // 터렛: 화성부터 등장하는 고정 포대. 자리를 잡으면 움직이지 않고
-          // 짧은 간격으로 계속 조준 사격을 퍼붓는 지속적인 위협이 된다.
-          if (!e.settled) {
-            e.y += e.speed * 0.6;
-            if (e.y > 130) e.settled = true;
-          } else {
+          // 터렛: 화성부터 등장하는 포대. 자리를 잡고 멈추지 않고 계속 흘러 내려오며,
+          // 화면 안에 들어오는 즉시(y>0) 조준 사격을 시작해 지나가는 동안 내내 쏘아댄다.
+          e.y += e.speed;
+          if (e.y > 0 && e.y < CANVAS_HEIGHT - 20) {
             e.shootTimer++;
-            if (e.shootTimer >= 14) {
+            if (e.shootTimer >= (e.fireInterval || 14)) {
               e.shootTimer = 0;
               const angle = Math.atan2(player.y - e.y, player.x - e.x);
               enemyBullets.push({
@@ -2927,6 +3155,37 @@
       }
     }
 
+    // ⚡ 비상 관통빔(지속형): 발사되는 매 프레임마다 플레이어 정면 세로줄을 훑으며 피해를 준다.
+    // 보스에게도 피해 감쇄(damageBoss의 강함 지수 보정) 없이 그대로 들어간다.
+    function tickEmergencyBeam(atkMult) {
+      const dmg = EMERGENCY_BEAM_DPF * atkMult;
+      const beamW = EMERGENCY_BEAM_WIDTH;
+      const muzzleY = player.y - 14;
+      const vfx = player.beamTime % 4 === 0; // 폭발 이펙트는 4프레임에 한 번만 (파티클 폭주 방지)
+
+      for (let ei = enemies.length - 1; ei >= 0; ei--) {
+        const e = enemies[ei];
+        if (e.y > muzzleY || Math.abs(e.x - player.x) >= beamW / 2 + e.w / 2) continue;
+        e.hp -= dmg;
+        if (vfx) createExplosion(e.x, e.y, 12);
+        if (e.hp <= 0) {
+          createExplosion(e.x, e.y, 22);
+          playSound('explosion');
+          score += 100;
+          shopPoints += Math.floor(15 * (1 + (shopUpgrades.luckLv - 1) * 0.2));
+          enemiesKilled++;
+          enemies.splice(ei, 1);
+        }
+      }
+      if (boss && boss.y <= muzzleY && Math.abs(boss.x - player.x) < beamW / 2 + boss.w / 2) {
+        damageBoss(dmg, true);
+        if (vfx) createExplosion(boss.x + (Math.random() - 0.5) * 30, boss.y + boss.h * 0.3, 16);
+        checkBossDefeat();
+      }
+
+      shakeIntensity = Math.max(shakeIntensity, 2.5);
+    }
+
     function triggerMissileExplosion(x, y, power) {
       playSound('explosion');
       explosions.push({
@@ -3074,6 +3333,110 @@
         callback();
       }, 1500);
     }
+
+    // ⚡ 비상 관통빔 기능 개방 연출: 짧은 화면 섬광 + 사운드 + 2단계로 이어지는 안내 문구.
+    // "10초 뒤 시스템 비상 기능"이라는 설정을 살리기 위해 시스템 알림처럼 딱딱한 어조로 안내한다.
+    function announceEmergencyBeam() {
+      emergencyBeamUnlocked = true;
+      flashEffect = 8;
+      playSound('powerup');
+      showBossCallout('⚡ 시스템 비상 기능 가동', 1900);
+      setTimeout(() => {
+        if (gameState === 'PLAYING') showBossCallout('공격 버튼 꾹 누르기 → 비상 관통빔 (최대 5초 / 쿨타임 10초)', 2400);
+      }, 1000);
+      setTimeout(() => {
+        if (gameState === 'PLAYING') showBossCallout('짧게 연타 → 평소처럼 기본 레이저', 2200);
+      }, 3300);
+    }
+
+    // 🔊 비상 관통빔 사운드: 충전 중에는 점점 높아지는 윙 소리, 발사 중에는 묵직한 지속음(저음 톱니파 +
+    // 서브 + 지지직거리는 노이즈 + 떨림)이 계속 깔리고, 끝나면 전원이 꺼지듯 내려앉는 소리가 난다.
+    let beamAudio = null, chargeAudio = null, beamNoiseBuf = null;
+    function getBeamNoise() {
+      if (!beamNoiseBuf) {
+        const len = audioCtx.sampleRate * 1;
+        beamNoiseBuf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+        const d = beamNoiseBuf.getChannelData(0);
+        for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      }
+      return beamNoiseBuf;
+    }
+    function startChargeSound() {
+      if (!audioCtx || chargeAudio) return;
+      const t = audioCtx.currentTime, dur = EMERGENCY_CHARGE_FRAMES / 60;
+      const gain = audioCtx.createGain();
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.linearRampToValueAtTime(0.07, t + dur);
+      gain.connect(audioCtx.destination);
+      const o1 = audioCtx.createOscillator(); o1.type = 'triangle';
+      o1.frequency.setValueAtTime(140, t); o1.frequency.exponentialRampToValueAtTime(1300, t + dur);
+      const o2 = audioCtx.createOscillator(); o2.type = 'sawtooth';
+      o2.frequency.setValueAtTime(70, t); o2.frequency.exponentialRampToValueAtTime(650, t + dur);
+      const g2 = audioCtx.createGain(); g2.gain.value = 0.4;
+      o1.connect(gain); o2.connect(g2); g2.connect(gain);
+      o1.start(t); o2.start(t);
+      chargeAudio = { gain, nodes: [o1, o2] };
+    }
+    function stopChargeSound() {
+      if (!chargeAudio) return;
+      const t = audioCtx.currentTime, a = chargeAudio;
+      chargeAudio = null;
+      a.gain.gain.cancelScheduledValues(t);
+      a.gain.gain.setValueAtTime(Math.max(0.0001, a.gain.gain.value), t);
+      a.gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
+      a.nodes.forEach(n => { try { n.stop(t + 0.1); } catch (e) {} });
+    }
+    function startBeamSound() {
+      if (!audioCtx || beamAudio) return;
+      const t = audioCtx.currentTime, life = EMERGENCY_BEAM_MAX_FRAMES / 60;
+      const master = audioCtx.createGain();
+      master.gain.setValueAtTime(0.0001, t);
+      master.gain.exponentialRampToValueAtTime(0.12, t + 0.1);
+      master.connect(audioCtx.destination);
+
+      const lp = audioCtx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1100;
+      lp.connect(master);
+      const mk = (type, f0, f1, vol) => {
+        const o = audioCtx.createOscillator(); o.type = type;
+        o.frequency.setValueAtTime(f0, t);
+        o.frequency.linearRampToValueAtTime(f1, t + life); // 남은 시간이 줄수록 음이 서서히 가라앉는다
+        const g = audioCtx.createGain(); g.gain.value = vol;
+        o.connect(g); g.connect(lp); o.start(t);
+        return o;
+      };
+      const o1 = mk('sawtooth', 78, 62, 0.55);
+      const o2 = mk('sawtooth', 78 * 1.503, 62 * 1.503, 0.3);
+      const o3 = mk('square', 39, 31, 0.5);
+
+      const noise = audioCtx.createBufferSource();
+      noise.buffer = getBeamNoise(); noise.loop = true;
+      const bp = audioCtx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2200; bp.Q.value = 0.7;
+      const ng = audioCtx.createGain(); ng.gain.value = 0.22;
+      noise.connect(bp); bp.connect(ng); ng.connect(master); noise.start(t);
+
+      const lfo = audioCtx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 13;
+      const lg = audioCtx.createGain(); lg.gain.value = 0.035;
+      lfo.connect(lg); lg.connect(master.gain); lfo.start(t);
+
+      beamAudio = { master, nodes: [o1, o2, o3, noise, lfo] };
+    }
+    function stopBeamSound(withTail) {
+      if (!beamAudio) return;
+      const t = audioCtx.currentTime, a = beamAudio;
+      beamAudio = null;
+      a.master.gain.cancelScheduledValues(t);
+      a.master.gain.setValueAtTime(Math.max(0.0001, a.master.gain.value), t);
+      a.master.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+      a.nodes.forEach(n => { try { n.stop(t + 0.22); } catch (e) {} });
+      if (withTail) { // 전원이 꺼지듯 내려앉는 꼬리음
+        const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+        o.type = 'sawtooth';
+        o.frequency.setValueAtTime(160, t); o.frequency.exponentialRampToValueAtTime(30, t + 0.45);
+        g.gain.setValueAtTime(0.09, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
+        o.connect(g); g.connect(audioCtx.destination); o.start(t); o.stop(t + 0.5);
+      }
+    }
+    function stopBeamSounds() { stopChargeSound(); stopBeamSound(false); }
 
     function playGlitchSound() {
       if (!audioCtx) return;
@@ -3529,6 +3892,7 @@
       if (player.invuln > 0 && Math.floor(player.invuln / 4) % 2 === 0) {
         ctx.globalAlpha = 0.35;
       }
+      if (player.hidden) ctx.globalAlpha = 0; // 격추 연출 중에는 기체를 숨긴다
       ctx.translate(player.x, player.y);
       if (player.superMode) {
         ctx.strokeStyle = '#ffcc00';
@@ -3543,9 +3907,63 @@
         drawEntityEmoji('🛰️', 22, 0, '14px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Segoe UI Symbol",sans-serif');
       }
 
+      // ⚡ 발사 중에는 남은 지속시간을 붉은 고리로, 충전 중에는 차오르는 흰 고리로 게이지를 표현한다
+      if (player.beamActive) {
+        const remain = 1 - player.beamTime / EMERGENCY_BEAM_MAX_FRAMES;
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255,90,90,0.95)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, 0, 22, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * remain);
+        ctx.stroke();
+        ctx.restore();
+      } else if (player.beamCooldown > 0 && emergencyBeamUnlocked && boss && boss.isFinal) {
+        // 재사용 대기 중: 회복된 만큼 차오르는 푸른 고리
+        const done = 1 - player.beamCooldown / EMERGENCY_BEAM_COOLDOWN_FRAMES;
+        ctx.save();
+        ctx.strokeStyle = 'rgba(120,170,255,0.7)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, 20, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * done);
+        ctx.stroke();
+        ctx.restore();
+      } else if (player.chargeTime > EMERGENCY_HOLD_THRESHOLD) {
+        const ratio = Math.min(1, (player.chargeTime - EMERGENCY_HOLD_THRESHOLD) / EMERGENCY_CHARGE_FRAMES);
+        ctx.save();
+        ctx.strokeStyle = `rgba(255,255,255,${0.4 + ratio * 0.5})`;
+        ctx.lineWidth = 2 + ratio * 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, 16 + ratio * 10, 0, Math.PI * 2 * ratio);
+        ctx.stroke();
+        ctx.restore();
+      }
+
       const shipEmoji = player.superMode ? '🔥' : '🚀';
       drawEntityEmoji(shipEmoji, 0, 0, '26px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Segoe UI Symbol",sans-serif');
       ctx.restore();
+
+      // ⚡ 비상 관통빔(지속형): 기체 앞에서 화면 위끝까지 이어지는 빛줄기. 남은 시간이 줄수록 가늘어진다.
+      if (player.beamActive) {
+        const t = player.beamTime;
+        const remain = 1 - t / EMERGENCY_BEAM_MAX_FRAMES;
+        const fadeIn = Math.min(1, t / 6);
+        const pulse = 0.85 + 0.15 * Math.sin(t * 0.9);
+        const w = (14 + 10 * remain) * pulse * fadeIn;
+        const bx = player.x, by = player.y - 14;
+        ctx.save();
+        const grad = ctx.createLinearGradient(bx - w, 0, bx + w, 0);
+        grad.addColorStop(0, 'rgba(255,60,60,0.15)');
+        grad.addColorStop(0.5, 'rgba(255,255,255,0.95)');
+        grad.addColorStop(1, 'rgba(255,60,60,0.15)');
+        ctx.fillStyle = grad;
+        ctx.shadowColor = '#ff4444';
+        ctx.shadowBlur = 16;
+        ctx.fillRect(bx - w, 0, w * 2, by);
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(bx - 2, 0, 4, by);
+        ctx.restore();
+      }
 
       // 지원 편대(2번기/3번기) 렌더링
       if (wingmen.length > 0) {
@@ -3638,7 +4056,7 @@
         ctx.save();
         ctx.globalAlpha = e.alpha !== undefined ? e.alpha : 1.0;
         drawEntityEmoji(e.emoji, e.x, e.y, '24px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Segoe UI Symbol",sans-serif');
-        if (e.pType === 'turret' && e.settled) {
+        if (e.pType === 'turret' && e.y > 0) {
           ctx.save();
           ctx.shadowColor = '#ff5533';
           ctx.shadowBlur = 10;
@@ -3937,6 +4355,7 @@
       update();
       render();
 
+      if (gameState !== 'PLAYING') stopBeamSounds();
       if (gameState === 'GAMEOVER') {
         resetInput();
         document.getElementById('game-over-screen').style.display = 'flex';
@@ -4216,7 +4635,7 @@
       if (window.resetTouchInput) window.resetTouchInput();
     }
     window.addEventListener('blur', resetInput);
-    document.addEventListener('visibilitychange', () => { if (document.hidden) resetInput(); });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) { resetInput(); stopBeamSounds(); } });
 
     function startGame() {
       initAudio();
@@ -4251,12 +4670,17 @@
       explosions = [];
       buildings = [];
       railgunFlashes = [];
+      emergencyBeamUnlocked = false;
+      emergencySystemTimerStart = 0;
+      cancelReinforcementSequence();
+      stopBeamSounds();
       wingmen = [];
       finalBossReinforcementUsed = false;
       boss = null;
       resetInput();
       pendingGachaWeapon = null;
       resetPlayer();
+      player.beamCooldown = 0;
       startBGM();
       gameState = 'PLAYING';
 
