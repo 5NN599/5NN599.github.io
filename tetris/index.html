@@ -114,6 +114,93 @@
             margin-top: 8px;
             line-height: 1.6;
         }
+
+
+        /* Mobile / touch support */
+        *, *::before, *::after { box-sizing: border-box; }
+        html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+        body {
+            min-width: 0;
+            padding-left: max(8px, env(safe-area-inset-left));
+            padding-right: max(8px, env(safe-area-inset-right));
+            padding-bottom: max(18px, env(safe-area-inset-bottom));
+            overflow-x: hidden;
+        }
+        h1 {
+            max-width: 100%;
+            padding-left: 8px;
+            padding-right: 8px;
+            font-size: clamp(1.35rem, 5.5vw, 2rem);
+            line-height: 1.25;
+            overflow-wrap: anywhere;
+        }
+        canvas {
+            max-width: calc(100vw - 24px);
+            height: auto;
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        button, select {
+            min-height: 44px;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .touch-controls {
+            display: none;
+            width: min(420px, calc(100vw - 24px));
+            margin: 12px auto 16px;
+            gap: 8px;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        .touch-controls button {
+            min-width: 0;
+            min-height: 54px;
+            margin: 0;
+            padding: 10px 8px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 800;
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .touch-help {
+            display: none;
+            max-width: 420px;
+            margin: 0 auto 10px;
+            padding: 0 8px;
+            font-size: .82rem;
+            line-height: 1.5;
+            opacity: .72;
+        }
+        .pad-space { display: block; }
+        .pad-center { display: grid; place-items: center; opacity: .35; font-size: .8rem; }
+
+        @media (max-width: 700px), (pointer: coarse) {
+            body { padding-top: max(10px, env(safe-area-inset-top)); }
+            .touch-controls { display: grid; }
+            .touch-help { display: block; }
+            .modal-content {
+                width: min(92vw, 420px);
+                max-width: 92vw;
+                padding: 22px 18px;
+            }
+            button { font-size: 1rem; }
+        }
+
+        #tetrisCanvas { width: 240px; max-width: calc(100vw - 24px); height: auto; }
+        .tetris-touch-controls { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+        .tetris-touch-controls button { min-height: 62px; font-size: 1.45rem; }
+        @media (max-width: 700px), (pointer: coarse) {
+            body { padding-top: max(10px, env(safe-area-inset-top)); }
+            #score-board { font-size: clamp(1rem, 4.5vw, 1.25rem); }
+            .game-info { max-width: 420px; margin-left: auto; margin-right: auto; padding: 0 8px; }
+            #tetrisCanvas { width: min(360px, calc(100vw - 24px)); }
+        }
+
     </style>
 </head>
 
@@ -129,6 +216,8 @@
         id="tetrisCanvas"
         width="240"
         height="400"
+        data-swipe-keys="true"
+        aria-label="테트리스 게임 화면"
     ></canvas>
 
     <div>
@@ -141,6 +230,14 @@
         방향키 또는 WASD로 블록을 움직이세요.<br>
         ↑ / W : 회전 · ↓ / S : 빠르게 내리기
     </div>
+
+    <div class="touch-controls tetris-touch-controls" aria-label="테트리스 터치 조작">
+        <button type="button" data-key="ArrowLeft" data-repeat aria-label="왼쪽 이동">◀</button>
+        <button type="button" data-key="ArrowUp" aria-label="블록 회전">↻</button>
+        <button type="button" data-key="ArrowDown" data-repeat aria-label="빠르게 내리기">▼</button>
+        <button type="button" data-key="ArrowRight" data-repeat aria-label="오른쪽 이동">▶</button>
+    </div>
+    <p class="touch-help">좌우 이동·회전·빠른 낙하를 아래 버튼으로 조작하세요. 버튼을 길게 누르면 반복 이동합니다.</p>
 
     <script>
         /*
@@ -785,6 +882,113 @@
 
         restart();
     </script>
+    
+<script>
+(() => {
+    'use strict';
+    const sendKey = (type, key) => {
+        document.dispatchEvent(new KeyboardEvent(type, {
+            key,
+            bubbles: true,
+            cancelable: true
+        }));
+    };
+
+    const activePresses = new Map();
+    document.querySelectorAll('.touch-controls [data-key]').forEach((button) => {
+        const key = button.dataset.key;
+        const hold = button.hasAttribute('data-hold');
+        const repeat = button.hasAttribute('data-repeat');
+        let repeatTimer = null;
+        let pressed = false;
+
+        const stop = (event) => {
+            if (!pressed) return;
+            if (event) event.preventDefault();
+            pressed = false;
+            if (repeatTimer !== null) {
+                clearInterval(repeatTimer);
+                repeatTimer = null;
+            }
+            sendKey('keyup', key);
+            activePresses.delete(button);
+        };
+
+        if (hold || repeat) {
+            button.addEventListener('pointerdown', (event) => {
+                if (pressed) return;
+                event.preventDefault();
+                pressed = true;
+                activePresses.set(button, stop);
+                sendKey('keydown', key);
+                if (repeat) {
+                    repeatTimer = setInterval(() => sendKey('keydown', key), 105);
+                }
+                try { button.setPointerCapture(event.pointerId); } catch (_) {}
+            });
+            ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((name) => {
+                button.addEventListener(name, stop);
+            });
+        } else {
+            button.addEventListener('click', (event) => {
+                event.preventDefault();
+                sendKey('keydown', key);
+                sendKey('keyup', key);
+            });
+        }
+        button.addEventListener('contextmenu', (event) => event.preventDefault());
+    });
+
+    window.addEventListener('pointerup', () => {
+        for (const stop of [...activePresses.values()]) stop();
+    });
+    window.addEventListener('blur', () => {
+        for (const stop of [...activePresses.values()]) stop();
+    });
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            for (const stop of [...activePresses.values()]) stop();
+        }
+    });
+
+    window.addEventListener('keydown', (event) => {
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(event.key)) {
+            const target = event.target;
+            const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT');
+            if (!isInput) event.preventDefault();
+        }
+    }, { passive: false });
+
+    const canvas = document.querySelector('canvas');
+    if (canvas && canvas.dataset.swipeKeys === 'true') {
+        let startX = 0;
+        let startY = 0;
+        let pointerId = null;
+        canvas.addEventListener('pointerdown', (event) => {
+            if (event.pointerType === 'mouse' && event.button !== 0) return;
+            startX = event.clientX;
+            startY = event.clientY;
+            pointerId = event.pointerId;
+            try { canvas.setPointerCapture(pointerId); } catch (_) {}
+        });
+        canvas.addEventListener('pointerup', (event) => {
+            if (pointerId !== event.pointerId) return;
+            const dx = event.clientX - startX;
+            const dy = event.clientY - startY;
+            const threshold = Math.max(18, canvas.getBoundingClientRect().width * 0.045);
+            pointerId = null;
+            if (Math.max(Math.abs(dx), Math.abs(dy)) < threshold) return;
+            const key = Math.abs(dx) > Math.abs(dy)
+                ? (dx < 0 ? 'ArrowLeft' : 'ArrowRight')
+                : (dy < 0 ? 'ArrowUp' : 'ArrowDown');
+            sendKey('keydown', key);
+            sendKey('keyup', key);
+        });
+        canvas.addEventListener('pointercancel', () => { pointerId = null; });
+    }
+})();
+</script>
+
 
 </body>
 </html>
