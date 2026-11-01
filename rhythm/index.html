@@ -152,6 +152,115 @@
         font-size: 1rem;
       }
     }
+
+
+        /* Mobile / touch support */
+        *, *::before, *::after { box-sizing: border-box; }
+        html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+        body {
+            min-width: 0;
+            padding-left: max(8px, env(safe-area-inset-left));
+            padding-right: max(8px, env(safe-area-inset-right));
+            padding-bottom: max(18px, env(safe-area-inset-bottom));
+            overflow-x: hidden;
+        }
+        h1 {
+            max-width: 100%;
+            padding-left: 8px;
+            padding-right: 8px;
+            font-size: clamp(1.35rem, 5.5vw, 2rem);
+            line-height: 1.25;
+            overflow-wrap: anywhere;
+        }
+        canvas {
+            max-width: calc(100vw - 24px);
+            height: auto;
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        button, select {
+            min-height: 44px;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .touch-controls {
+            display: none;
+            width: min(420px, calc(100vw - 24px));
+            margin: 12px auto 16px;
+            gap: 8px;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        .touch-controls button {
+            min-width: 0;
+            min-height: 54px;
+            margin: 0;
+            padding: 10px 8px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 800;
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .touch-help {
+            display: none;
+            max-width: 420px;
+            margin: 0 auto 10px;
+            padding: 0 8px;
+            font-size: .82rem;
+            line-height: 1.5;
+            opacity: .72;
+        }
+        .pad-space { display: block; }
+        .pad-center { display: grid; place-items: center; opacity: .35; font-size: .8rem; }
+
+        @media (max-width: 700px), (pointer: coarse) {
+            body { padding-top: max(10px, env(safe-area-inset-top)); }
+            .touch-controls { display: grid; }
+            .touch-help { display: block; }
+            .modal-content {
+                width: min(92vw, 420px);
+                max-width: 92vw;
+                padding: 22px 18px;
+            }
+            button { font-size: 1rem; }
+        }
+
+    #app { width: min(900px, calc(100% - 12px)); }
+    .canvas-shell { width: 360px; max-width: 100%; }
+    canvas { width: 360px; height: 500px; max-width: 100%; }
+    .lane-touch-controls {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      width: min(420px, calc(100vw - 24px));
+      margin-top: 10px;
+    }
+    .lane-touch-controls button {
+      min-height: 62px;
+      font-size: 1.25rem;
+      border-bottom-width: 4px !important;
+    }
+    .controls { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 4px; }
+    #songSelect { max-width: min(100%, 260px); min-height: 46px; }
+    @media (max-width: 700px), (pointer: coarse) {
+      body { padding-top: max(8px, env(safe-area-inset-top)); padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+      #app { width: min(100%, 520px); }
+      .hud { gap: 5px; }
+      .hud-card { padding: 7px 4px; }
+      .hud-label { font-size: .65rem; }
+      .hud-value { font-size: clamp(.85rem, 3.7vw, 1rem); }
+      #rhythm-panel { font-size: .95rem; }
+      .canvas-shell { width: min(420px, calc(100vw - 24px)); }
+      canvas { width: 100%; height: auto; }
+      .lane-touch-controls { display: grid; }
+      .key-guide { display: none; }
+      .controls button { flex: 1 1 125px; }
+      #songSelect { flex: 1 1 100%; width: 100%; max-width: none; }
+      .status { padding: 0 8px; }
+    }
+
   </style>
 </head>
 <body>
@@ -181,6 +290,13 @@
           height="500">
         </canvas>
       </div>
+    </div>
+
+    <div class="touch-controls lane-touch-controls" aria-label="리듬게임 레인 터치 버튼">
+      <button type="button" data-key="s" aria-label="첫 번째 레인">S</button>
+      <button type="button" data-key="d" aria-label="두 번째 레인">D</button>
+      <button type="button" data-key="k" aria-label="세 번째 레인">K</button>
+      <button type="button" data-key="l" aria-label="네 번째 레인">L</button>
     </div>
 
     <div class="controls">
@@ -2431,8 +2547,115 @@ if (savedTheme && savedTheme !== 'white') { document.documentElement.setAttribut
       0
     );
   </script>
-</body>
+  
+<script>
+(() => {
+    'use strict';
+    const sendKey = (type, key) => {
+        document.dispatchEvent(new KeyboardEvent(type, {
+            key,
+            bubbles: true,
+            cancelable: true
+        }));
+    };
+
+    const activePresses = new Map();
+    document.querySelectorAll('.touch-controls [data-key]').forEach((button) => {
+        const key = button.dataset.key;
+        const hold = button.hasAttribute('data-hold');
+        const repeat = button.hasAttribute('data-repeat');
+        let repeatTimer = null;
+        let pressed = false;
+
+        const stop = (event) => {
+            if (!pressed) return;
+            if (event) event.preventDefault();
+            pressed = false;
+            if (repeatTimer !== null) {
+                clearInterval(repeatTimer);
+                repeatTimer = null;
+            }
+            sendKey('keyup', key);
+            activePresses.delete(button);
+        };
+
+        if (hold || repeat) {
+            button.addEventListener('pointerdown', (event) => {
+                if (pressed) return;
+                event.preventDefault();
+                pressed = true;
+                activePresses.set(button, stop);
+                sendKey('keydown', key);
+                if (repeat) {
+                    repeatTimer = setInterval(() => sendKey('keydown', key), 105);
+                }
+                try { button.setPointerCapture(event.pointerId); } catch (_) {}
+            });
+            ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((name) => {
+                button.addEventListener(name, stop);
+            });
+        } else {
+            button.addEventListener('click', (event) => {
+                event.preventDefault();
+                sendKey('keydown', key);
+                sendKey('keyup', key);
+            });
+        }
+        button.addEventListener('contextmenu', (event) => event.preventDefault());
+    });
+
+    window.addEventListener('pointerup', () => {
+        for (const stop of [...activePresses.values()]) stop();
+    });
+    window.addEventListener('blur', () => {
+        for (const stop of [...activePresses.values()]) stop();
+    });
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            for (const stop of [...activePresses.values()]) stop();
+        }
+    });
+
+    window.addEventListener('keydown', (event) => {
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(event.key)) {
+            const target = event.target;
+            const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT');
+            if (!isInput) event.preventDefault();
+        }
+    }, { passive: false });
+
+    const canvas = document.querySelector('canvas');
+    if (canvas && canvas.dataset.swipeKeys === 'true') {
+        let startX = 0;
+        let startY = 0;
+        let pointerId = null;
+        canvas.addEventListener('pointerdown', (event) => {
+            if (event.pointerType === 'mouse' && event.button !== 0) return;
+            startX = event.clientX;
+            startY = event.clientY;
+            pointerId = event.pointerId;
+            try { canvas.setPointerCapture(pointerId); } catch (_) {}
+        });
+        canvas.addEventListener('pointerup', (event) => {
+            if (pointerId !== event.pointerId) return;
+            const dx = event.clientX - startX;
+            const dy = event.clientY - startY;
+            const threshold = Math.max(18, canvas.getBoundingClientRect().width * 0.045);
+            pointerId = null;
+            if (Math.max(Math.abs(dx), Math.abs(dy)) < threshold) return;
+            const key = Math.abs(dx) > Math.abs(dy)
+                ? (dx < 0 ? 'ArrowLeft' : 'ArrowRight')
+                : (dy < 0 ? 'ArrowUp' : 'ArrowDown');
+            sendKey('keydown', key);
+            sendKey('keyup', key);
+        });
+        canvas.addEventListener('pointercancel', () => { pointerId = null; });
+    }
+})();
+</script>
+
   <div style="margin: 15px auto; text-align: center; clear: both; position: relative; z-index: 9999;">
         <button onclick="location.href='../'" style="font-weight: bold; cursor: pointer; padding: 10px 20px; font-size: 0.95rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: 0.2s;">🏠 오락실 메인으로 돌아가기</button>
     </div>
+</body>
 </html>
