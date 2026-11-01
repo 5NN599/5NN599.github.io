@@ -80,7 +80,7 @@
       padding: 26px 0;
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      justify-content: flex-start;
       gap: 18px;
     }
 
@@ -105,30 +105,6 @@
       font-size: 1.15rem;
     }
 
-    .theme-switcher {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      padding: 5px;
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      background: var(--surface);
-      box-shadow: 0 4px 16px rgba(30, 35, 65, .04);
-    }
-    .theme-button {
-      min-height: 34px;
-      padding: 0 11px;
-      border: 0;
-      border-radius: 999px;
-      background: transparent;
-      color: var(--muted);
-      cursor: pointer;
-      font-size: .78rem;
-      font-weight: 750;
-      transition: background .18s ease, color .18s ease, transform .18s ease;
-    }
-    .theme-button:hover { transform: translateY(-1px); color: var(--text); }
-    .theme-button[aria-pressed="true"] { background: var(--surface-2); color: var(--text); }
 
     main {
       width: min(100% - 32px, 760px);
@@ -301,7 +277,7 @@
     .action:hover { transform: translateY(-2px); border-color: var(--accent); box-shadow: 0 8px 20px rgba(40, 40, 80, .08); }
     .action.primary { border-color: var(--accent); background: var(--accent); color: var(--button-text); }
     .action.primary:hover { box-shadow: 0 9px 22px color-mix(in srgb, var(--accent) 28%, transparent); }
-    .action:focus-visible, .theme-button:focus-visible { outline: 3px solid var(--accent-2); outline-offset: 3px; }
+    .action:focus-visible { outline: 3px solid var(--accent-2); outline-offset: 3px; }
 
     .hint {
       display: inline-flex;
@@ -340,8 +316,6 @@
       .topbar { width: calc(100% - 28px); padding: 18px 0; }
       .brand { font-size: 1.05rem; }
       .brand-mark { width: 35px; height: 35px; }
-      .theme-switcher { gap: 1px; padding: 4px; }
-      .theme-button { min-height: 31px; padding: 0 8px; font-size: .71rem; }
       main { width: calc(100% - 24px); padding: 20px 0 38px; }
       .error-card { border-radius: 23px; padding: 30px 19px 34px; }
       .arcade-art { transform: scale(.9); margin-bottom: 0; }
@@ -362,12 +336,6 @@
       <span class="brand-mark" aria-hidden="true">🎮</span>
       <span>미니지</span>
     </a>
-
-    <div class="theme-switcher" role="group" aria-label="화면 테마 선택">
-      <button class="theme-button" type="button" data-theme-choice="white" aria-pressed="true">⚪ 하양</button>
-      <button class="theme-button" type="button" data-theme-choice="cream" aria-pressed="false">🟡 크림</button>
-      <button class="theme-button" type="button" data-theme-choice="dark" aria-pressed="false">⚫ 다크</button>
-    </div>
   </header>
 
   <main>
@@ -409,20 +377,97 @@
   <script>
     (() => {
       const root = document.documentElement;
-      const themeButtons = document.querySelectorAll('[data-theme-choice]');
+      const themeColorMeta = document.querySelector('meta[name="theme-color"]');
 
-      themeButtons.forEach((button) => {
-        button.addEventListener('click', () => {
-          const theme = button.dataset.themeChoice;
-          root.dataset.theme = theme;
-          themeButtons.forEach((item) => {
-            item.setAttribute('aria-pressed', String(item === button));
-          });
+      // Mini-G의 저장된 테마를 읽습니다. 저장 키 이름이 달라져도
+      // 테마/모드 관련 항목의 값이나 JSON 설정에서 찾아 적용합니다.
+      function normalizeTheme(value) {
+        if (value == null) return null;
+        const text = String(value).trim().toLowerCase();
 
-          const themeColor = theme === 'dark' ? '#111522' : theme === 'cream' ? '#f5f0e5' : '#f7f8fc';
-          document.querySelector('meta[name="theme-color"]').setAttribute('content', themeColor);
-        });
-      });
+        if (['dark', 'black', 'night', '다크', '어두움', '어두운'].includes(text)) return 'dark';
+        if (['cream', '크림', 'beige', '베이지'].includes(text)) return 'cream';
+        if (['white', 'light', '하양', '화이트', '밝음', '밝은', 'default'].includes(text)) return 'white';
+
+        // 설정 객체를 JSON으로 저장하는 형태도 지원합니다.
+        if ((text.startsWith('{') && text.endsWith('}')) || (text.startsWith('[') && text.endsWith(']'))) {
+          try {
+            const parsed = JSON.parse(text);
+            if (parsed && typeof parsed === 'object') {
+              for (const [key, item] of Object.entries(parsed)) {
+                if (/theme|mode|테마|모드/i.test(key)) {
+                  const found = normalizeTheme(item);
+                  if (found) return found;
+                }
+              }
+            }
+          } catch (_) {
+            // JSON이 아니면 일반 문자열 값으로 처리합니다.
+          }
+        }
+        return null;
+      }
+
+      function readSavedTheme() {
+        const preferredKeys = [
+          'mini-g-theme', 'minig-theme', 'miniji-theme', 'miniGTheme',
+          'minigTheme', 'minijiTheme', 'theme', 'site-theme', 'theme-mode'
+        ];
+        const stores = [];
+        try { stores.push(window.localStorage); } catch (_) {}
+        try { stores.push(window.sessionStorage); } catch (_) {}
+
+        for (const store of stores) {
+          // 먼저 Mini-G 또는 일반 테마 설정으로 알려진 키를 확인합니다.
+          for (const key of preferredKeys) {
+            try {
+              const theme = normalizeTheme(store.getItem(key));
+              if (theme) return theme;
+            } catch (_) {}
+          }
+
+          // 실제 저장 키가 다른 이름이어도 테마 관련 키를 자동으로 찾습니다.
+          try {
+            for (let i = 0; i < store.length; i += 1) {
+              const key = store.key(i);
+              if (!key || !/theme|mode|테마|모드/i.test(key)) continue;
+              const theme = normalizeTheme(store.getItem(key));
+              if (theme) return theme;
+            }
+          } catch (_) {}
+        }
+
+        // 키 이름이 전혀 다르지만 값 자체가 테마명인 경우도 확인합니다.
+        for (const store of stores) {
+          try {
+            for (let i = 0; i < store.length; i += 1) {
+              const key = store.key(i);
+              const theme = normalizeTheme(store.getItem(key));
+              if (theme) return theme;
+            }
+          } catch (_) {}
+        }
+
+        // 테마를 쿠키에 보관하는 구현도 지원합니다.
+        try {
+          for (const item of document.cookie.split(';')) {
+            const [key, ...parts] = item.trim().split('=');
+            if (!key || !/theme|mode|테마|모드/i.test(key)) continue;
+            const theme = normalizeTheme(decodeURIComponent(parts.join('=')));
+            if (theme) return theme;
+          }
+        } catch (_) {}
+
+        return 'white';
+      }
+
+      const theme = readSavedTheme();
+      root.dataset.theme = theme;
+      if (themeColorMeta) {
+        themeColorMeta.setAttribute('content',
+          theme === 'dark' ? '#111522' : theme === 'cream' ? '#f5f0e5' : '#f7f8fc'
+        );
+      }
 
       document.getElementById('back-button').addEventListener('click', () => {
         if (window.history.length > 1) {
