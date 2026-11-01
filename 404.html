@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="white">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f7f8fc">
+  <meta name="robots" content="noindex, follow">
+  <title>404 - 페이지를 찾을 수 없어요 | 미니지</title>
+  <meta name="description" content="요청하신 페이지를 찾을 수 없습니다. 미니지 온라인 오락실로 돌아가 다양한 미니게임을 즐겨보세요.">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7fc;
+      --surface: #ffffff;
+      --surface-2: #f1f4fb;
+      --text: #20263a;
+      --muted: #778097;
+      --line: #e4e8f1;
+      --accent: #7167ed;
+      --accent-2: #938bff;
+      --accent-soft: #eeedff;
+      --shadow: 0 24px 70px rgba(42, 49, 91, .10);
+      --button-text: #ffffff;
+    }
+
+    html[data-theme="cream"] {
+      color-scheme: light;
+      --bg: #f5f0e5;
+      --surface: #fffaf0;
+      --surface-2: #f3ebdc;
+      --text: #3b3328;
+      --muted: #8c7d69;
+      --line: #e8ddc9;
+      --accent: #b87943;
+      --accent-2: #d39a61;
+      --accent-soft: #f7ead8;
+      --shadow: 0 24px 70px rgba(91, 66, 38, .11);
+      --button-text: #ffffff;
+    }
+
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #111522;
+      --surface: #1b2132;
+      --surface-2: #242c40;
+      --text: #f0f2fb;
+      --muted: #a0a9c0;
+      --line: #303951;
+      --accent: #938bff;
+      --accent-2: #b2acff;
+      --accent-soft: #302d56;
+      --shadow: 0 24px 70px rgba(0, 0, 0, .28);
+      --button-text: #17172b;
+    }
+
+    * { box-sizing: border-box; }
+    html { min-height: 100%; }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      background:
+        radial-gradient(ellipse at 12% 12%, color-mix(in srgb, var(--accent-soft) 75%, transparent), transparent 34rem),
+        radial-gradient(ellipse at 88% 82%, color-mix(in srgb, var(--accent-soft) 55%, transparent), transparent 30rem),
+        var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", "Malgun Gothic", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    button, a { font: inherit; }
+    a { color: inherit; }
+
+    .topbar {
+      width: min(1120px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 26px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      font-size: 1.18rem;
+      font-weight: 900;
+      letter-spacing: -.055em;
+    }
+    .brand-mark {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      background: var(--surface);
+      box-shadow: 0 5px 16px rgba(30, 35, 65, .06);
+      font-size: 1.15rem;
+    }
+
+    .theme-switcher {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface);
+      box-shadow: 0 4px 16px rgba(30, 35, 65, .04);
+    }
+    .theme-button {
+      min-height: 34px;
+      padding: 0 11px;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: .78rem;
+      font-weight: 750;
+      transition: background .18s ease, color .18s ease, transform .18s ease;
+    }
+    .theme-button:hover { transform: translateY(-1px); color: var(--text); }
+    .theme-button[aria-pressed="true"] { background: var(--surface-2); color: var(--text); }
+
+    main {
+      width: min(100% - 32px, 760px);
+      flex: 1;
+      display: grid;
+      place-items: center;
+      margin: 0 auto;
+      padding: 36px 0 70px;
+    }
+
+    .error-card {
+      position: relative;
+      width: 100%;
+      padding: clamp(30px, 6vw, 64px) clamp(22px, 6vw, 66px) 48px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 30px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      text-align: center;
+      isolation: isolate;
+    }
+    .error-card::before,
+    .error-card::after {
+      position: absolute;
+      z-index: -1;
+      content: "";
+      border-radius: 50%;
+      pointer-events: none;
+    }
+    .error-card::before {
+      width: 250px;
+      height: 250px;
+      top: -155px;
+      left: -100px;
+      background: var(--accent-soft);
+      opacity: .9;
+    }
+    .error-card::after {
+      width: 210px;
+      height: 210px;
+      right: -100px;
+      bottom: -130px;
+      background: var(--accent-soft);
+      opacity: .75;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 22px;
+      padding: 8px 13px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface-2);
+      color: var(--muted);
+      font-size: .78rem;
+      font-weight: 800;
+      letter-spacing: .03em;
+    }
+    .eyebrow-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 4px var(--accent-soft);
+    }
+
+    .arcade-art {
+      position: relative;
+      width: 190px;
+      height: 145px;
+      margin: 0 auto 10px;
+      display: grid;
+      place-items: center;
+    }
+    .arcade-art .halo {
+      position: absolute;
+      width: 136px;
+      height: 136px;
+      border: 1px dashed color-mix(in srgb, var(--accent) 38%, transparent);
+      border-radius: 50%;
+      animation: spin 24s linear infinite;
+    }
+    .arcade-art .machine {
+      position: relative;
+      width: 104px;
+      height: 112px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px 10px 10px;
+      border: 3px solid var(--text);
+      border-radius: 18px 18px 13px 13px;
+      background: var(--surface-2);
+      box-shadow: 7px 8px 0 color-mix(in srgb, var(--text) 13%, transparent);
+      transform: rotate(-5deg);
+    }
+    .machine-screen {
+      width: 70px;
+      height: 52px;
+      display: grid;
+      place-items: center;
+      border: 3px solid var(--text);
+      border-radius: 8px;
+      background: var(--surface);
+      font-size: 1.8rem;
+      line-height: 1;
+    }
+    .machine-controls { display: flex; align-items: center; gap: 9px; margin-top: 9px; }
+    .machine-controls i { display: block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+    .machine-controls i:nth-child(2) { background: #f0aa54; }
+    .machine-controls i:nth-child(3) { background: #54bda1; }
+    .float { position: absolute; font-size: 1.25rem; animation: bob 3s ease-in-out infinite; }
+    .float.one { top: 12px; left: 8px; animation-delay: -.6s; }
+    .float.two { top: 22px; right: 4px; animation-delay: -1.4s; }
+    .float.three { bottom: 4px; left: 27px; animation-delay: -2s; font-size: 1rem; }
+    .float.four { right: 20px; bottom: 4px; animation-delay: -.9s; font-size: 1rem; }
+
+    .error-code {
+      margin: 0;
+      color: var(--accent);
+      font-size: clamp(4.6rem, 17vw, 8.2rem);
+      font-weight: 1000;
+      line-height: .95;
+      letter-spacing: -.095em;
+      text-shadow: 5px 5px 0 var(--accent-soft);
+    }
+    h1 {
+      margin: 22px 0 12px;
+      font-size: clamp(1.45rem, 4vw, 2rem);
+      font-weight: 900;
+      letter-spacing: -.065em;
+      line-height: 1.35;
+    }
+    .description {
+      max-width: 440px;
+      margin: 0 auto;
+      color: var(--muted);
+      font-size: .98rem;
+      line-height: 1.8;
+      word-break: keep-all;
+    }
+
+    .actions {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 30px;
+    }
+    .action {
+      min-height: 48px;
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      gap: 9px;
+      padding: 0 21px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--surface);
+      color: var(--text);
+      text-decoration: none;
+      font-size: .9rem;
+      font-weight: 850;
+      cursor: pointer;
+      transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+    }
+    .action:hover { transform: translateY(-2px); border-color: var(--accent); box-shadow: 0 8px 20px rgba(40, 40, 80, .08); }
+    .action.primary { border-color: var(--accent); background: var(--accent); color: var(--button-text); }
+    .action.primary:hover { box-shadow: 0 9px 22px color-mix(in srgb, var(--accent) 28%, transparent); }
+    .action:focus-visible, .theme-button:focus-visible { outline: 3px solid var(--accent-2); outline-offset: 3px; }
+
+    .hint {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      margin-top: 27px;
+      color: var(--muted);
+      font-size: .78rem;
+    }
+    .hint kbd {
+      padding: 3px 7px;
+      border: 1px solid var(--line);
+      border-bottom-width: 2px;
+      border-radius: 6px;
+      background: var(--surface-2);
+      color: var(--text);
+      font: inherit;
+      font-size: .72rem;
+      font-weight: 800;
+    }
+
+    footer {
+      width: min(1120px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 0 0 25px;
+      color: var(--muted);
+      text-align: center;
+      font-size: .76rem;
+    }
+    footer a { text-decoration: none; }
+    footer a:hover { color: var(--accent); }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes bob { 0%, 100% { transform: translateY(0) rotate(-6deg); } 50% { transform: translateY(-8px) rotate(6deg); } }
+    @media (max-width: 520px) {
+      .topbar { width: calc(100% - 28px); padding: 18px 0; }
+      .brand { font-size: 1.05rem; }
+      .brand-mark { width: 35px; height: 35px; }
+      .theme-switcher { gap: 1px; padding: 4px; }
+      .theme-button { min-height: 31px; padding: 0 8px; font-size: .71rem; }
+      main { width: calc(100% - 24px); padding: 20px 0 38px; }
+      .error-card { border-radius: 23px; padding: 30px 19px 34px; }
+      .arcade-art { transform: scale(.9); margin-bottom: 0; }
+      .description { font-size: .91rem; }
+      .actions { flex-direction: column; }
+      .action { width: 100%; }
+      .hint { margin-top: 22px; }
+      footer { width: calc(100% - 28px); padding-bottom: 18px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="미니지 홈으로 이동">
+      <span class="brand-mark" aria-hidden="true">🎮</span>
+      <span>미니지</span>
+    </a>
+
+    <div class="theme-switcher" role="group" aria-label="화면 테마 선택">
+      <button class="theme-button" type="button" data-theme-choice="white" aria-pressed="true">⚪ 하양</button>
+      <button class="theme-button" type="button" data-theme-choice="cream" aria-pressed="false">🟡 크림</button>
+      <button class="theme-button" type="button" data-theme-choice="dark" aria-pressed="false">⚫ 다크</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="error-card" aria-labelledby="error-title">
+      <div class="eyebrow"><span class="eyebrow-dot" aria-hidden="true"></span> MINI-G · LOST IN ARCADE</div>
+
+      <div class="arcade-art" aria-hidden="true">
+        <span class="halo"></span>
+        <span class="float one">✦</span>
+        <span class="float two">🌟</span>
+        <span class="float three">🎈</span>
+        <span class="float four">✧</span>
+        <div class="machine">
+          <div class="machine-screen">?</div>
+          <div class="machine-controls"><i></i><i></i><i></i></div>
+        </div>
+      </div>
+
+      <p class="error-code" aria-label="오류 코드 404">404</p>
+      <h1 id="error-title">앗! 페이지를 찾을 수 없어요.</h1>
+      <p class="description">
+        찾으시는 페이지가 사라졌거나 주소가 잘못 입력된 것 같아요.<br>
+        길을 잃었다면 미니지 오락실 입구로 돌아가 보세요!
+      </p>
+
+      <div class="actions">
+        <a class="action primary" href="/">🏠 미니지 홈으로</a>
+        <button class="action" id="back-button" type="button">↩ 이전 페이지</button>
+      </div>
+
+      <div class="hint"><span aria-hidden="true">💡</span> 주소를 다시 확인하거나 <kbd>홈으로</kbd> 돌아가 보세요.</div>
+    </section>
+  </main>
+
+  <footer>
+    <a href="/">미니지</a> · 무료 미니게임 · 레트로 게임 · 브라우저 게임
+  </footer>
+
+  <script>
+    (() => {
+      const root = document.documentElement;
+      const themeButtons = document.querySelectorAll('[data-theme-choice]');
+
+      themeButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+          const theme = button.dataset.themeChoice;
+          root.dataset.theme = theme;
+          themeButtons.forEach((item) => {
+            item.setAttribute('aria-pressed', String(item === button));
+          });
+
+          const themeColor = theme === 'dark' ? '#111522' : theme === 'cream' ? '#f5f0e5' : '#f7f8fc';
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', themeColor);
+        });
+      });
+
+      document.getElementById('back-button').addEventListener('click', () => {
+        if (window.history.length > 1) {
+          window.history.back();
+        } else {
+          window.location.href = '/';
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
