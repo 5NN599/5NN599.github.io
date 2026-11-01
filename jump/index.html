@@ -2,24 +2,130 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>미니지 - 점프맵</title>
     <style>
+        * { box-sizing: border-box; }
         :root { --bg: #f8f9fa; --text: #333; --canvas-bg: #fff; --border: #e9ecef; --btn-bg: #fff; }
-        [data-theme="beige"] { --bg: #f5ebe0; --text: #4e3d30; --canvas-bg: #eddfd0; --border: #ddcbbb; --btn-bg: #eddfd0; }
+        [data-theme="cream"], [data-theme="beige"] { --bg: #f5ebe0; --text: #4e3d30; --canvas-bg: #eddfd0; --border: #ddcbbb; --btn-bg: #eddfd0; }
         [data-theme="dark"] { --bg: #0d1117; --text: #c9d1d9; --canvas-bg: #161b22; --border: #30363d; --btn-bg: #21262d; }
-        body { text-align: center; background-color: var(--bg); color: var(--text); font-family: sans-serif; padding-top: 20px; margin:0; transition: 0.3s; }
-        canvas { background-color: var(--canvas-bg); display: block; margin: 15px auto; border: 4px solid var(--border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.05); }
-        button { background-color: var(--btn-bg); color: var(--text); border: 1px solid var(--border); padding: 10px 20px; font-size: 1rem; border-radius: 8px; cursor: pointer; margin:5px; }
-        #info { font-size: 1.3rem; font-weight: bold; color: #ff6b6b; }
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 10; }
-        .modal-content { background: var(--canvas-bg); padding: 30px; border-radius: 16px; border: 2px solid var(--border); text-align: center; }
+        html { min-height: 100%; background: var(--bg); }
+        body {
+            min-height: 100vh;
+            text-align: center;
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: sans-serif;
+            padding: max(14px, env(safe-area-inset-top)) 12px max(20px, env(safe-area-inset-bottom));
+            margin: 0;
+            overflow-x: hidden;
+            transition: background-color .3s, color .3s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        h1 { margin: 4px 0 10px; font-size: clamp(1.35rem, 5vw, 2rem); }
+        #info { font-size: clamp(1.05rem, 4vw, 1.3rem); font-weight: bold; color: #ff6b6b; }
+        canvas {
+            display: block;
+            width: min(600px, 100%);
+            height: auto;
+            aspect-ratio: 5 / 3;
+            margin: 12px auto 10px;
+            background-color: var(--canvas-bg);
+            border: 4px solid var(--border);
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,.08);
+            touch-action: none;
+        }
+        button {
+            background-color: var(--btn-bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 12px 18px;
+            min-height: 48px;
+            font-size: 1rem;
+            font-weight: 700;
+            border-radius: 12px;
+            cursor: pointer;
+            margin: 5px;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        button:active, button.is-pressed { transform: scale(.97); filter: brightness(.94); }
+        .mobile-controls {
+            width: min(600px, 100%);
+            margin: 6px auto 12px;
+            display: flex;
+            align-items: stretch;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        .move-controls { display: flex; flex: 1; gap: 10px; }
+        .control-button {
+            flex: 1;
+            min-width: 0;
+            min-height: 66px;
+            margin: 0;
+            font-size: clamp(1.5rem, 7vw, 2rem);
+            border-width: 2px;
+            box-shadow: 0 3px 0 var(--border);
+        }
+        .jump-button {
+            flex: 1.15;
+            min-height: 66px;
+            margin: 0;
+            font-size: 1.15rem;
+            background: #ffdd8a;
+            color: #503b14;
+            border-color: #e6bd62;
+            box-shadow: 0 3px 0 #d7ad53;
+        }
+        .help { margin: 8px auto 14px; font-size: .9rem; opacity: .72; line-height: 1.5; }
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            min-height: 100%;
+            padding: 18px;
+            background: rgba(0,0,0,.58);
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+        .modal-content {
+            width: min(440px, 100%);
+            background: var(--canvas-bg);
+            padding: 24px 18px;
+            border-radius: 16px;
+            border: 2px solid var(--border);
+            text-align: center;
+        }
+        .modal-content p { line-height: 1.5; }
+        @media (min-width: 700px) {
+            body { padding-top: 20px; }
+            .mobile-controls { max-width: 460px; }
+        }
+        @media (max-width: 360px) {
+            body { padding-left: 8px; padding-right: 8px; }
+            .mobile-controls { gap: 8px; }
+            .move-controls { gap: 8px; }
+            .control-button { min-height: 60px; }
+        }
     </style>
 </head>
 <body>
     <h1>🏃 50층 대모험 점프맵</h1>
     <div id="info">STAGE: 1 / 50</div>
-    <canvas id="gameCanvas" width="600" height="360"></canvas>
+    <canvas id="gameCanvas" width="600" height="360" aria-label="50층 점프맵 게임 화면"></canvas>
+    <div class="mobile-controls" aria-label="모바일 게임 조작">
+        <div class="move-controls">
+            <button class="control-button" type="button" data-key="ArrowLeft" aria-label="왼쪽 이동">◀</button>
+            <button class="control-button" type="button" data-key="ArrowRight" aria-label="오른쪽 이동">▶</button>
+        </div>
+        <button class="control-button jump-button" type="button" data-key="ArrowUp" aria-label="점프">⬆ 점프</button>
+    </div>
+    <p class="help">◀ ▶ 이동 · ⬆ 점프<br>키보드에서는 방향키 또는 A / D / W도 사용할 수 있어요.</p>
     <button onclick="location.href='../'">🏠 메인으로 가기</button>
     <div class="modal" id="winModal">
         <div class="modal-content">
@@ -29,19 +135,73 @@
         </div>
     </div>
     <script>
-        const savedTheme = localStorage.getItem('minig-theme'); if (savedTheme && savedTheme !== 'white') document.documentElement.setAttribute('data-theme', savedTheme);
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const savedTheme = localStorage.getItem('minig-theme');
+        if (savedTheme && savedTheme !== 'white') document.documentElement.setAttribute('data-theme', savedTheme);
+
+        let audioCtx = null;
         function playSound(type) {
             try {
-                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.connect(gain); gain.connect(audioCtx.destination); const now = audioCtx.currentTime;
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContextClass) return;
+                if (!audioCtx) audioCtx = new AudioContextClass();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                const now = audioCtx.currentTime;
                 if (type === 'jump') { osc.type = 'triangle'; osc.frequency.setValueAtTime(200, now); osc.frequency.exponentialRampToValueAtTime(600, now + 0.1); gain.gain.setValueAtTime(0.06, now); gain.gain.linearRampToValueAtTime(0, now + 0.1); osc.start(now); osc.stop(now + 0.1); }
                 else if (type === 'next') { osc.type = 'square'; osc.frequency.setValueAtTime(523, now); osc.frequency.setValueAtTime(659, now + 0.06); osc.frequency.setValueAtTime(783, now + 0.12); gain.gain.setValueAtTime(0.04, now); gain.gain.linearRampToValueAtTime(0, now + 0.2); osc.start(now); osc.stop(now + 0.2); }
                 else if (type === 'fall') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(250, now); osc.frequency.linearRampToValueAtTime(70, now + 0.2); gain.gain.setValueAtTime(0.08, now); gain.gain.linearRampToValueAtTime(0, now + 0.2); osc.start(now); osc.stop(now + 0.2); }
                 else if (type === 'portal') { osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); osc.frequency.exponentialRampToValueAtTime(1200, now + 0.15); gain.gain.setValueAtTime(0.05, now); gain.gain.linearRampToValueAtTime(0, now + 0.15); osc.start(now); osc.stop(now + 0.15); }
-            } catch(e){}
+            } catch(e) {}
         }
-        const canvas = document.getElementById("gameCanvas"); const ctx = canvas.getContext("2d");
-        let stage = 1; let keys = {};
+
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        let stage = 1;
+        const keys = Object.create(null);
+
+        // 키보드와 모바일 터치 버튼이 같은 입력 상태를 사용합니다.
+        const controlButtons = document.querySelectorAll('[data-key]');
+        function setControlKey(button, pressed) {
+            const key = button.dataset.key;
+            keys[key] = pressed;
+            button.classList.toggle('is-pressed', pressed);
+        }
+        controlButtons.forEach(button => {
+            button.addEventListener('pointerdown', event => {
+                event.preventDefault();
+                try { button.setPointerCapture(event.pointerId); } catch (_) {}
+                setControlKey(button, true);
+                // 첫 사용자 입력에서 모바일 브라우저 오디오를 활성화합니다.
+                if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+            });
+            const release = event => {
+                event.preventDefault();
+                setControlKey(button, false);
+            };
+            button.addEventListener('pointerup', release);
+            button.addEventListener('pointercancel', release);
+            button.addEventListener('lostpointercapture', () => setControlKey(button, false));
+            button.addEventListener('contextmenu', event => event.preventDefault());
+        });
+
+        function normalizeKey(key) {
+            return key.length === 1 ? key.toLowerCase() : key;
+        }
+        document.addEventListener('keydown', event => {
+            const key = normalizeKey(event.key);
+            if (['ArrowLeft', 'ArrowRight', 'ArrowUp', ' ', 'ArrowDown'].includes(key)) event.preventDefault();
+            keys[key] = true;
+        }, { passive: false });
+        document.addEventListener('keyup', event => { keys[normalizeKey(event.key)] = false; });
+        function clearPressedKeys() {
+            Object.keys(keys).forEach(key => { keys[key] = false; });
+            controlButtons.forEach(button => button.classList.remove('is-pressed'));
+        }
+        window.addEventListener('blur', clearPressedKeys);
+        document.addEventListener('visibilitychange', () => { if (document.hidden) clearPressedKeys(); });
         let player = { x: 30, y: 250, w: 26, h: 26, vx: 0, vy: 0, grounded: false, speed: 4.5, jumpForce: -10.5, gravity: 0.5 };
         let goal = { x: 540, y: 300, w: 32, h: 32 };
         let platforms = [], spikes = [], portals = [];
