@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>미니지 - 똥피하기</title>
 
     <!-- 공통 테마 CSS -->
@@ -81,6 +82,92 @@
             box-shadow:
                 0 10px 25px rgba(0,0,0,0.2);
         }
+
+
+        /* Mobile / touch support */
+        *, *::before, *::after { box-sizing: border-box; }
+        html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+        body {
+            min-width: 0;
+            padding-left: max(8px, env(safe-area-inset-left));
+            padding-right: max(8px, env(safe-area-inset-right));
+            padding-bottom: max(18px, env(safe-area-inset-bottom));
+            overflow-x: hidden;
+        }
+        h1 {
+            max-width: 100%;
+            padding-left: 8px;
+            padding-right: 8px;
+            font-size: clamp(1.35rem, 5.5vw, 2rem);
+            line-height: 1.25;
+            overflow-wrap: anywhere;
+        }
+        canvas {
+            max-width: calc(100vw - 24px);
+            height: auto;
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        button, select {
+            min-height: 44px;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .touch-controls {
+            display: none;
+            width: min(420px, calc(100vw - 24px));
+            margin: 12px auto 16px;
+            gap: 8px;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        .touch-controls button {
+            min-width: 0;
+            min-height: 54px;
+            margin: 0;
+            padding: 10px 8px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 800;
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .touch-help {
+            display: none;
+            max-width: 420px;
+            margin: 0 auto 10px;
+            padding: 0 8px;
+            font-size: .82rem;
+            line-height: 1.5;
+            opacity: .72;
+        }
+        .pad-space { display: block; }
+        .pad-center { display: grid; place-items: center; opacity: .35; font-size: .8rem; }
+
+        @media (max-width: 700px), (pointer: coarse) {
+            body { padding-top: max(10px, env(safe-area-inset-top)); }
+            .touch-controls { display: grid; }
+            .touch-help { display: block; }
+            .modal-content {
+                width: min(92vw, 420px);
+                max-width: 92vw;
+                padding: 22px 18px;
+            }
+            button { font-size: 1rem; }
+        }
+
+        #gameCanvas { width: min(400px, calc(100vw - 24px)); height: auto; }
+        .dodge-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .dodge-controls button { min-height: 62px; }
+        @media (max-width: 700px), (pointer: coarse) {
+            body { padding-top: max(12px, env(safe-area-inset-top)); }
+            #score { font-size: clamp(1.2rem, 5vw, 1.5rem); }
+            .modal-content { padding: 22px 18px; }
+        }
+
     </style>
 </head>
 
@@ -95,6 +182,12 @@
         width="400"
         height="400"
     ></canvas>
+
+    <div class="touch-controls dodge-controls" aria-label="플레이어 좌우 이동">
+        <button type="button" data-key="ArrowLeft" data-hold aria-label="왼쪽 이동">◀ 왼쪽</button>
+        <button type="button" data-key="ArrowRight" data-hold aria-label="오른쪽 이동">오른쪽 ▶</button>
+    </div>
+    <p class="touch-help">아래 방향 버튼을 길게 눌러 캐릭터를 좌우로 이동하세요.</p>
 
     <button onclick="location.href='../'">
         🏠 메인으로 가기
@@ -473,6 +566,113 @@
                     loop
                 );
         }
+
+
+
+
+(() => {
+    'use strict';
+    const sendKey = (type, key) => {
+        document.dispatchEvent(new KeyboardEvent(type, {
+            key,
+            bubbles: true,
+            cancelable: true
+        }));
+    };
+
+    const activePresses = new Map();
+    document.querySelectorAll('.touch-controls [data-key]').forEach((button) => {
+        const key = button.dataset.key;
+        const hold = button.hasAttribute('data-hold');
+        const repeat = button.hasAttribute('data-repeat');
+        let repeatTimer = null;
+        let pressed = false;
+
+        const stop = (event) => {
+            if (!pressed) return;
+            if (event) event.preventDefault();
+            pressed = false;
+            if (repeatTimer !== null) {
+                clearInterval(repeatTimer);
+                repeatTimer = null;
+            }
+            sendKey('keyup', key);
+            activePresses.delete(button);
+        };
+
+        if (hold || repeat) {
+            button.addEventListener('pointerdown', (event) => {
+                if (pressed) return;
+                event.preventDefault();
+                pressed = true;
+                activePresses.set(button, stop);
+                sendKey('keydown', key);
+                if (repeat) {
+                    repeatTimer = setInterval(() => sendKey('keydown', key), 105);
+                }
+                try { button.setPointerCapture(event.pointerId); } catch (_) {}
+            });
+            ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((name) => {
+                button.addEventListener(name, stop);
+            });
+        } else {
+            button.addEventListener('click', (event) => {
+                event.preventDefault();
+                sendKey('keydown', key);
+                sendKey('keyup', key);
+            });
+        }
+        button.addEventListener('contextmenu', (event) => event.preventDefault());
+    });
+
+    window.addEventListener('pointerup', () => {
+        for (const stop of [...activePresses.values()]) stop();
+    });
+    window.addEventListener('blur', () => {
+        for (const stop of [...activePresses.values()]) stop();
+    });
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            for (const stop of [...activePresses.values()]) stop();
+        }
+    });
+
+    window.addEventListener('keydown', (event) => {
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(event.key)) {
+            const target = event.target;
+            const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT');
+            if (!isInput) event.preventDefault();
+        }
+    }, { passive: false });
+
+    const canvas = document.querySelector('canvas');
+    if (canvas && canvas.dataset.swipeKeys === 'true') {
+        let startX = 0;
+        let startY = 0;
+        let pointerId = null;
+        canvas.addEventListener('pointerdown', (event) => {
+            if (event.pointerType === 'mouse' && event.button !== 0) return;
+            startX = event.clientX;
+            startY = event.clientY;
+            pointerId = event.pointerId;
+            try { canvas.setPointerCapture(pointerId); } catch (_) {}
+        });
+        canvas.addEventListener('pointerup', (event) => {
+            if (pointerId !== event.pointerId) return;
+            const dx = event.clientX - startX;
+            const dy = event.clientY - startY;
+            const threshold = Math.max(18, canvas.getBoundingClientRect().width * 0.045);
+            pointerId = null;
+            if (Math.max(Math.abs(dx), Math.abs(dy)) < threshold) return;
+            const key = Math.abs(dx) > Math.abs(dy)
+                ? (dx < 0 ? 'ArrowLeft' : 'ArrowRight')
+                : (dy < 0 ? 'ArrowUp' : 'ArrowDown');
+            sendKey('keydown', key);
+            sendKey('keyup', key);
+        });
+        canvas.addEventListener('pointercancel', () => { pointerId = null; });
+    }
+})();
 
 
         loop();
