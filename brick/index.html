@@ -2,11 +2,9 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
+    
 
     <title>미니지 - 벽돌깨기</title>
 
@@ -262,6 +260,83 @@
                 height: auto;
             }
         }
+
+
+        /* Mobile / touch support */
+        *, *::before, *::after { box-sizing: border-box; }
+        html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+        body {
+            min-width: 0;
+            padding-left: max(8px, env(safe-area-inset-left));
+            padding-right: max(8px, env(safe-area-inset-right));
+            padding-bottom: max(18px, env(safe-area-inset-bottom));
+            overflow-x: hidden;
+        }
+        h1 {
+            max-width: 100%;
+            padding-left: 8px;
+            padding-right: 8px;
+            font-size: clamp(1.35rem, 5.5vw, 2rem);
+            line-height: 1.25;
+            overflow-wrap: anywhere;
+        }
+        canvas {
+            max-width: calc(100vw - 24px);
+            height: auto;
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        button, select {
+            min-height: 44px;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .touch-controls {
+            display: none;
+            width: min(420px, calc(100vw - 24px));
+            margin: 12px auto 16px;
+            gap: 8px;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        .touch-controls button {
+            min-width: 0;
+            min-height: 54px;
+            margin: 0;
+            padding: 10px 8px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 800;
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .touch-help {
+            display: none;
+            max-width: 420px;
+            margin: 0 auto 10px;
+            padding: 0 8px;
+            font-size: .82rem;
+            line-height: 1.5;
+            opacity: .72;
+        }
+        .pad-space { display: block; }
+        .pad-center { display: grid; place-items: center; opacity: .35; font-size: .8rem; }
+
+        @media (max-width: 700px), (pointer: coarse) {
+            body { padding-top: max(10px, env(safe-area-inset-top)); }
+            .touch-controls { display: grid; }
+            .touch-help { display: block; }
+            .modal-content {
+                width: min(92vw, 420px);
+                max-width: 92vw;
+                padding: 22px 18px;
+            }
+            button { font-size: 1rem; }
+        }
+
     </style>
 </head>
 
@@ -278,7 +353,7 @@
         </p>
 
         <p class="game-controls">
-            ← → 방향키 또는 마우스로 패들을 움직여보세요.
+            방향키·마우스 또는 화면 드래그로 패들을 움직여보세요.
         </p>
 
         <div id="status-board">
@@ -289,7 +364,14 @@
             id="gameCanvas"
             width="480"
             height="340"
+            aria-label="벽돌깨기 게임 화면"
         ></canvas>
+
+        <div class="touch-controls" aria-label="패들 좌우 이동">
+            <button type="button" data-key="ArrowLeft" data-hold aria-label="왼쪽으로 이동">◀ 왼쪽</button>
+            <button type="button" data-key="ArrowRight" data-hold aria-label="오른쪽으로 이동">오른쪽 ▶</button>
+        </div>
+        <p class="touch-help">화면을 누른 채 좌우로 드래그하거나 아래 버튼을 길게 눌러 패들을 움직이세요.</p>
 
         <button
             onclick="location.href='../'"
@@ -370,6 +452,38 @@
 
     <!-- 기존 게임 로직 그대로 유지 -->
     <script src="./game.js"></script>
-
+    <script>
+    (() => {
+        const canvas = document.getElementById('gameCanvas');
+        if (!canvas) return;
+        // Mobile pointer movement is forwarded as mouse movement for legacy game.js handlers.
+        const forwardPointer = (event) => {
+            const mouseEvent = new MouseEvent('mousemove', {
+                bubbles: true,
+                cancelable: true,
+                view: window,
+                clientX: event.clientX,
+                clientY: event.clientY,
+                screenX: event.screenX,
+                screenY: event.screenY,
+                buttons: event.buttons || (event.type === 'pointerup' ? 0 : 1)
+            });
+            canvas.dispatchEvent(mouseEvent);
+        };
+        canvas.addEventListener('pointerdown', (event) => {
+            event.preventDefault();
+            forwardPointer(event);
+            try { canvas.setPointerCapture(event.pointerId); } catch (_) {}
+        });
+        canvas.addEventListener('pointermove', (event) => {
+            if (event.pointerType !== 'mouse' || event.buttons !== 0) {
+                event.preventDefault();
+                forwardPointer(event);
+            }
+        });
+        canvas.addEventListener('pointerup', forwardPointer);
+        canvas.addEventListener('contextmenu', (event) => event.preventDefault());
+    })();
+    </script>
 </body>
 </html>
