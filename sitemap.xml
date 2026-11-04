@@ -1,74 +1,172 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-
   <!-- 메인 페이지 -->
   <url>
     <loc>https://mini-g.kro.kr/</loc>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
   </url>
 
-  <!-- 벽돌깨기 -->
+  <!-- 카테고리 필터 페이지 -->
   <url>
-    <loc>https://mini-g.kro.kr/brick/</loc>
+    <loc>https://mini-g.kro.kr/?category=action</loc>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
   </url>
-
-  <!-- 카드 뒤집기 -->
   <url>
-    <loc>https://mini-g.kro.kr/card/</loc>
+    <loc>https://mini-g.kro.kr/?category=puzzle</loc>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
   </url>
-
-  <!-- 스페이스 타워디펜스 -->
   <url>
-    <loc>https://mini-g.kro.kr/defense/</loc>
+    <loc>https://mini-g.kro.kr/?category=board</loc>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
   </url>
-
-  <!-- 공룡 달리기 -->
   <url>
-    <loc>https://mini-g.kro.kr/dino/</loc>
+    <loc>https://mini-g.kro.kr/?category=strategy</loc>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
   </url>
-
-  <!-- 똥피하기 -->
   <url>
-    <loc>https://mini-g.kro.kr/dodge/</loc>
+    <loc>https://mini-g.kro.kr/?category=simulation</loc>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
   </url>
 
-  <!-- 행운의 동전 -->
+  <!-- 액션 게임 목록 -->
   <url>
-    <loc>https://mini-g.kro.kr/gacha/</loc>
+    <loc>https://mini-g.kro.kr/games/avoid-poop</loc>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
   </url>
-
-  <!-- 50층 대모험 -->
   <url>
-    <loc>https://mini-g.kro.kr/jump/</loc>
+    <loc>https://mini-g.kro.kr/games/brick-breaker</loc>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
   </url>
-
-  <!-- 레트로 2048 -->
   <url>
-    <loc>https://mini-g.kro.kr/p2048/</loc>
+    <loc>https://mini-g.kro.kr/games/dino-run</loc>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
   </url>
-
-  <!-- 블리츠RTS -->
   <url>
-    <loc>https://mini-g.kro.kr/rts/</loc>
+    <loc>https://mini-g.kro.kr/games/50th-floor</loc>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
   </url>
-
-  <!-- 지구 방위대 최후의 함선 '미니지호' -->
   <url>
-    <loc>https://mini-g.kro.kr/shoot/</loc>
+    <loc>https://mini-g.kro.kr/games/minig-ship</loc>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
   </url>
-
-  <!-- 스네이크 게임 -->
   <url>
-    <loc>https://mini-g.kro.kr/snake/</loc>
+    <loc>https://mini-g.kro.kr/games/retro-racing</loc>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
   </url>
-
-  <!-- 레트로 테트리스 -->
   <url>
-    <loc>https://mini-g.kro.kr/tetris/</loc>
+    <loc>https://mini-g.kro.kr/games/retro-beat</loc>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
   </url>
 
-  <!-- 틱택토 -->
+  <!-- 퍼즐 게임 목록 -->
   <url>
-    <loc>https://mini-g.kro.kr/tictactoe/</loc>
+    <loc>https://mini-g.kro.kr/games/snake</loc>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mini-g.kro.kr/games/card-match</loc>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mini-g.kro.kr/games/lucky-coin</loc>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mini-g.kro.kr/games/tetris</loc>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mini-g.kro.kr/games/2048</loc>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
   </url>
 
+  <!-- 보드 게임 목록 -->
+  <url>
+    <loc>https://mini-g.kro.kr/games/tic-tac-toe</loc>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mini-g.kro.kr/games/blackjack</loc>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mini-g.kro.kr/games/mini-marble</loc>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mini-g.kro.kr/games/arcade-chess</loc>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- 전략 게임 목록 -->
+  <url>
+    <loc>https://mini-g.kro.kr/games/space-tower-defense</loc>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mini-g.kro.kr/games/blitz-rts</loc>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- 시뮬레이션 게임 목록 -->
+  <url>
+    <loc>https://mini-g.kro.kr/games/coffee-shop-tycoon</loc>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mini-g.kro.kr/games/planet-mining</loc>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
 </urlset>
